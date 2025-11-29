@@ -107,24 +107,24 @@ const transporter = nodemailer.createTransport({
 });
 
 // MySQL connection
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "rsu_reqs_db",
-  port: process.env.DB_PORT || 3306,
-});
-// --- 🟢 PASTE THIS AT THE TOP (Line 100) 🟢 ---
 // const db = mysql.createConnection({
-//   host: process.env.DB_HOST,
-//   user: process.env.DB_USER,
-//   password: process.env.DB_PASSWORD,
-//   database: process.env.DB_NAME,
-//   port: process.env.DB_PORT,
-//   ssl: {
-//     rejectUnauthorized: false,
-//   },
+//   host: process.env.DB_HOST || "localhost",
+//   user: process.env.DB_USER || "root",
+//   password: process.env.DB_PASSWORD || "",
+//   database: process.env.DB_NAME || "rsu_reqs_db",
+//   port: process.env.DB_PORT || 3306,
 // });
+// MySQL connection - CORRECTED FOR TIDB CLOUD
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: {
+    rejectUnauthorized: false, // <--- THIS IS THE MAGIC LINE
+  },
+});
 
 db.connect((err) => {
   // ... existing code ...
