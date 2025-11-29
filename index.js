@@ -115,24 +115,30 @@ const transporter = nodemailer.createTransport({
 //   port: process.env.DB_PORT || 3306,
 // });
 // MySQL connection - CORRECTED FOR TIDB CLOUD
-// 🚨 DEBUGGING MODE: Hardcoded Credentials 🚨
-const db = mysql.createConnection({
-  host: "gateway01.ap-northeast-1.prod.aws.tidbcloud.com", // COPY FROM TABLEPLUS
-  user: "35iQrBXJvmB976p.root", // COPY FROM TABLEPLUS
-  password: "XQQJv50XJXQ29Laf", // PASTE THE PASSWORD YOU JUST COPIED
-  database: "test", // KEEP THIS AS 'test'
+// 🔵 NEW: Connection Pool (Auto-reconnects)
+const db = mysql.createPool({
+  host: "gateway01.ap-northeast-1.prod.aws.tidbcloud.com",
+  user: "35iQrBXJvmB976p.root",
+  password: "XQQJv50XJXQ29Laf", // Your verified password
+  database: "test",
   port: 4000,
   ssl: {
     rejectUnauthorized: false,
   },
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-db.connect((err) => {
+// Test the connection pool immediately
+db.getConnection((err, connection) => {
   if (err) {
-    console.error("❌ CONNECTION FAILED:", err.code, err.message);
+    console.error("❌ POOL CONNECTION FAILED:", err.code, err.message);
   } else {
-    console.log("✅ CONNECTED TO TIDB SUCCESSFULLY!");
-    // Only run these if connected
+    console.log("✅ CONNECTED TO TIDB VIA POOL!");
+    connection.release(); // Release connection back to pool
+
+    // Initialize tables
     createServiceRequestsTable();
     addColumnIfNotExists("service_requests", "claim_details", "TEXT");
     addColumnIfNotExists("queue", "claim_details", "TEXT");
