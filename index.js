@@ -116,27 +116,27 @@ const transporter = nodemailer.createTransport({
 // });
 // MySQL connection - CORRECTED FOR TIDB CLOUD
 // 🔵 NEW: Connection Pool (Auto-reconnects)
+// MySQL connection (Using Vercel Variables for Aiven)
 const db = mysql.createPool({
-  host: "gateway01.ap-northeast-1.prod.aws.tidbcloud.com",
-  user: "35iQrBXJvmB976p.root",
-  password: "XQQJv50XJXQ29Laf", // Your verified password
-  database: "test",
-  port: 4000,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // Required for Aiven
   },
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 });
 
-// Test the connection pool immediately
 db.getConnection((err, connection) => {
   if (err) {
-    console.error("❌ POOL CONNECTION FAILED:", err.code, err.message);
+    console.error("❌ AIVEN CONNECTION FAILED:", err.code, err.message);
   } else {
-    console.log("✅ CONNECTED TO TIDB VIA POOL!");
-    connection.release(); // Release connection back to pool
+    console.log("✅ CONNECTED TO AIVEN DATABASE SUCCESSFULLY!");
+    connection.release();
 
     // Initialize tables
     createServiceRequestsTable();
