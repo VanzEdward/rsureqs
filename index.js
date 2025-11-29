@@ -1118,6 +1118,16 @@ app.post(
       // --- END ADDED FIELDS ---
     } = req.body;
 
+    // ⬇️ PASTE THIS BLOCK RIGHT AFTER 'req.body' ⬇️
+
+    // Fix: Convert string 'null' or empty strings to real NULL for the database
+    const safeYearGraduated =
+      yearGraduated && yearGraduated !== "null" && yearGraduated !== ""
+        ? parseInt(yearGraduated)
+        : null;
+
+    // ⬆️ END OF PASTE ⬆️
+
     // --- Validation ---
     if (
       !userId ||
@@ -1224,7 +1234,7 @@ app.post(
           major,
           yearLevel,
           schoolYear,
-          yearGraduated || null,
+          yearGraduated,
           email, // The email we just validated
           schoolIdPictureFilename,
           campus,
