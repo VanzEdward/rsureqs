@@ -2396,31 +2396,25 @@ app.post("/api/admin/beacon-unlock", (req, res) => {
 // --- 🟢 END NEW ROUTE 🟢 ---
 
 // Start server
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`🔑 Admin login: http://localhost:${PORT}/adminLogin`);
-  console.log(`👤 Default admin: admin@rsu.edu.ph / admin123`);
-});
+// const PORT = 3000;
+// app.listen(PORT, () => {
+//   console.log(`🚀 Server running on http://localhost:${PORT}`);
+//   console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
+//   console.log(`🔑 Admin login: http://localhost:${PORT}/adminLogin`);
+//   console.log(`👤 Default admin: admin@rsu.edu.ph / admin123`);
+// });
 
 // export default db;
-// --- 🟢 VERCEL FIX STARTS HERE 🟢 ---
-
-// Only listen to port 3000 if we are running LOCALLY (not on Vercel)
-// if (process.env.NODE_ENV !== "production") {
-//   const PORT = process.env.PORT || 3000;
-//   app.listen(PORT, () => {
-//     console.log(`🚀 Server running on http://localhost:${PORT}`);
-//     console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-//   });
-// }
-// if (process.env.NODE_ENV !== "production") {
-//   const PORT = process.env.PORT || 3000;
-//   app.listen(PORT, () => {
-//     console.log(`🚀 Server running on http://localhost:${PORT}`);
-//   });
-// }
+// Start server - ONLY IF NOT IN PRODUCTION (Vercel handles this automatically)
+if (process.env.NODE_ENV !== "production") {
+  const PORT = 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
+    console.log(`🔑 Admin login: http://localhost:${PORT}/adminLogin`);
+    console.log(`👤 Default admin: admin@rsu.edu.ph / admin123`);
+  });
+}
 
 // REQUIRED: Export the 'app' so Vercel can run it
 export default app;
