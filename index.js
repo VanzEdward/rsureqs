@@ -127,15 +127,17 @@ const db = mysql.createConnection({
 });
 
 db.connect((err) => {
-  // ... existing code ...
+  if (err) {
+    console.error("❌ CRITICAL DATABASE ERROR:", err.code, err.message);
+    return; // Stop the app from crashing further
+  }
+  console.log("✅ Successfully connected to TiDB Cloud!");
+
+  // Only run these if connected
   createServiceRequestsTable();
   addColumnIfNotExists("service_requests", "claim_details", "TEXT");
   addColumnIfNotExists("queue", "claim_details", "TEXT");
-
-  // 🟢 CRITICAL: This column saves which ticket goes to which window.
   addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
-
-  // 🟢 CRITICAL: This column saves which window the staff is assigned to.
   addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
 });
 
