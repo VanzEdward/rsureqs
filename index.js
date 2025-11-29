@@ -115,30 +115,30 @@ const transporter = nodemailer.createTransport({
 //   port: process.env.DB_PORT || 3306,
 // });
 // MySQL connection - CORRECTED FOR TIDB CLOUD
+// 🚨 DEBUGGING MODE: Hardcoded Credentials 🚨
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: "gateway01.ap-northeast-1.prod.aws.tidbcloud.com", // COPY FROM TABLEPLUS
+  user: "35iQrBXJvmB976p.root", // COPY FROM TABLEPLUS
+  password: "XQQJv50XJXQ29Laf", // PASTE THE PASSWORD YOU JUST COPIED
+  database: "test", // KEEP THIS AS 'test'
   port: 4000,
   ssl: {
-    rejectUnauthorized: false, // <--- THIS IS THE MAGIC LINE
+    rejectUnauthorized: false,
   },
 });
 
 db.connect((err) => {
   if (err) {
-    console.error("❌ CRITICAL DATABASE ERROR:", err.code, err.message);
-    return; // Stop the app from crashing further
+    console.error("❌ CONNECTION FAILED:", err.code, err.message);
+  } else {
+    console.log("✅ CONNECTED TO TIDB SUCCESSFULLY!");
+    // Only run these if connected
+    createServiceRequestsTable();
+    addColumnIfNotExists("service_requests", "claim_details", "TEXT");
+    addColumnIfNotExists("queue", "claim_details", "TEXT");
+    addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
+    addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
   }
-  console.log("✅ Successfully connected to TiDB Cloud!");
-
-  // Only run these if connected
-  createServiceRequestsTable();
-  addColumnIfNotExists("service_requests", "claim_details", "TEXT");
-  addColumnIfNotExists("queue", "claim_details", "TEXT");
-  addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
-  addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
 });
 
 // Paste this function near the top of index.js, after the imports
