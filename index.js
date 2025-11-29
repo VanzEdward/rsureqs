@@ -115,32 +115,35 @@ const transporter = nodemailer.createTransport({
 //   port: process.env.DB_PORT || 3306,
 // });
 // MySQL connection - CORRECTED FOR TIDB CLOUD
-// ✅ FINAL STABLE DB CONNECTION (Using Pool)
+// ✅ FINAL: Use Vercel Environment Variables
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT, // This will grab '25507' from Vercel
   ssl: {
-    rejectUnauthorized: false, // Required for Aiven
+    rejectUnauthorized: false,
   },
   waitForConnections: true,
-  connectionLimit: 5, // Good limit for Vercel free tier
+  connectionLimit: 5,
   queueLimit: 0,
 });
 
-// Test the connection logic cleanly
+// Test the pool connection on startup
 db.getConnection((err, connection) => {
   if (err) {
-    console.error("❌ DATABASE CONNECTION FAILED:", err.code, err.message);
+    console.error(
+      "❌ CRITICAL: POOL CONNECTION FAILED:",
+      err.code,
+      err.message
+    );
   } else {
-    console.log("✅ CONNECTED TO DATABASE SUCCESSFULLY!");
-    connection.release(); // Release it back to the pool immediately
+    console.log("✅ CONNECTED TO AIVEN POOL SUCCESSFULLY!");
+    connection.release(); // Important: Release it back to the pool
 
-    // Initialize tables safely
+    // Initialize tables
     createServiceRequestsTable();
-    // Only add columns if we are sure we connected
     addColumnIfNotExists("service_requests", "claim_details", "TEXT");
     addColumnIfNotExists("queue", "claim_details", "TEXT");
     addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
