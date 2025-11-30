@@ -117,10 +117,24 @@ db.getConnection((err, connection) => {
     console.log("✅ CONNECTED TO AIVEN (HARDCODED)!");
     connection.release();
 
-    // Init tables
+    // 1. Init Tables
     createServiceRequestsTable();
+    createQueueTable();
+    createAdminStaffTable();
+
+    // 2. === FIX: ADD MISSING COLUMNS ===
+    // This adds the columns so the "N/A" will be replaced by real data
+    addColumnIfNotExists("service_requests", "campus", "VARCHAR(255)");
+    addColumnIfNotExists("service_requests", "dob", "DATE");
+    addColumnIfNotExists("service_requests", "pob", "VARCHAR(255)");
+    addColumnIfNotExists("service_requests", "nationality", "VARCHAR(100)");
+    addColumnIfNotExists("service_requests", "home_address", "TEXT");
+    addColumnIfNotExists("service_requests", "school_id_picture", "LONGTEXT");
+
+    // 3. Keep existing columns
     addColumnIfNotExists("service_requests", "claim_details", "TEXT");
     addColumnIfNotExists("queue", "claim_details", "TEXT");
+    addColumnIfNotExists("queue", "progress_data", "JSON");
     addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
     addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
   }
@@ -1682,7 +1696,8 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       year_level, services, status, is_priority, 
       submitted_at, started_at, completed_at, 
       window_number, -- CRITICAL: We need this to count completed per window
-      completed_by
+      completed_by,
+      progress_data
     FROM queue
     WHERE 
       (DATE(submitted_at) = CURDATE()) 
@@ -1792,52 +1807,75 @@ app.get("/api/user/service-requests", (req, res) => {
     });
   }
 
-  db.query(
-    "SELECT * FROM service_requests WHERE user_id = ? ORDER BY submitted_at DESC",
-    [userId],
-    (err, results) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Database error",
-        });
-      }
+  // --- 🟢 UPDATED QUERY: Fetch Window, Staff, and Claim Details 🟢 ---
+  const query = `
+    SELECT sr.*, 
+           q.progress_data, 
+           q.status AS live_queue_status,
+           q.window_number,
+           q.completed_by,
+           COALESCE(q.claim_details, sr.claim_details) as final_claim_details
+    FROM service_requests sr
+    LEFT JOIN queue q ON sr.request_id = q.request_id
+    WHERE sr.user_id = ? 
+    ORDER BY sr.submitted_at DESC
+  `;
 
-      const requests = results.map((request) => {
-        try {
-          let reqs = JSON.parse(request.requirements || "[]");
-          let paths = JSON.parse(request.requirements_paths || "[]");
-
-          // Fix for old, double-stringified data
-          if (typeof reqs === "string") reqs = JSON.parse(reqs);
-          if (typeof paths === "string") paths = JSON.parse(paths);
-
-          return {
-            ...request,
-            services: JSON.parse(request.services || "[]"),
-            requirements: reqs,
-            requirements_paths: paths,
-          };
-        } catch (parseErr) {
-          console.error("Error parsing JSON for request:", request.request_id);
-          return {
-            ...request,
-            services: [],
-            requirements: [],
-          };
-        }
-      });
-
-      res.json({
-        success: true,
-        requests: requests,
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
       });
     }
-  );
-});
 
-// Add this with your other user API routes (e.g., after /api/user/service-requests)
+    const requests = results.map((request) => {
+      try {
+        let reqs = JSON.parse(request.requirements || "[]");
+        let paths = JSON.parse(request.requirements_paths || "[]");
+
+        if (typeof reqs === "string") reqs = JSON.parse(reqs);
+        if (typeof paths === "string") paths = JSON.parse(paths);
+
+        // Parse Progress
+        let progress = null;
+        if (request.progress_data) {
+          progress =
+            typeof request.progress_data === "string"
+              ? JSON.parse(request.progress_data)
+              : request.progress_data;
+        }
+
+        // 🟢 FIX: Use LIVE status if available, otherwise fallback 🟢
+        // This ensures the frontend sees 'processing' instead of 'in_queue'
+        const activeStatus = request.live_queue_status || request.queue_status;
+
+        return {
+          ...request,
+          queue_status: activeStatus, // <--- Send the correct status
+          services: JSON.parse(request.services || "[]"),
+          requirements: reqs,
+          requirements_paths: paths,
+          progress: progress,
+        };
+      } catch (parseErr) {
+        console.error("Error parsing JSON for request:", request.request_id);
+        return {
+          ...request,
+          services: [],
+          requirements: [],
+          progress: null,
+        };
+      }
+    });
+
+    res.json({
+      success: true,
+      requests: requests,
+    });
+  });
+});
 
 app.get("/api/user/request-details", (req, res) => {
   const { requestId } = req.query;
@@ -2123,6 +2161,69 @@ app.get("/api/queue/status", (req, res) => {
 // });
 // --- 🟢 PASTE this entire block before your app.listen() call 🟢 ---
 
+// === API: MARK AS DONE (Complete) ===
+app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
+  const { queueId, claimDetails } = req.body; // <--- Now accepts claimDetails
+  if (!queueId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Queue ID is required" });
+  }
+
+  const completedBy = req.admin.full_name;
+  const completedById = req.admin.adminId;
+
+  // 1. Update Queue Table
+  const updateQueueQuery = `
+    UPDATE queue
+    SET status = 'completed', 
+        completed_at = NOW(), 
+        completed_by = ?, 
+        completed_by_id = ?,
+        claim_details = ? 
+    WHERE queue_id = ?
+  `;
+
+  db.query(
+    updateQueueQuery,
+    [completedBy, completedById, claimDetails || null, queueId],
+    (err, result) => {
+      if (err) {
+        console.error("Database error marking done:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Database error" });
+      }
+
+      if (result.affectedRows === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Queue not found." });
+      }
+
+      // 2. Sync to Service Requests Table (So record stays even if queue is cleared)
+      // We also need to get the request_id first to update the correct row
+      db.query(
+        "SELECT request_id FROM queue WHERE queue_id = ?",
+        [queueId],
+        (qErr, qRows) => {
+          if (!qErr && qRows.length > 0) {
+            const reqId = qRows[0].request_id;
+            const updateReqQuery = `
+                UPDATE service_requests 
+                SET queue_status = 'completed', 
+                    claim_details = ? 
+                WHERE request_id = ?
+            `;
+            db.query(updateReqQuery, [claimDetails || null, reqId]);
+          }
+        }
+      );
+
+      res.json({ success: true, message: "Request marked as completed." });
+    }
+  );
+});
 // === API: FORGOT PASSWORD ===
 app.post("/api/forgot-password", (req, res) => {
   const { email } = req.body;
@@ -2386,6 +2487,32 @@ app.post("/api/admin/beacon-unlock", (req, res) => {
 
   // Beacon requests don't wait for responses, but we send one anyway
   res.status(200).send("OK");
+});
+
+// === API: UPDATE QUEUE PROGRESS ===
+app.post("/api/admin/update-progress", authenticateAdmin, (req, res) => {
+  const { queueId, progressData } = req.body;
+
+  if (!queueId || !progressData) {
+    return res.status(400).json({ success: false, message: "Missing data" });
+  }
+
+  // progressData should be a JSON object like { current: 2, total: 5, checked: [...] }
+  const updateQuery = "UPDATE queue SET progress_data = ? WHERE queue_id = ?";
+
+  db.query(
+    updateQuery,
+    [JSON.stringify(progressData), queueId],
+    (err, result) => {
+      if (err) {
+        console.error("Error updating progress:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Database error" });
+      }
+      res.json({ success: true, message: "Progress updated successfully" });
+    }
+  );
 });
 // --- 🟢 END NEW ROUTE 🟢 ---
 

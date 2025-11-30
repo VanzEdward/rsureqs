@@ -673,3 +673,85 @@ input::placeholder {
   opacity: 0;
   transform: translateY(20px);
 }
+.hero-buttons .btn-login-register {
+  background: rgb(5, 218, 87);
+  color: #313a3f;
+}
+
+.hero-buttons .btn-login-register:hover {
+  background: rgb(5, 218, 87);
+  color: #313a3f;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+/* --- Notification Toast Styles (Same as User Login) --- */
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 300px;
+  background: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  animation: slideInRight 0.3s ease-out forwards;
+  border-left: 5px solid;
+  font-family: "Poppins", sans-serif;
+}
+
+.toast-error {
+  border-left-color: #dc3545; /* Red for error */
+}
+
+.toast-success {
+  border-left-color: #198754; /* Green for success */
+}
+
+.toast-icon {
+  margin-right: 15px;
+  font-size: 1.2rem;
+}
+
+.toast-error .toast-icon {
+  color: #dc3545;
+}
+.toast-success .toast-icon {
+  color: #198754;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}

@@ -183,6 +183,25 @@
 
   <body>
     <!-- for serviceCConfirmationModal - make it have a button to if user wants to add the service or not, so basically the modal just shows the more info about that service-->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" id="categoryModalTitle">Select Document</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="alert alert-info small">
+          <i class="bi bi-info-circle me-1"></i> 
+          Click on a document name below to expand details, view fees, and add an optional note.
+        </div>
+        
+        <div id="categoryItemsContainer" class="accordion">
+          </div>
+      </div>
+    </div>
+  </div>
+</div>
     <div
       class="modal fade"
       id="serviceConfirmationModal"
@@ -964,81 +983,70 @@
           </div>
         </div>
 
-        <!-- Services Section -->
-        <div id="services" class="section">
-          <div class="home-content">
-            <div class="text-center">
-              <h2>All Services</h2>
-              <p>
-                Explore the various services offered by the Registrar's Office.
-              </p>
-            </div>
+<div id="services" class="section">
+  <div class="home-content">
+    <div class="text-center mb-5">
+      <h2>Select a Category</h2>
+      <p class="text-muted">Choose a category below to find the specific document you need.</p>
+    </div>
 
-<div class="services">
-              <div
-                class="card"
-                onclick="selectService('Transcript of Records')"
-              >
-                <span class="service-counter" style="display: none;"></span>
-                <h3 class="fw-bold" style="font-size: 20px">
-                 Issuance of Transcript of Records
-                </h3>
-                <p>
-                  Official academic record showing all courses taken, grades
-                  earned, and degrees awarded.
-                </p>
-              </div>
-
-              <div
-                class="card"
-                onclick="selectService('Completion Grade Form')"
-              >
-                <span class="service-counter" style="display: none;"></span>
-                <h3 class="fw-bold" style="font-size: 20px">
-                  Issuance of Completion Grade Form
-                </h3>
-                <p>
-                  Registrar provides an official grade form upon student
-                  request.
-                </p>
-              </div>
-              <div class="card" onclick="selectService('Diploma Issuance')">
-                <span class="service-counter" style="display: none;"></span>
-                <h3 class="fw-bold" style="font-size: 20px">
-                  Issuance of Diploma
-                </h3>
-                <p>
-                  The Registrar issues official diplomas to graduates as proof
-                  of completion.
-                </p>
-              </div>
-              <div
-            class="card"
-            onclick="selectService('Issuance of Transfer Credentials')"
-          >
-            <span class="service-counter" style="display: none;"></span>
-            <h3 class="fw-bold" style="font-size: 20px">
-              Issuance of Transfer Credentials
-            </h3>
-            <p>
-              The Registrar issues official Transfer Credentials upon request to officially certify that a student is eligible to transfer to another educational institution.
-            </p>
+    <div class="row justify-content-center g-4">
+      <div class="col-md-4">
+        <div class="card h-100 service-category-card text-center p-4 shadow-sm" 
+             style="cursor: pointer; transition: transform 0.2s;"
+             onclick="openCategoryModal('academic')"
+             onmouseover="this.style.transform='scale(1.03)'"
+             onmouseout="this.style.transform='scale(1)'">
+          <div class="mb-3">
+            <i class="bi bi-journal-bookmark-fill text-primary" style="font-size: 3.5rem;"></i>
           </div>
-            </div>
-
-<div class="hero-buttons mt-3">
-  <button class="btn btn-custom" onclick="viewSelectedServices()">
-    <i class="bi bi-pencil-square me-1"></i> View Selected Services
-    <span
-      id="selectedCountBadge"
-      class="badge bg-primary ms-1"
-      style="display: none"
-      >0</span
-    >
-  </button>
-</div>
-          </div>
+          <h4 class="fw-bold">Academic Records & Grades</h4>
+          <p class="text-muted small">Transcript of Records, Certificate of Grades, Units Earned</p>
+          <button class="btn btn-outline-primary btn-sm mt-3">Select Documents</button>
         </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card h-100 service-category-card text-center p-4 shadow-sm"
+             style="cursor: pointer; transition: transform 0.2s;"
+             onclick="openCategoryModal('certifications')"
+             onmouseover="this.style.transform='scale(1.03)'"
+             onmouseout="this.style.transform='scale(1)'">
+          <div class="mb-3">
+            <i class="bi bi-patch-check-fill text-success" style="font-size: 3.5rem;"></i>
+          </div>
+          <h4 class="fw-bold">Certifications & Status</h4>
+          <p class="text-muted small">Enrollment, Honors, Class Ranking, Medium of Instruction</p>
+          <button class="btn btn-outline-success btn-sm mt-3">Select Documents</button>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card h-100 service-category-card text-center p-4 shadow-sm"
+             style="cursor: pointer; transition: transform 0.2s;"
+             onclick="openCategoryModal('graduation')"
+             onmouseover="this.style.transform='scale(1.03)'"
+             onmouseout="this.style.transform='scale(1)'">
+          <div class="mb-3">
+            <i class="bi bi-mortarboard-fill text-warning" style="font-size: 3.5rem;"></i>
+          </div>
+          <h4 class="fw-bold">Graduation & Credentials</h4>
+          <p class="text-muted small">Diploma, Graduation Cert, CAV, Transfer Credentials</p>
+          <button class="btn btn-outline-warning btn-sm mt-3">Select Documents</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-buttons mt-5 text-center">
+      <button class="btn btn-custom btn-lg px-5" onclick="viewSelectedServices()">
+        <i class="bi bi-basket me-2"></i> View Selected Items
+        <span id="selectedCountBadge" class="badge bg-danger ms-2" style="display: none">0</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
 
         <!-- Docs Section -->
         <div id="docs" class="section">
@@ -1935,52 +1943,88 @@ async function checkUserProfileStatus() {
 
       // Services data
 const servicesData = {
+  // --- Group 1: Academic Records ---
   "Transcript of Records": {
-    description:
-      "Official academic record showing all courses taken, grades earned, and degrees awarded.",
-    requirements: [
-      { name: "Clearance" },
-      { name: "Book-Bounded Thesis" },
-      { name: "Documentary Stamp" },
-      { name: "Receipt of Payment (cashier's office) ₱40.00" },
-    ],
-    price: 40.0,
+    category: "academic",
+    description: "Official academic record showing all courses and grades.",
+    requirements: [{ name: "Clearance" }, { name: "Documentary Stamp" }, { name: "Receipt of Payment" }],
+    price: 40.00,
+    time: "7 working days"
   },
-  "Completion Grade Form": {
-    description:
-      "Registrar provides an official grade form upon student request.",
-    requirements: [
-      { name: "Completion Form" },
-      { name: "Instructor's Approval" },
-      { name: "Receipt of Payment (cashier's office) ₱30.00" },
-    ],
-    price: 20.0,
+  "Certificate of Grades": {
+    category: "academic",
+    description: "Official certification of grades for specific semesters.",
+    requirements: [{ name: "Request Form" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "7 working days"
   },
-  "Diploma Issuance": {
-    description:
-      "The Registrar issues official diplomas to graduates as proof of completion.",
-    requirements: [
-      { name: "Clearance/Transcript Records" },
-      { name: "Documentary Stamps" },
-    ],
-    price: null,
+  "Certificate of Units Earned": {
+    category: "academic",
+    description: "Certification of total units earned in the program.",
+    requirements: [{ name: "Request Form" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "5 working days"
   },
-  // --- Note: I've updated this service name to match your HTML ---
-  "Issuance of Transfer Credentials": {
-    description:
-      "The Registrar issues official Transfer Credentials upon request to officially certify that a student is eligible to transfer to another educational institution.",
-    requirements: [
-      { name: "Adding/Dropping Form" },
-      { name: "Official Receipt (cashier's office) ₱20.00" },
-    ],
-    price: 20.0,
+
+  // --- Group 2: Certifications ---
+  "Certificate of Enrolment": {
+    category: "certifications",
+    description: "Proof that the student is currently enrolled.",
+    requirements: [{ name: "Study Load" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "5 working days"
   },
-  "Other Services": {
-    description:
-      "For other registrar services not listed here. Please describe your concern when prompted.",
-    requirements: [{ name: "Request Letter" }],
-    price: null,
+  "Certificate of Honors": {
+    category: "certifications",
+    description: "Certification for Dean's Listers or Latin Honors.",
+    requirements: [{ name: "Copy of Grades" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "5 working days"
   },
+  "Certificate of Upper 25": {
+    category: "certifications",
+    description: "Certification of class ranking (Upper 25%).",
+    requirements: [{ name: "Request Letter" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "14 working days"
+  },
+  "Certificate of English as Medium": {
+    category: "certifications",
+    description: "Certifies that English is the medium of instruction.",
+    requirements: [{ name: "Request Form" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "5 working days"
+  },
+
+  // --- Group 3: Graduation ---
+  "Certificate of Graduation": {
+    category: "graduation",
+    description: "Proof of graduation from the institution.",
+    requirements: [{ name: "Clearance" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "5 working days"
+  },
+  "Diploma (Duplicate Copy)": {
+    category: "graduation",
+    description: "Re-issuance of Diploma.",
+    requirements: [{ name: "Notarized Affidavit of Loss" }, { name: "Receipt of Payment" }],
+    price: 100.00,
+    time: "1 month"
+  },
+  "CAV (CHED/DFA)": {
+    category: "graduation",
+    description: "Certification, Authentication and Verification.",
+    requirements: [{ name: "Diploma & TOR Photocopies" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "5 working days"
+  },
+  "Transfer Credentials": {
+    category: "graduation",
+    description: "Honorable Dismissal / Transfer Credentials.",
+    requirements: [{ name: "Clearance" }, { name: "Receipt of Payment" }],
+    price: 25.00,
+    time: "On Process"
+  }
 };
 
       // ===== ENHANCED DASHBOARD FUNCTIONALITY =====
@@ -2120,89 +2164,79 @@ function refreshModal() {
   const modalBodyLeft = document.getElementById("selectedServicesList");
   const modalBodyRight = document.getElementById("requirementsList");
   const totalAmountEl = document.getElementById("totalAmount");
-  const joinQueueBtn = document.getElementById("joinQueueBtn"); // Get the button here
+  const joinQueueBtn = document.getElementById("joinQueueBtn");
 
   if (selectedServicesList.length === 0) {
-    modalBodyLeft.innerHTML =
-      "<p class='p-3 text-center'>No services selected yet.</p>";
+    modalBodyLeft.innerHTML = "<p class='p-3 text-center'>No services selected yet.</p>";
     modalBodyRight.innerHTML = "";
     totalAmountEl.textContent = "₱0.00";
-    joinQueueBtn.disabled = true; // Disable if no services are selected
+    joinQueueBtn.disabled = true;
   } else {
     let total = 0;
     let servicesHTML = "";
     let requirementsHTML = "";
 
-    selectedServicesList.forEach((s, serviceIndex) => {
-      const service = servicesData[s.trim()];
+    selectedServicesList.forEach((fullString, serviceIndex) => {
+      // Logic to separate "Service Name" from "[Note: ...]"
+      let baseName = fullString;
+      let noteDisplay = "";
+
+      if (fullString.includes("[Note:")) {
+         const parts = fullString.split(" [Note:");
+         baseName = parts[0];
+         noteDisplay = parts[1].replace("]", ""); // Clean up the closing bracket
+      }
+
+      // Lookup data using the base name
+      const service = servicesData[baseName];
 
       if (!service) {
-        console.error("Service not found in servicesData:", s);
-        servicesHTML += `
-          <li class="list-group-item d-flex justify-content-between align-items-center bg-danger-subtle">
-              <span><strong>${s}</strong> (Error)</span>
-              <button class="btn btn-sm btn-outline-danger" onclick="removeService('${s}')">
-                  <i class="bi bi-x-circle"></i>
-              </button>
-          </li>
-        `;
-        requirementsHTML += `<div class="alert alert-danger">Could not find requirements for "${s}". Please remove and re-add it.</div>`;
+        console.error("Service data missing for:", baseName);
         return;
       }
 
-      const price =
-        service.price > 0 ? `₱${service.price.toFixed(2)}` : "N/A";
       total += service.price || 0;
 
       servicesHTML += `
         <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span><strong>${s}</strong> (${price})</span>
-            <button class="btn btn-sm btn-outline-danger" onclick="removeService('${s}')">
-                <i class="bi bi-x-circle"></i>
+            <div>
+              <strong>${baseName}</strong>
+              ${noteDisplay ? `<br><small class="text-primary"><i class="bi bi-pencil-fill me-1"></i> ${noteDisplay}</small>` : ''}
+              <div class="small text-muted mt-1">Fee: ₱${service.price.toFixed(2)}</div>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeService('${fullString}')">
+                <i class="bi bi-trash"></i>
             </button>
         </li>
       `;
 
-      requirementsHTML += `
-        <div class="mb-3 p-2 border rounded">
-            <h6 class="fw-bold text-primary">${s}</h6>
-      `;
-
+      // Requirements
+      requirementsHTML += `<div class="mb-3 p-2 border rounded"><h6 class="fw-bold text-primary">${baseName}</h6>`;
+      
       if (service.requirements && service.requirements.length > 0) {
         service.requirements.forEach((req, reqIndex) => {
           const inputId = `file-${serviceIndex}-${reqIndex}`;
           requirementsHTML += `
             <div class="mb-2">
               <label for="${inputId}" class="form-label mb-1 small">
-                <i class="bi bi-file-earmark-arrow-up me-1"></i>
                 ${req.name} <span class="text-danger">*</span>
               </label>
-              <input
-                type="file"
-                class="form-control form-control-sm requirement-upload"
+              <input type="file" class="form-control form-control-sm requirement-upload"
                 id="${inputId}"
-                data-service-name="${s}"
+                data-service-name="${fullString}" 
                 data-requirement-name="${req.name}"
-                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                required
-                onchange="checkAllFilesUploaded()" // <-- ADD THIS LINE
-              />
+                required onchange="checkAllFilesUploaded()" />
             </div>
           `;
         });
-      } else {
-        requirementsHTML += `<p class="small text-muted">No specific requirements listed.</p>`;
       }
-
       requirementsHTML += `</div>`;
     });
 
     modalBodyLeft.innerHTML = servicesHTML;
     modalBodyRight.innerHTML = requirementsHTML;
     totalAmountEl.textContent = `₱${total.toFixed(2)}`;
-
-    // After refreshing, check file upload status
-    checkAllFilesUploaded(); // <-- CALL THE NEW FUNCTION HERE
+    checkAllFilesUploaded();
   }
 }
 
@@ -2489,7 +2523,7 @@ if (result.success) {
         }
       }
 
-      // Enhanced request display
+// Enhanced request display with Progress Bar
       function displayUserRequests(requests) {
         const container = document.getElementById("requestsContainer");
         if (!container) return;
@@ -2511,6 +2545,7 @@ if (result.success) {
               request.status,
               request.queue_status
             );
+            
             const queueInfo = request.queue_number
               ? `<div class="mt-2">
                 <strong>Queue Number:</strong> 
@@ -2518,33 +2553,55 @@ if (result.success) {
             </div>`
               : "";
 
+            // 🟢 PROGRESS BAR LOGIC 🟢
+            let progressHtml = '';
+            if (request.queue_status === 'processing' && request.progress) {
+                const p = request.progress; // { current: 1, total: 5, checked: [...] }
+                const percent = Math.round((p.current / p.total) * 100);
+                
+                progressHtml = `
+                  <div class="mt-3 p-3 bg-light rounded border">
+                    <div class="d-flex justify-content-between align-items-end mb-1">
+                      <label class="small fw-bold text-primary">Processing Status</label>
+                      <span class="small fw-bold text-dark">${percent}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                           role="progressbar" 
+                           style="width: ${percent}%">
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                       <small class="text-muted" style="font-size: 11px;">Day ${p.current} of ${p.total}</small>
+                       <small class="text-muted" style="font-size: 11px;">${p.total - p.current} days remaining</small>
+                    </div>
+                  </div>
+                `;
+            }
+
             return `
             <div class="update-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h4 class="mb-0">${request.services.join(", ")}</h4>
-                    <span class="queue-status-badge ${statusInfo.class}">${
-              statusInfo.text
-            }</span>
+                    <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
                 </div>
                 <p class="text-muted">
                     <strong>Request ID:</strong> ${request.request_id} | 
-                    <strong>Submitted:</strong> ${new Date(
-                      request.submitted_at
-                    ).toLocaleString()}
+                    <strong>Submitted:</strong> ${new Date(request.submitted_at).toLocaleString()}
                 </p>
+                
                 ${queueInfo}
+
+                ${progressHtml}
+
                 ${
                   request.status === "approved" && request.approved_by
                     ? `
                     <div class="alert alert-success mt-2">
-                        <strong>✓ Approved</strong> by ${
-                          request.approved_by
-                        } on ${new Date(request.approved_at).toLocaleString()}
-                        ${
-                          request.approve_notes
-                            ? `<br><strong>Notes:</strong> ${request.approve_notes}`
-                            : ""
-                        }
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        <strong>Approved</strong> by ${request.approved_by} 
+                        <span class="text-muted small ms-1">(${new Date(request.approved_at).toLocaleDateString()})</span>
+                        ${request.approve_notes ? `<br><small class="text-muted">${request.approve_notes}</small>` : ""}
                     </div>
                 `
                     : ""
@@ -2569,38 +2626,41 @@ if (result.success) {
                     `
                     : ""
                 }
-                <p><strong>Total Amount:</strong> ₱${parseFloat(
-                  request.total_amount
-                ).toFixed(2)}</p>
+                
+                
                 ${
-                  request.queue_status === "processing"
+                  request.queue_status === "completed" || request.live_queue_status === "completed"
                     ? `
-                    <div class="alert alert-warning mt-2">
-                        <i class="bi bi-gear me-1"></i>
-                        <strong>Currently Processing:</strong> Your request is being processed right now.
-                    </div>
-                `
-                    : ""
-                }
-                ${
-                  request.queue_status === "completed"
-                    ? `
-                    <div class="alert alert-success mt-2">
-                        <i class="bi bi-check-circle me-1"></i>
-                        <strong>Completed:</strong> Your request has been completed and is ready.
-                        
-                        ${
-                          request.claim_details
-                            ? `
-                            <hr>
-                            <p class="mb-0" style="font-size: 0.95rem;">
-                                <strong><i class="bi bi-building me-1"></i> Please claim at:</strong>
-                                <br>
-                                <span class="fw-bold" style="font-size: 1.1rem;">${request.claim_details}</span>
-                            </p>
-                            `
-                            : ""
-                        }
+                    <div class="alert alert-primary mt-3 border-0 shadow-sm" style="background-color: #e7f1ff; color: #004085;">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="bi bi-patch-check-fill fs-1 text-success"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold mb-1 text-success">Ready to Claim!</h5>
+                                <p class="mb-2 small">Your document processing is complete.</p>
+                                
+                                <div class="bg-white p-2 rounded border border-primary-subtle mb-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small class="text-muted">Processed at:</small>
+                                        <strong class="text-primary">${request.window_number || "Registrar Office"}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">Staff:</small>
+                                        <strong>${request.completed_by || "Staff"}</strong>
+                                    </div>
+                                </div>
+
+                                ${
+                                  request.final_claim_details
+                                    ? `<div class="mt-2 pt-2 border-top border-primary border-opacity-25">
+                                        <small class="text-uppercase fw-bold opacity-75" style="font-size: 10px;">Message / Instructions:</small><br>
+                                        <div class="fst-italic mt-1">"${request.final_claim_details}"</div>
+                                       </div>`
+                                    : ""
+                                }
+                            </div>
+                        </div>
                     </div>
                 `
                     : ""
@@ -3156,6 +3216,116 @@ function filterRequests() {
           }
         });
       });
+
+      // 2. OPEN CATEGORY MODAL LOGIC
+function openCategoryModal(category) {
+  // Security checks
+  if (!checkAuthentication() || !checkSession()) return;
+
+  const container = document.getElementById("categoryItemsContainer");
+  const title = document.getElementById("categoryModalTitle");
+
+  // Update Title
+  const titles = {
+    'academic': 'Academic Records & Grades',
+    'certifications': 'Certifications & Status',
+    'graduation': 'Graduation & Credentials'
+  };
+  title.textContent = titles[category] || "Select Document";
+
+  // Filter Data
+  const items = Object.entries(servicesData).filter(([key, data]) => data.category === category);
+
+  // Generate Accordion HTML
+  let html = '';
+  items.forEach(([name, data], index) => {
+    const uniqueId = `collapse${index}`;
+    // Check if item is already in the list (partial match for notes)
+    const isSelected = selectedServicesList.some(s => s.startsWith(name));
+
+    html += `
+      <div class="accordion-item mb-2 border rounded shadow-sm">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#${uniqueId}">
+            ${name}
+            ${isSelected ? '<span class="badge bg-success ms-2"><i class="bi bi-check"></i> Added</span>' : ''}
+          </button>
+        </h2>
+        <div id="${uniqueId}" class="accordion-collapse collapse" data-bs-parent="#categoryItemsContainer">
+          <div class="accordion-body">
+            <div class="row">
+              <div class="col-md-7 border-end">
+                <p class="mb-2"><strong>Description:</strong> ${data.description}</p>
+                <p class="mb-1 text-muted small"><strong>Requirements:</strong></p>
+                <ul class="small text-muted mb-2">
+                  ${data.requirements.map(r => `<li>${r.name}</li>`).join('')}
+                </ul>
+              </div>
+              <div class="col-md-5">
+                <div class="alert alert-light border">
+                  <div class="mb-1"><strong>Fee:</strong> <span class="text-danger">₱${data.price.toFixed(2)}</span></div>
+                  <div class="mb-0"><strong>Time:</strong> ${data.time}</div>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">Optional Note:</label>
+                  <input type="text" class="form-control form-control-sm" 
+                         id="note-${index}" 
+                         placeholder="e.g. Purpose: Scholarship, or Specific Year">
+                </div>
+
+                <div class="d-grid">
+                  <button class="btn ${isSelected ? 'btn-secondary' : 'btn-primary'}" 
+                    onclick="addServiceFromModal('${name}', 'note-${index}')" 
+                    ${isSelected ? 'disabled' : ''}>
+                    ${isSelected ? 'Already Added' : '<i class="bi bi-plus-circle"></i> Add to Selection'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  const modal = new bootstrap.Modal(document.getElementById("categoryModal"));
+  modal.show();
+}
+
+// 3. ADD SERVICE WITH NOTE LOGIC
+function addServiceFromModal(serviceName, noteInputId) {
+  const noteInput = document.getElementById(noteInputId);
+  const note = noteInput ? noteInput.value.trim() : "";
+
+  // Append note to name if it exists: "Service Name [Note: ...]"
+  let finalName = serviceName;
+  if (note) {
+    finalName = `${serviceName} [Note: ${note}]`;
+  }
+
+  if (!selectedServicesList.includes(finalName)) {
+    selectedServicesList.push(finalName);
+    updateSelectedCount();
+    
+    // UI Feedback
+    showToast(`Added: ${finalName}`, "success");
+    
+    // Refresh the modal content to disable the button
+    const currentCategory = servicesData[serviceName].category;
+    
+    // Close current modal instance then reopen to refresh
+    // (Simple way to refresh state)
+    const modalEl = document.getElementById("categoryModal");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+    
+    setTimeout(() => {
+        openCategoryModal(currentCategory);
+    }, 300);
+  }
+}
     </script>
   </body>
 </html>
