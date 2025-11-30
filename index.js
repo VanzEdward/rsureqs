@@ -14,19 +14,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// --- ⬇️ PASTE THE NEW CODE BLOCK HERE ⬇️ ---
-// Configure Multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Files will be saved in the 'uploads/' directory
-  },
-  filename: function (req, file, cb) {
-    // Create a unique filename to prevent conflicts
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const extension = path.extname(file.originalname);
-    cb(null, file.fieldname + "-" + uniqueSuffix + extension);
-  },
-});
+const storage = multer.memoryStorage();
 
 // ------------------- THIS IS THE FIX -------------------
 // Secure file filter to only allow images
