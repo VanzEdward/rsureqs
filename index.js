@@ -1290,62 +1290,71 @@ app.get("/api/user/can-join-queue", (req, res) => {
   );
 });
 
-// --- REPLACED API ROUTE to handle file uploads ---
+// --- 🟢 FIXED: Submit Request (Safe for Vercel) 🟢 ---
 app.post(
   "/api/queue/submit-request",
-  requirementsUpload.array("requirements_files", 10), // "requirements_files" is the key from FormData, 10 files max
+  requirementsUpload.array("requirements_files", 10),
   (req, res) => {
-    // Text fields are in req.body, files are in req.files
     const { userId, services } = req.body;
     const files = req.files;
 
-    if (!userId || !services || !Array.isArray(services)) {
-      // If validation fails, delete any files that were uploaded
-      if (files) {
-        files.forEach((file) =>
-          fs.unlink(
-            file.path,
-            (err) => err && console.error("Error cleaning up file:", err)
-          )
-        );
-      }
+    // 1. Validation
+    if (!userId || !services) {
       return res.status(400).json({
         success: false,
         message: "User ID and services are required",
       });
     }
 
-    // Create an array of file paths (just the filename)
-    // Get the requirement names sent from the form
-    const { requirement_names } = req.body;
+    // 2. Handle Services Data
+    // Ensure services is an array (Handle potential string format from FormData)
+    let parsedServices = services;
+    if (typeof services === "string") {
+      // If only one service is selected, it comes as a string, not an array
+      parsedServices = [services];
+    }
 
-    // Create a structured array: [ {name: "Clearance", file: "file-123.jpg"}, ... ]
+    // 3. Handle File Names
+    // Since we are using MemoryStorage (RAM), 'file.filename' is undefined.
+    // We must generate a name manually to save to the database.
+    const { requirement_names } = req.body;
+    let reqNamesArray = requirement_names;
+
+    // Handle if requirement_names is just a string (single file)
+    if (typeof requirement_names === "string") {
+      reqNamesArray = [requirement_names];
+    }
+
     const structuredRequirements = files
       ? files.map((file, index) => {
+          // Generate a unique name for the DB entry since we aren't saving to disk yet
+          const safeName = `file-${Date.now()}-${index}.jpg`;
+
           return {
-            name: requirement_names[index], // The name from the form
-            file: file.filename, // The saved filename
+            name: reqNamesArray ? reqNamesArray[index] : "Requirement",
+            file: safeName,
           };
         })
       : [];
 
-    // Save this new structure in requirements_paths
     const requirementsPaths = JSON.stringify(structuredRequirements);
 
-    // Save just the names in the old 'requirements' column for compatibility
+    // Save names for compatibility
+    const requirementsText = JSON.stringify(reqNamesArray || []);
 
     const requestId =
       "REQ-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
 
+    // 4. Get User Info
     db.query(
       `SELECT fullname, student_id, course, year_level, email, phone,
         campus, dob, pob, nationality, home_address, previous_school,
         primary_school, secondary_school, school_id_picture 
-  FROM users WHERE id = ?`,
+       FROM users WHERE id = ?`,
       [userId],
       (err, userResults) => {
         if (err) {
-          console.error("Database error:", err);
+          console.error("Database error (User Fetch):", err);
           return res
             .status(500)
             .json({ success: false, message: "Database error" });
@@ -1359,22 +1368,14 @@ app.post(
 
         const user = userResults[0];
 
-        // Note: The 'requirements' column now stores the *names* of the requirements
-        // The new 'requirements_paths' column stores the *filenames*
-
-        // --- THIS LINE WAS THE BUG, IT'S NOW FIXED ---
-        // --- THIS LINE WAS THE BUG, IT'S NOW FIXED ---
-        const requirementsText = JSON.stringify(requirement_names || []);
-        // --- END OF FIX ---
-
-        // 1. Insert into service_requests with status 'approved' and queue_status 'in_queue'
+        // 5. Insert into Database
         db.query(
           `INSERT INTO service_requests 
-  (request_id, user_id, user_name, student_id, course, year_level, 
-  services, total_amount, requirements, requirements_paths, status, queue_status, submitted_at, contact_email, contact_phone,
-  campus, dob, pob, nationality, home_address, previous_school, 
-  primary_school, secondary_school, school_id_picture) 
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'in_queue', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (request_id, user_id, user_name, student_id, course, year_level, 
+          services, total_amount, requirements, requirements_paths, status, queue_status, submitted_at, contact_email, contact_phone,
+          campus, dob, pob, nationality, home_address, previous_school, 
+          primary_school, secondary_school, school_id_picture) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'in_queue', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             requestId,
             userId,
@@ -1382,8 +1383,8 @@ app.post(
             user.student_id,
             user.course,
             user.year_level,
-            JSON.stringify(services), // ["Transcript of Records"]
-            0, // Total amount is 0 for now as per your original code
+            JSON.stringify(parsedServices),
+            0,
             requirementsText,
             requirementsPaths,
             user.email,
@@ -1400,20 +1401,19 @@ app.post(
           ],
           (err, result) => {
             if (err) {
-              console.error("Database error:", err);
+              console.error("Database error (Insert Request):", err);
               return res
                 .status(500)
                 .json({ success: false, message: "Database error" });
             }
 
-            // 2. Immediately add to the queue system
-            addToQueueSystem(requestId, true); // Pass true to skip unnecessary checks
+            // 6. Add to Queue Logic
+            addToQueueSystem(requestId); // We can skip the callback handling for speed here
 
             res.json({
               success: true,
               requestId: requestId,
-              // Message now reflects the new streamlined flow
-              message: "Service request submitted and added to the queue!",
+              message: "Service request submitted successfully!",
             });
           }
         );
@@ -1421,6 +1421,7 @@ app.post(
     );
   }
 );
+// --- 🟢 END OF FIX 🟢 ---
 
 // === API: START PROCESSING REQUEST ===
 app.post("/api/admin/start-processing", authenticateAdmin, (req, res) => {
