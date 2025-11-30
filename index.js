@@ -1328,12 +1328,14 @@ app.post(
 
     const structuredRequirements = files
       ? files.map((file, index) => {
-          // Create a placeholder name
-          const safeName = `file-${Date.now()}-${index}.jpg`;
+          // ✅ FIX: Convert the file buffer to a Base64 string so it saves in the DB
+          const b64 = Buffer.from(file.buffer).toString("base64");
+          const mime = file.mimetype;
+          const base64String = `data:${mime};base64,${b64}`;
 
           return {
             name: reqNamesArray ? reqNamesArray[index] : "Requirement",
-            file: safeName,
+            file: base64String, // ✅ Saves the actual file data
           };
         })
       : [];
