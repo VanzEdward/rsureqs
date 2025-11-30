@@ -1171,15 +1171,20 @@ app.post(
       let schoolIdPictureFilename = null;
 
       // 1. Check if a new file was uploaded
+      let schoolIdPictureValue = null;
+
       if (req.file) {
-        schoolIdPictureFilename = req.file.filename;
+        // CONVERT IMAGE BUFFER TO BASE64 STRING
+        const b64 = Buffer.from(req.file.buffer).toString("base64");
+        const mime = req.file.mimetype; // e.g., 'image/png'
+        schoolIdPictureValue = `data:${mime};base64,${b64}`;
       } else {
         // 2. If NO new file, keep the old one
         const [user] = await db
           .promise()
           .query("SELECT school_id_picture FROM users WHERE id = ?", [userId]);
         if (user.length > 0) {
-          schoolIdPictureFilename = user[0].school_id_picture;
+          schoolIdPictureValue = user[0].school_id_picture;
         }
       }
 
@@ -1225,7 +1230,7 @@ app.post(
           schoolYear,
           safeYearGraduated,
           email, // The email we just validated
-          schoolIdPictureFilename,
+          schoolIdPictureValue,
           campus,
           dob,
           pob,

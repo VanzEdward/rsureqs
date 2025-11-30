@@ -1603,9 +1603,13 @@ async function checkNotificationStatus() {
         const idImage = document.getElementById("profileIdPicture");
 
         if (user.school_id_picture) {
-          // We have a picture, set the src and show the container
-          // The path is /uploads/ + the filename stored in the database
-          idImage.src = "/uploads/" + user.school_id_picture;
+          // Check if it's a Base64 string (New system) or a Filename (Old system fallback)
+          if (user.school_id_picture.startsWith("data:")) {
+             idImage.src = user.school_id_picture;
+          } else {
+             // Fallback for any old images (though these won't load on Vercel)
+             idImage.src = "/uploads/" + user.school_id_picture;
+          }
           idContainer.style.display = "block";
         } else {
           // No picture, hide the container
@@ -1860,9 +1864,13 @@ async function checkUserProfileStatus() {
           );
           const imgElement = previewContainer.querySelector("img");
           if (user.school_id_picture) {
-            imgElement.src = `/uploads/${user.school_id_picture}`;
+            if (user.school_id_picture.startsWith("data:")) {
+               imgElement.src = user.school_id_picture;
+            } else {
+               imgElement.src = `/uploads/${user.school_id_picture}`;
+            }
             previewContainer.style.display = "block";
-            userHasExistingId = true; // Set flag
+            userHasExistingId = true; 
           } else {
             previewContainer.style.display = "none";
             userHasExistingId = false; // Set flag
