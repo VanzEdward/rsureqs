@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// ✅ FIXED: Use Memory (RAM) instead of Disk to prevent Vercel crash
 const storage = multer.memoryStorage();
 
 // ------------------- THIS IS THE FIX -------------------
@@ -1290,13 +1291,13 @@ app.get("/api/user/can-join-queue", (req, res) => {
   );
 });
 
-// --- 🟢 FIXED: Submit Request (Safe for Vercel) 🟢 ---
+// --- 🟢 FIXED SUBMIT ROUTE (Safe for Vercel) 🟢 ---
 app.post(
   "/api/queue/submit-request",
   requirementsUpload.array("requirements_files", 10),
   (req, res) => {
     const { userId, services } = req.body;
-    const files = req.files;
+    const files = req.files; // Files are now in buffer (memory), not on disk
 
     // 1. Validation
     if (!userId || !services) {
@@ -1307,27 +1308,22 @@ app.post(
     }
 
     // 2. Handle Services Data
-    // Ensure services is an array (Handle potential string format from FormData)
     let parsedServices = services;
     if (typeof services === "string") {
-      // If only one service is selected, it comes as a string, not an array
       parsedServices = [services];
     }
 
-    // 3. Handle File Names
-    // Since we are using MemoryStorage (RAM), 'file.filename' is undefined.
-    // We must generate a name manually to save to the database.
+    // 3. Handle File Names (Generate fake names for DB since we aren't saving to disk yet)
     const { requirement_names } = req.body;
     let reqNamesArray = requirement_names;
 
-    // Handle if requirement_names is just a string (single file)
     if (typeof requirement_names === "string") {
       reqNamesArray = [requirement_names];
     }
 
     const structuredRequirements = files
       ? files.map((file, index) => {
-          // Generate a unique name for the DB entry since we aren't saving to disk yet
+          // Create a placeholder name
           const safeName = `file-${Date.now()}-${index}.jpg`;
 
           return {
@@ -1338,14 +1334,11 @@ app.post(
       : [];
 
     const requirementsPaths = JSON.stringify(structuredRequirements);
-
-    // Save names for compatibility
     const requirementsText = JSON.stringify(reqNamesArray || []);
-
     const requestId =
       "REQ-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
 
-    // 4. Get User Info
+    // 4. Get User Info & Insert
     db.query(
       `SELECT fullname, student_id, course, year_level, email, phone,
         campus, dob, pob, nationality, home_address, previous_school,
@@ -1353,18 +1346,14 @@ app.post(
        FROM users WHERE id = ?`,
       [userId],
       (err, userResults) => {
-        if (err) {
-          console.error("Database error (User Fetch):", err);
+        if (err)
           return res
             .status(500)
             .json({ success: false, message: "Database error" });
-        }
-
-        if (userResults.length === 0) {
+        if (userResults.length === 0)
           return res
             .status(404)
             .json({ success: false, message: "User not found" });
-        }
 
         const user = userResults[0];
 
@@ -1400,15 +1389,13 @@ app.post(
             user.school_id_picture,
           ],
           (err, result) => {
-            if (err) {
-              console.error("Database error (Insert Request):", err);
+            if (err)
               return res
                 .status(500)
                 .json({ success: false, message: "Database error" });
-            }
 
-            // 6. Add to Queue Logic
-            addToQueueSystem(requestId); // We can skip the callback handling for speed here
+            // 6. Add to Queue Logic (Fire and forget)
+            addToQueueSystem(requestId);
 
             res.json({
               success: true,
