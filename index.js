@@ -1223,7 +1223,7 @@ app.post(
           major,
           yearLevel,
           schoolYear,
-          yearGraduated,
+          safeYearGraduated,
           email, // The email we just validated
           schoolIdPictureFilename,
           campus,
