@@ -1396,10 +1396,13 @@ app.post(
             user.school_id_picture,
           ],
           (err, result) => {
-            if (err)
+            if (err) {
+              // 🔴 LOG THE ERROR SO VERCEL SHOWS IT
+              console.error("❌ SUBMIT ERROR:", err);
               return res
                 .status(500)
-                .json({ success: false, message: "Database error" });
+                .json({ success: false, message: "DB Error: " + err.message });
+            }
 
             // 6. Add to Queue Logic (Fire and forget)
             addToQueueSystem(requestId);
