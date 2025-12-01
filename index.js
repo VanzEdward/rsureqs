@@ -69,7 +69,7 @@ const documentFileFilter = (req, file, cb) => {
 const requirementsUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 2 * 1024 * 1024, // ✅ Change 10 to 2 (2MB Limit)
+    fileSize: 10 * 1024 * 1024, // ✅ Increased to 10MB
   },
   fileFilter: documentFileFilter,
 });
