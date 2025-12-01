@@ -2527,15 +2527,16 @@ app.post("/api/admin/update-progress", authenticateAdmin, (req, res) => {
 
 // export default db;
 // Start server - ONLY IF NOT IN PRODUCTION (Vercel handles this automatically)
-if (process.env.NODE_ENV !== "production") {
-  const PORT = 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-    console.log(`🔑 Admin login: http://localhost:${PORT}/adminLogin`);
-    console.log(`👤 Default admin: admin@rsu.edu.ph / admin123`);
-  });
-}
+// --- 🟢 RENDER SERVER START 🟢 ---
+// Use PORT from environment (Render assigns this automatically)
+const PORT = process.env.PORT || 3000;
+
+// Listen on 0.0.0.0 (Required for Render to route traffic)
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+// export default app; // Optional for Render
 
 // REQUIRED: Export the 'app' so Vercel can run it
 export default app;
