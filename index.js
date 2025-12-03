@@ -97,23 +97,18 @@ const JWT_SECRET = process.env.JWT_SECRET || "rsu-reqs-admin-secret-key-2024";
 // NEW: JWT Secret for Password Resets (use a different secret!)
 const JWT_RESET_SECRET =
   process.env.JWT_RESET_SECRET || "rsu-reqs-reset-secret-key-9a8b7c6d";
-// --- 🟢 UPDATED MAIL CONFIGURATION 🟢 ---
-// --- 🟢 UPDATED MAIL CONFIGURATION (FIX FOR TIMEOUTS) 🟢 ---
+
+// --- 🟢 UPDATED MAIL CONFIGURATION (Service Mode) 🟢 ---
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465, // Use Port 465 (SSL) instead of 587
-  secure: true, // true for 465, false for other ports
+  service: "gmail", // Let Nodemailer handle the ports automatically
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // Connection pool settings to prevent hanging
-  pool: true,
-  maxConnections: 1,
-  rateLimit: 3,
-  // Increase timeout
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
+  // Increase timeout to 30 seconds to prevent early cutoffs
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
 });
 
 const db = mysql.createPool({
@@ -390,9 +385,9 @@ function createFeedbackTable() {
   const query = `
     CREATE TABLE IF NOT EXISTS feedback (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      request_id VARCHAR(100) NOT NULL,
+      request_id VARCHAR(50) NOT NULL,
       user_id INT NOT NULL,
-      sqd0_satisfaction INT NOT NULL, -- Overall Satisfaction (1-5)
+      sqd0_satisfaction INT NOT NULL, 
       sqd_responses JSON, -- Stores SQD 1-8 answers
       cc_responses JSON, -- Stores Citizen Charter answers
       comments TEXT,

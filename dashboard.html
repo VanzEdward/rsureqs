@@ -2460,7 +2460,7 @@ if (result.success) {
         });
       }
 
-      // Enhanced user requests loading with real-time updates
+// Enhanced user requests loading with real-time updates
       async function loadUserRequests() {
         const userId = localStorage.getItem("userId");
 
@@ -2473,13 +2473,20 @@ if (result.success) {
           const result = await response.json();
 
          if (result.success) {
+            // 1. Render the cards to the DOM
             displayUserRequests(result.requests);
+            
+            // 2. Update the status counters (Total, Pending, Approved, Processing)
             updateRequestStats(result.requests);
+            
+            // 3. Check if there's an active queue to display the big banner
             checkForActiveQueue(result.requests);
 
-            // --- THIS IS THE NEW LINE ---
+            // 4. Update the "Requested: X" counters on the Services tab cards
             updateServiceRequestCounters(result.requests);
-            // --- END NEW LINE ---
+            
+            // 5. Re-apply any active filter (e.g. if user selected "Transcript of Records")
+            filterRequests(); 
           }
         } catch (error) {
           console.error("Error loading user requests:", error);
