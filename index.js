@@ -14,8 +14,24 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ✅ FIXED: Use Memory (RAM) instead of Disk to prevent Vercel crash
-const storage = multer.memoryStorage();
+// 🟢 OPTIMIZED: Disk Storage (Saves file to 'uploads/' folder)
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Ensure this folder exists!
+    const dir = "uploads/";
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    // Give every file a unique name (timestamp + original name)
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    // Sanitize filename to remove spaces
+    const cleanName = file.originalname.replace(/\s+/g, "-");
+    cb(null, uniqueSuffix + "-" + cleanName);
+  },
+});
 
 // ------------------- THIS IS THE FIX -------------------
 // Secure file filter to only allow images
@@ -1187,10 +1203,8 @@ app.post(
       let schoolIdPictureValue = null;
 
       if (req.file) {
-        // CONVERT IMAGE BUFFER TO BASE64 STRING
-        const b64 = Buffer.from(req.file.buffer).toString("base64");
-        const mime = req.file.mimetype; // e.g., 'image/png'
-        schoolIdPictureValue = `data:${mime};base64,${b64}`;
+        // 🟢 FIX: Save the FILENAME, not the Base64 string
+        schoolIdPictureValue = req.file.filename;
       } else {
         // 2. If NO new file, keep the old one
         const [user] = await db
@@ -1341,14 +1355,10 @@ app.post(
 
     const structuredRequirements = files
       ? files.map((file, index) => {
-          // ✅ FIX: Convert the file buffer to a Base64 string so it saves in the DB
-          const b64 = Buffer.from(file.buffer).toString("base64");
-          const mime = file.mimetype;
-          const base64String = `data:${mime};base64,${b64}`;
-
+          // 🟢 FIX: Save the FILENAME, not the Base64 string
           return {
             name: reqNamesArray ? reqNamesArray[index] : "Requirement",
-            file: base64String, // ✅ Saves the actual file data
+            file: file.filename, // ✅ Saves "12345-my-file.jpg"
           };
         })
       : [];
@@ -1497,60 +1507,50 @@ WHERE queue_id = ? AND status = 'waiting'
     }
   );
 });
-// === END API: START PROCESSING REQUEST ===
-// --- END OF REPLACED ROUTE ---
 app.get("/api/admin/service-requests", authenticateAdmin, (req, res) => {
-  db.query(
-    `SELECT * FROM service_requests ORDER BY 
+  // 🟢 MEMORY FIX: Exclude heavy image columns
+  const query = `
+    SELECT 
+      request_id, user_id, user_name, student_id, course, year_level, 
+      services, total_amount, status, queue_status, queue_number, 
+      submitted_at, approved_by, approved_at, declined_by, declined_at, 
+      contact_email, contact_phone, claim_details
+    FROM service_requests 
+    ORDER BY 
      CASE 
        WHEN status = 'pending' THEN 1
        WHEN status = 'approved' THEN 2
        WHEN status = 'declined' THEN 3
-     END, submitted_at DESC`,
-    (err, results) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error" });
-      }
+     END, submitted_at DESC
+  `;
 
-      const requests = results.map((request) => {
-        try {
-          let reqs = JSON.parse(request.requirements || "[]");
-          let paths = JSON.parse(request.requirements_paths || "[]");
-
-          // Fix for old, double-stringified data
-          if (typeof reqs === "string") reqs = JSON.parse(reqs);
-          if (typeof paths === "string") paths = JSON.parse(paths);
-
-          return {
-            ...request,
-            services: JSON.parse(request.services || "[]"),
-            requirements: reqs,
-            requirements_paths: paths,
-          };
-        } catch (e) {
-          console.error(
-            "Failed to parse JSON for request:",
-            request.request_id,
-            e
-          );
-          return {
-            ...request, // Return partial data
-            services: [],
-            requirements: [],
-            requirements_paths: [],
-          };
-        }
-      });
-
-      res.json({
-        success: true,
-        requests: requests,
-      });
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database error" });
     }
-  );
+
+    const requests = results.map((request) => {
+      try {
+        return {
+          ...request,
+          services: JSON.parse(request.services || "[]"),
+          // Initialize empty arrays to save RAM (we fetch files only in details view)
+          requirements: [],
+          requirements_paths: [],
+        };
+      } catch (e) {
+        return { ...request, services: [], requirements: [] };
+      }
+    });
+
+    res.json({
+      success: true,
+      requests: requests,
+    });
+  });
 });
 
 app.post("/api/admin/add-to-queue", authenticateAdmin, (req, res) => {

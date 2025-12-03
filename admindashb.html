@@ -2405,7 +2405,9 @@
                   </div>
                   
                   <button class="btn btn-sm btn-outline-success" 
-                    onclick="queueManager.markAsClaimed('${req.queue_id}')"
+                    onclick="queueManager.markAsClaimed('${
+                      req.queue_id
+                    }', this)"
                     title="Remove from TV Screen">
                     <i class="bi bi-box-seam me-1"></i> Picked Up
                   </button>
@@ -4084,14 +4086,21 @@
           }
         }
 
-        // 🟢 NEW FUNCTION: MARK AS CLAIMED (REMOVES FROM TV) 🟢
-        async markAsClaimed(queueId) {
+        // 🟢 UPDATED FUNCTION: Disables button immediately 🟢
+        async markAsClaimed(queueId, btnElement) {
           if (
             !confirm(
               "Has the student received their documents? This will remove the name from the TV screen."
             )
           )
             return;
+
+          // 1. Disable button instantly to prevent double-clicks
+          if (btnElement) {
+            btnElement.disabled = true;
+            btnElement.innerHTML =
+              '<span class="spinner-border spinner-border-sm"></span> Saving...';
+          }
 
           try {
             const response = await makeAuthenticatedRequest(
@@ -4105,15 +4114,28 @@
             const result = await response.json();
             if (result.success) {
               showNotification("Item claimed. Removed from screen.");
-              // Refresh lists
+
+              // 2. Refresh lists (The item will vanish from the list here)
               await this.loadQueues();
               if (serviceRequestManager)
                 serviceRequestManager.renderCompletedRequests();
             } else {
               alert("Error: " + result.message);
+              // Re-enable if error
+              if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.innerHTML =
+                  '<i class="bi bi-box-seam me-1"></i> Picked Up';
+              }
             }
           } catch (error) {
             console.error("Error marking claimed:", error);
+            // Re-enable if error
+            if (btnElement) {
+              btnElement.disabled = false;
+              btnElement.innerHTML =
+                '<i class="bi bi-box-seam me-1"></i> Picked Up';
+            }
           }
         }
       }
