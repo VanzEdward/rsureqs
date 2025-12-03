@@ -2558,7 +2558,7 @@ if (result.success) {
         }
       }
 
-// Enhanced request display with Progress Bar
+// Enhanced request display with Progress Bar & Feedback Button
       function displayUserRequests(requests) {
         const container = document.getElementById("requestsContainer");
         if (!container) return;
@@ -2588,11 +2588,12 @@ if (result.success) {
             </div>`
               : "";
 
-            // 🟢 PROGRESS BAR LOGIC 🟢
+            // --- PROGRESS BAR LOGIC ---
             let progressHtml = '';
             if (request.queue_status === 'processing' && request.progress) {
-                const p = request.progress; // { current: 1, total: 5, checked: [...] }
-                const percent = Math.round((p.current / p.total) * 100);
+                const p = request.progress; 
+                // Handle division by zero protection
+                const percent = p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
                 
                 progressHtml = `
                   <div class="mt-3 p-3 bg-light rounded border">
@@ -2616,8 +2617,6 @@ if (result.success) {
 
             // --- FEEDBACK BUTTON LOGIC ---
             let feedbackBtn = '';
-            
-            // Logic: Show button only if Completed (or Claimed) AND No Feedback exists yet
             const isFinished = (request.queue_status === "completed" || request.queue_status === "claimed" || request.live_queue_status === "completed");
             
             if (isFinished && !request.feedback_id) {
@@ -2632,63 +2631,15 @@ if (result.success) {
             } else if (request.feedback_id) {
                  feedbackBtn = `
                   <div class="mt-3 text-end border-top pt-2">
-                    <span class="badge bg-light text-success border"><i class="bi bi-check-circle"></i> Rated</span>
+                    <span class="badge bg-light text-success border"><i class="bi bi-check-circle-fill me-1"></i> Rated</span>
                   </div>
                 `;
             }
 
-            return `
-            <div class="update-card">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h4 class="mb-0">${request.services.join(", ")}</h4>
-                    <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
-                </div>
-                <p class="text-muted">
-                    <strong>Request ID:</strong> ${request.request_id} | 
-                    <strong>Submitted:</strong> ${new Date(request.submitted_at).toLocaleString()}
-                </p>
-                
-                ${queueInfo}
-
-                ${progressHtml}
-
-                ${
-                  request.status === "approved" && request.approved_by
-                    ? `
-                    <div class="alert alert-success mt-2">
-                        <i class="bi bi-check-circle-fill me-1"></i>
-                        <strong>Approved</strong> by ${request.approved_by} 
-                        <span class="text-muted small ms-1">(${new Date(request.approved_at).toLocaleDateString()})</span>
-                        ${request.approve_notes ? `<br><small class="text-muted">${request.approve_notes}</small>` : ""}
-                    </div>
-                `
-                    : ""
-                }
-                ${
-                  request.status === "declined" && request.declined_by
-                    ? `
-                    <div class="alert alert-danger mt-2">
-                        <strong>✗ Declined</strong> by ${
-                          request.declined_by
-                        } on ${new Date(request.declined_at).toLocaleString()}
-                        <br><strong>Reason:</strong> ${request.decline_reason}
-                    </div>
-
-                    <div class="mt-2 text-end">
-                        <button class="btn btn-warning btn-sm" onclick="resubmitRequest('${
-                          request.request_id
-                        }')">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Resubmit This Request
-                        </button>
-                    </div>
-                    `
-                    : ""
-                }
-                
-                
-                ${
-                  request.queue_status === "completed" || request.live_queue_status === "completed"
-                    ? `
+            // --- COMPLETED CARD LOGIC ---
+            let completedHtml = '';
+            if (isFinished) {
+                completedHtml = `
                     <div class="alert alert-primary mt-3 border-0 shadow-sm" style="background-color: #e7f1ff; color: #004085;">
                         <div class="d-flex">
                             <div class="me-3">
@@ -2720,14 +2671,59 @@ if (result.success) {
                             </div>
                         </div>
                     </div>
+                `;
+            }
+
+            return `
+            <div class="update-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h4 class="mb-0">${request.services.join(", ")}</h4>
+                    <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
+                </div>
+                <p class="text-muted">
+                    <strong>Request ID:</strong> ${request.request_id} | 
+                    <strong>Submitted:</strong> ${new Date(request.submitted_at).toLocaleString()}
+                </p>
+                
+                ${queueInfo}
+                ${progressHtml}
+
+                ${
+                  request.status === "approved" && request.approved_by && !isFinished
+                    ? `
+                    <div class="alert alert-success mt-2">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        <strong>Approved</strong> by ${request.approved_by} 
+                        <span class="text-muted small ms-1">(${new Date(request.approved_at).toLocaleDateString()})</span>
+                        ${request.approve_notes ? `<br><small class="text-muted">${request.approve_notes}</small>` : ""}
+                    </div>
                 `
                     : ""
                 }
-            </div>
+                ${
+                  request.status === "declined" && request.declined_by
+                    ? `
+                    <div class="alert alert-danger mt-2">
+                        <strong>✗ Declined</strong> by ${request.declined_by} on ${new Date(request.declined_at).toLocaleString()}
+                        <br><strong>Reason:</strong> ${request.decline_reason}
+                    </div>
+                    <div class="mt-2 text-end">
+                        <button class="btn btn-warning btn-sm" onclick="resubmitRequest('${request.request_id}')">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Resubmit This Request
+                        </button>
+                    </div>
+                    `
+                    : ""
+                }
+                
+                ${completedHtml}
+                
+                ${feedbackBtn} </div>
         `;
           })
           .join("");
       }
+
 // --- NEW FUNCTION: Filters requests on the "Updates" page ---
 function filterRequests() {
   const filterValue = document.getElementById("serviceFilter").value;
