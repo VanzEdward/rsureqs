@@ -378,6 +378,28 @@ function createQueueTable() {
   });
 }
 
+// --- 🟢 NEW: Create Feedback Table 🟢 ---
+function createFeedbackTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS feedback (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      request_id VARCHAR(100) NOT NULL,
+      user_id INT NOT NULL,
+      sqd0_satisfaction INT NOT NULL, -- Overall Satisfaction (1-5)
+      sqd_responses JSON, -- Stores SQD 1-8 answers
+      cc_responses JSON, -- Stores Citizen Charter answers
+      comments TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (request_id) REFERENCES service_requests(request_id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `;
+  db.query(query, (err) => {
+    if (err) console.error("Error creating feedback table:", err);
+    else console.log("✅ feedback table ready");
+  });
+}
+
 // Admin Authentication Middleware
 const authenticateAdmin = (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -1806,16 +1828,18 @@ app.get("/api/user/service-requests", (req, res) => {
     });
   }
 
-  // --- 🟢 UPDATED QUERY: Fetch Window, Staff, and Claim Details 🟢 ---
+  // --- 🟢 UPDATED QUERY: Check for Feedback 🟢 ---
   const query = `
     SELECT sr.*, 
            q.progress_data, 
            q.status AS live_queue_status,
            q.window_number,
            q.completed_by,
-           COALESCE(q.claim_details, sr.claim_details) as final_claim_details
+           COALESCE(q.claim_details, sr.claim_details) as final_claim_details,
+           f.id as feedback_id
     FROM service_requests sr
     LEFT JOIN queue q ON sr.request_id = q.request_id
+    LEFT JOIN feedback f ON sr.request_id = f.request_id
     WHERE sr.user_id = ? 
     ORDER BY sr.submitted_at DESC
   `;
@@ -2505,6 +2529,61 @@ app.post("/api/admin/update-progress", authenticateAdmin, (req, res) => {
       res.json({ success: true, message: "Progress updated successfully" });
     }
   );
+});
+
+// === API: SUBMIT FEEDBACK ===
+app.post("/api/user/submit-feedback", (req, res) => {
+  const { requestId, userId, sqd0, sqdData, ccData, comments } = req.body;
+
+  if (!requestId || !userId || !sqd0) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Missing required fields" });
+  }
+
+  const query = `
+    INSERT INTO feedback (request_id, user_id, sqd0_satisfaction, sqd_responses, cc_responses, comments)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    query,
+    [
+      requestId,
+      userId,
+      sqd0,
+      JSON.stringify(sqdData),
+      JSON.stringify(ccData),
+      comments,
+    ],
+    (err, result) => {
+      if (err) {
+        console.error("Feedback submit error:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Database error" });
+      }
+      res.json({ success: true, message: "Feedback submitted successfully" });
+    }
+  );
+});
+
+// === API: GET SATISFACTION STATS (For Admin Graph) ===
+app.get("/api/admin/satisfaction-stats", authenticateAdmin, (req, res) => {
+  // Get count of each rating (1-5) for SQD0
+  const query = `
+    SELECT sqd0_satisfaction as rating, COUNT(*) as count 
+    FROM feedback 
+    GROUP BY sqd0_satisfaction
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Stats error:", err);
+      return res.status(500).json({ success: false, message: "DB Error" });
+    }
+    res.json({ success: true, stats: results });
+  });
 });
 
 // --- 🟢 RENDER SERVER START 🟢 ---

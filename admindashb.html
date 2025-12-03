@@ -263,25 +263,16 @@
 
         <div class="charts-grid">
           <div class="info-card">
-            <h3>
-              First Contact Resolution (FCR)
-              <span style="color: #999">(Today)</span>
-            </h3>
-            <p
-              style="
-                font-size: 14px;
-                color: #666;
-                margin-top: -10px;
-                margin-bottom: 15px;
-              "
-            >
-              Based on Approved vs. Declined service requests.
+            <h3>Client Satisfaction Rating</h3>
+            <p style="font-size: 14px; color: #666">
+              Based on Overall Satisfaction (SQD0).
             </p>
             <div
               class="chart-container"
               style="position: relative; height: 250px; width: 100%"
             >
-              <canvas id="fcrChart"></canvas>
+              <!-- 🟢 NEW ID 🟢 -->
+              <canvas id="satisfactionChart"></canvas>
             </div>
           </div>
 
@@ -1716,117 +1707,84 @@
       // ⬆️ END OF REPLACEMENT ⬆️
       // ⬇️ ADD THIS ENTIRE NEW FUNCTION ⬇️
 
-      /**
-       * Renders or updates the First Contact Resolution (FCR) donut chart.
-       * We use (Approved) / (Approved + Declined) as the FCR metric.
-       */
-      function renderFCRChart(approvedCount, declinedCount) {
-        const ctx = document.getElementById("fcrChart");
-        if (!ctx) {
-          console.warn("FCR Chart canvas not found.");
-          return; // Don't do anything if canvas isn't there
-        }
+      async function updateReportsData() {
+        // ... (Keep existing Queue Manager stats logic) ...
 
-        const totalHandled = approvedCount + declinedCount;
-        const fcrRate =
-          totalHandled > 0
-            ? ((approvedCount / totalHandled) * 100).toFixed(1)
-            : 0;
+        // 🟢 REPLACE FCR LOGIC WITH THIS:
+        try {
+          const response = await makeAuthenticatedRequest(
+            "/api/admin/satisfaction-stats"
+          );
+          const result = await response.json();
+          if (result.success) {
+            renderSatisfactionChart(result.stats);
+          }
+        } catch (e) {
+          console.error("Error loading satisfaction stats", e);
+        }
+      }
+
+      function renderSatisfactionChart(stats) {
+        const ctx = document.getElementById("satisfactionChart");
+        if (!ctx) return;
+
+        // Map data to [count1, count2, count3, count4, count5]
+        const counts = [0, 0, 0, 0, 0];
+        let total = 0;
+        let weightedSum = 0;
+
+        stats.forEach((item) => {
+          const r = item.rating;
+          if (r >= 1 && r <= 5) {
+            counts[r - 1] = item.count;
+            total += item.count;
+            weightedSum += r * item.count;
+          }
+        });
+
+        const average = total > 0 ? (weightedSum / total).toFixed(1) : 0.0;
 
         const chartData = {
-          labels: ["Resolved (Approved)", "Not Resolved (Declined)"],
+          labels: ["1 Star", "2 Stars", "3 Stars", "4 Stars", "5 Stars"],
           datasets: [
             {
-              label: "Request Status",
-              data: [approvedCount, declinedCount],
+              label: "Ratings",
+              data: counts,
               backgroundColor: [
-                "rgba(40, 167, 69, 0.85)", // Bootstrap Success
-                "rgba(220, 53, 69, 0.85)", // Bootstrap Danger
+                "#dc3545",
+                "#fd7e14",
+                "#ffc107",
+                "#20c997",
+                "#198754",
               ],
-              borderColor: [
-                "rgba(255, 255, 255, 0.7)",
-                "rgba(255, 255, 255, 0.7)",
-              ],
-              borderWidth: 2,
+              borderWidth: 1,
             },
           ],
         };
 
-        const chartConfig = {
-          type: "doughnut",
+        if (window.satisfactionChartInstance) {
+          window.satisfactionChartInstance.destroy();
+        }
+
+        window.satisfactionChartInstance = new Chart(ctx, {
+          type: "bar",
           data: chartData,
           options: {
+            indexAxis: "y", // Horizontal Bar
             responsive: true,
             maintainAspectRatio: false,
-            cutout: "70%", // Makes it a donut
             plugins: {
-              legend: {
-                position: "bottom",
-                labels: {
-                  padding: 20,
-                },
-              },
-              tooltip: {
-                callbacks: {
-                  label: function (context) {
-                    let label = context.label || "";
-                    if (label) {
-                      label += ": ";
-                    }
-                    if (context.parsed !== null) {
-                      const percentage =
-                        totalHandled > 0
-                          ? ((context.parsed / totalHandled) * 100).toFixed(1)
-                          : 0;
-                      label += `${context.parsed} requests (${percentage}%)`;
-                    }
-                    return label;
-                  },
-                },
-              },
-              // This adds the "FCR: XX%" text in the middle
+              legend: { display: false },
               title: {
-                display: false, // We will draw it manually
+                display: true,
+                text: `Average: ${average} / 5.0 (${total} reviews)`,
+                font: { size: 16 },
               },
             },
-            // Custom plugin to draw text in the center
-            animation: {
-              onComplete: (chart) => {
-                const chartCtx = chart.ctx;
-                chartCtx.save();
-                const x = chart.getDatasetMeta(0).data[0].x;
-                const y = chart.getDatasetMeta(0).data[0].y;
-
-                chartCtx.textAlign = "center";
-                chartCtx.textBaseline = "middle";
-
-                // FCR Rate Text
-                chartCtx.font = "bold 24px Poppins, sans-serif";
-                chartCtx.fillStyle = "#333"; // Use body color
-                chartCtx.fillText(`${fcrRate}%`, x, y - 10);
-
-                // "FCR" Label
-                chartCtx.font = "14px Poppins, sans-serif";
-                chartCtx.fillStyle = "#777"; // Muted color
-                chartCtx.fillText("FCR Rate", x, y + 15);
-
-                chartCtx.restore();
-              },
-            },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
           },
-        };
-
-        // If chart doesn't exist, create it
-        if (!fcrChartInstance) {
-          fcrChartInstance = new Chart(ctx, chartConfig);
-        } else {
-          // If it exists, update its data and refresh
-          fcrChartInstance.data = chartData;
-          fcrChartInstance.update();
-        }
+        });
       }
-      // ⬆️ END OF NEW FUNCTION ⬆️
-      // ⬇️ ADD THIS ENTIRE NEW FUNCTION ⬇️
 
       /**
        * Populates the 'Recent Client Requests' list on the Reports page.

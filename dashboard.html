@@ -673,6 +673,53 @@
       </div>
     </div>
 
+    
+    <div id="feedbackModal" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title"><i class="bi bi-star-fill me-2"></i> Service Feedback</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="feedbackRequestId">
+            
+            <div class="mb-4 text-center">
+              <label class="form-label fw-bold d-block">SQD 0. I am satisfied with the service that I availed.</label>
+              <div class="rating-stars h2 text-warning" style="cursor: pointer;">
+                <i class="bi bi-star" data-value="1" onclick="setRating(1)"></i>
+                <i class="bi bi-star" data-value="2" onclick="setRating(2)"></i>
+                <i class="bi bi-star" data-value="3" onclick="setRating(3)"></i>
+                <i class="bi bi-star" data-value="4" onclick="setRating(4)"></i>
+                <i class="bi bi-star" data-value="5" onclick="setRating(5)"></i>
+              </div>
+              <input type="hidden" id="sqd0Rating" value="0">
+              <div id="ratingText" class="text-muted small">Tap a star to rate</div>
+            </div>
+
+            <hr>
+
+            <h6 class="fw-bold">Service Quality Dimensions</h6>
+            <p class="small text-muted">Please check if you Agree/Disagree with the following:</p>
+            
+            <div id="sqdQuestions">
+              </div>
+
+            <hr>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Comments / Complaints / Suggestions</label>
+              <textarea class="form-control" id="feedbackComments" rows="3" placeholder="Describe your overall experience..."></textarea>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-success" onclick="submitFeedback()">Submit Feedback</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div
       class="d-flex flex-grow-1 justify-content-center align-items-center margin-auto"
     >
@@ -2579,6 +2626,29 @@ if (result.success) {
                 `;
             }
 
+            // --- FEEDBACK BUTTON LOGIC ---
+            let feedbackBtn = '';
+            
+            // Logic: Show button only if Completed (or Claimed) AND No Feedback exists yet
+            const isFinished = (request.queue_status === "completed" || request.queue_status === "claimed" || request.live_queue_status === "completed");
+            
+            if (isFinished && !request.feedback_id) {
+                feedbackBtn = `
+                  <div class="mt-3 text-end border-top pt-2">
+                    <span class="small text-muted me-2">How was our service?</span>
+                    <button class="btn btn-sm btn-outline-warning" onclick="openFeedbackModal('${request.request_id}')">
+                      <i class="bi bi-star"></i> Rate Service
+                    </button>
+                  </div>
+                `;
+            } else if (request.feedback_id) {
+                 feedbackBtn = `
+                  <div class="mt-3 text-end border-top pt-2">
+                    <span class="badge bg-light text-success border"><i class="bi bi-check-circle"></i> Rated</span>
+                  </div>
+                `;
+            }
+
             return `
             <div class="update-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -2710,6 +2780,92 @@ function filterRequests() {
   } else if (noResultMsg) {
     noResultMsg.style.display = 'none'; // Just hide it
   }
+}
+
+  // --- FEEDBACK LOGIC ---
+      const sqdQuestionsList = [
+        "SQD 1. I spent a reasonable amount of time for my transaction.",
+        "SQD 2. The office followed the transaction's requirements.",
+        "SQD 3. The steps needed to do for my transaction were easy and simple.",
+        "SQD 4. I easily found information about my transaction.",
+        "SQD 5. I paid a reasonable amount of fees.",
+        "SQD 6. I feel the office was fair to everyone.",
+        "SQD 7. I was treated courteously by the staff.",
+        "SQD 8. I got what I needed from the government office."
+      ];
+
+      function openFeedbackModal(requestId) {
+        document.getElementById('feedbackRequestId').value = requestId;
+        setRating(0);
+        document.getElementById('feedbackComments').value = '';
+        
+        const container = document.getElementById('sqdQuestions');
+        container.innerHTML = sqdQuestionsList.map((q, index) => `
+          <div class="mb-2 row align-items-center bg-light p-2 rounded">
+            <div class="col-md-7 small mb-1 mb-md-0">${q}</div>
+            <div class="col-md-5">
+              <select class="form-select form-select-sm sqd-select" data-index="${index+1}">
+                <option value="5">Strongly Agree</option>
+                <option value="4" selected>Agree</option>
+                <option value="3">Neutral</option>
+                <option value="2">Disagree</option>
+                <option value="1">Strongly Disagree</option>
+                <option value="0">N/A</option>
+              </select>
+            </div>
+          </div>
+        `).join('');
+
+        new bootstrap.Modal(document.getElementById('feedbackModal')).show();
+      }
+
+      function setRating(rating) {
+        document.getElementById('sqd0Rating').value = rating;
+        const stars = document.querySelectorAll('.rating-stars i');
+        const text = document.getElementById('ratingText');
+        const texts = ["Tap a star", "Very Dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very Satisfied"];
+        
+        stars.forEach((star, index) => {
+          star.className = index < rating ? 'bi bi-star-fill' : 'bi bi-star';
+        });
+        text.textContent = texts[rating] || texts[0];
+      }
+
+      async function submitFeedback() {
+        const requestId = document.getElementById('feedbackRequestId').value;
+        const sqd0 = document.getElementById('sqd0Rating').value;
+        const comments = document.getElementById('feedbackComments').value;
+        const userId = localStorage.getItem("userId");
+
+        if(sqd0 == 0) {
+          alert("Please provide an Overall Satisfaction rating.");
+          return;
+        }
+
+        const sqdData = {};
+        document.querySelectorAll('.sqd-select').forEach(sel => {
+           sqdData[`SQD${sel.dataset.index}`] = sel.value;
+        });
+
+        // Mock CC Data (simplified)
+        const ccData = { cc1: 1, cc2: 1, cc3: 1 }; 
+
+        try {
+          const response = await fetch('/api/user/submit-feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId, userId, sqd0, sqdData, ccData, comments })
+          });
+          
+          if(response.ok) {
+            showToast("Feedback submitted! Thank you.", "success");
+            bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
+            loadUserRequests(); // Hide button
+          } else {
+            showToast("Error submitting feedback.", "error");
+          }
+        } catch(e) { console.error(e); }
+      }
 }
 // --- END OF NEW FUNCTION ---
 
@@ -3326,6 +3482,8 @@ function addServiceFromModal(serviceName, noteInputId) {
     }, 300);
   }
 }
+
+
     </script>
   </body>
 </html>
