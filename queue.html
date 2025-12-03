@@ -9,270 +9,599 @@
       rel="stylesheet"
     />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
     />
-    <link href="/assets/css/style.css" rel="stylesheet" />
 
     <style>
-      .register-card-custom {
-        max-width: 1000px;
+      :root {
+        --rsu-green: #004d00;
+        --rsu-gold: #ffc107;
+        --accent-green: #198754;
+        --card-bg: #ffffff;
+        --text-dark: #333;
+      }
+
+      body {
+        background-color: var(--rsu-green);
+        font-family: "Poppins", sans-serif;
+        height: 100vh;
+        margin: 0;
+        overflow-y: auto;
+        color: white;
+        background-image: radial-gradient(
+          circle at 50% 50%,
+          #006600 0%,
+          #003300 100%
+        );
+      }
+
+      /* Full Screen Container */
+      .tv-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 20px;
+        box-sizing: border-box;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+
+      /* --- HEADER --- */
+      .queue-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        color: var(--text-dark);
+        padding: 15px 30px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        border-bottom: 5px solid var(--rsu-gold);
+      }
+
+      .header-logo {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .header-logo img {
+        height: 70px;
+        width: auto;
+      }
+
+      .header-title h1 {
+        margin: 0;
+        font-weight: 800;
+        font-size: 2rem;
+        line-height: 1;
+        color: var(--rsu-green);
+        text-transform: uppercase;
+      }
+      .header-title p {
+        margin: 0;
+        font-size: 1rem;
+        color: #666;
+        font-weight: 600;
+      }
+
+      .live-clock {
+        text-align: right;
+      }
+      .time {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--accent-green);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .date {
+        font-size: 1.1rem;
+        color: #555;
+        font-weight: 600;
+      }
+
+      /* --- GRID LAYOUT --- */
+      .window-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 Columns */
+        grid-template-rows: repeat(2, 1fr); /* 2 Rows */
+        gap: 25px;
+        flex-grow: 1;
+        padding-bottom: 20px;
+      }
+
+      .window-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        padding: 0;
+        color: var(--text-dark);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        border: 0;
+      }
+
+      /* --- CARD STYLES --- */
+      .card-green .win-header {
+        background: var(--accent-green);
+        color: white;
+      }
+      .card-green {
+        border-bottom: 8px solid var(--accent-green);
+      }
+      .card-green .current-ticket {
+        color: var(--accent-green);
+      }
+
+      .card-yellow .win-header {
+        background: var(--rsu-gold);
+        color: #000;
+      }
+      .card-yellow {
+        border-bottom: 8px solid var(--rsu-gold);
+      }
+      .card-yellow .current-ticket {
+        color: #b38600;
+      }
+
+      .win-header {
+        padding: 15px;
+        text-align: center;
+        font-size: 1.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .win-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        background: #fff;
+      }
+
+      .serving-label {
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        color: #888;
+        font-weight: 700;
+        margin-bottom: 5px;
+        letter-spacing: 1px;
+      }
+
+      .current-ticket {
+        font-size: 6rem;
+        font-weight: 800;
+        line-height: 1;
+        margin: 10px 0;
+        transition: opacity 0.5s ease-in-out, transform 0.5s ease;
+      }
+
+      .fade-out {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      .fade-in {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      /* --- READY TO CLAIM FOOTER --- */
+      .win-footer {
+        background: #f8f9fa;
+        padding: 15px 25px;
+        border-top: 1px solid #e9ecef;
+        min-height: 85px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .ready-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .ready-label {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--accent-green);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .batch-indicator {
+        font-size: 0.8rem;
+        color: #999;
+        font-weight: 600;
+        background: #eee;
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+
+      .ready-list-container {
+        height: 40px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .ready-list {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
+        transition: opacity 0.5s ease-in-out;
+      }
+
+      .ready-item {
+        background: white;
+        padding: 4px 12px;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        font-weight: 700;
+        color: #555;
+        font-size: 1.1rem;
+        border: 1px solid #eee;
+      }
+
+      /* --- MOBILE RESPONSIVENESS FIX --- */
+      @media (max-width: 992px) {
+        .tv-container {
+          height: auto;
+          display: block;
+          padding: 10px;
+        }
+
+        /* Compact Header */
+        .queue-header {
+          flex-direction: column;
+          text-align: center;
+          padding: 15px; /* Reduced padding */
+          gap: 10px; /* Reduced gap */
+        }
+
+        /* Fix Logos: Keep them side-by-side */
+        .header-logo {
+          flex-direction: row; /* Force row layout */
+          justify-content: center;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .header-logo img {
+          height: 50px; /* Smaller logos for mobile */
+        }
+
+        /* Adjust Titles and Clock */
+        .header-title h1 {
+          font-size: 1.5rem;
+        }
+        .live-clock {
+          text-align: center;
+          margin-top: 5px;
+        }
+        .time {
+          font-size: 2rem;
+        }
+        .date {
+          font-size: 0.9rem;
+        }
+
+        /* Stack Windows */
+        .window-grid {
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Compact Window Cards */
+        .window-card {
+          margin-bottom: 15px;
+          min-height: 250px;
+        }
+        .win-header {
+          font-size: 1.4rem;
+          padding: 10px;
+        }
+        .current-ticket {
+          font-size: 4.5rem;
+          margin: 5px 0;
+        }
+        .win-footer {
+          min-height: 70px;
+          padding: 10px 15px;
+        }
       }
     </style>
   </head>
 
   <body>
-    <!-- Guest Dashboard Section -->
-    <div class="d-flex flex-grow-1 justify-content-center align-items-center">
-      <div class="register-card-custom">
-        <div
-          class="logo d-flex flex-column justify-content-center align-items-center"
-        >
-          <div
-            class="d-flex flex-row justify-content-center align-items-center mb-2"
-          >
-            <img
-              src="/assets/img/rsu_logo.png"
-              alt="RSU Logo"
-              width="55"
-              height="55"
-              class="me-2"
-            />
-            <img
-              src="/assets/img/registrar_logo.png"
-              alt="Registrar Logo"
-              width="40"
-              height="40"
-              class="me-2"
-            />
+    <div class="tv-container">
+      <div class="queue-header">
+        <div class="header-logo">
+          <img src="/assets/img/rsu_logo.png" alt="RSU Logo" />
+          <img
+            src="/assets/img/updated_RegistrarLogo.jpg"
+            alt="Registrar Logo"
+          />
+          <div class="header-title d-none d-md-block">
+            <h1>QUEUE STATUS</h1>
+            <p>Registrar's Office - Romblon State University</p>
           </div>
-          <a href="/">
-            <div class="d-flex flex-column lh-sm">
-              <p class="fw-bold">Registrar's Office</p>
-              <p class="fw-bold">Romblon State University - Odiongan</p>
-            </div>
-          </a>
         </div>
-        <div class="content">
-          <div class="queue-header text-center p-4 bg-light border rounded">
-            <h2 class="mb-1 fw-bold">QUEUE STATUS</h2>
-            <h5 class="text-primary fw-bold d-block" id="live-time">
-              09:27:04
-            </h5>
-            <h5 class="text-muted d-block" id="live-date">
-              Thursday, October 30, 2025
-            </h5>
+        <div class="live-clock">
+          <div class="time" id="clock-time">--:--:--</div>
+          <div class="date" id="clock-date">loading...</div>
+        </div>
+      </div>
+
+      <div class="window-grid">
+        <div class="window-card card-green">
+          <div class="win-header">Window 1</div>
+          <div class="win-body">
+            <div class="serving-label">Now Serving</div>
+            <div class="current-ticket" id="w1-serving">---</div>
           </div>
-          <!-- <h1>QUEUE STATUS</h1> -->
-
-          <div class="row g-4">
-            <!-- Now Serving -->
-            <div class="col-md-8">
-              <div class="now-serving text-center">
-                <h2>NOW SERVING</h2>
-                <hr />
-                <div class="queue-number">Loading...</div>
-                <small class="text-muted">Queue Number:</small>
-              </div>
+          <div class="win-footer">
+            <div class="ready-header-row">
+              <span class="ready-label"
+                ><i class="bi bi-check-circle-fill"></i> Ready to Claim</span
+              >
+              <span class="batch-indicator" id="w1-batch"></span>
             </div>
+            <div class="ready-list-container" id="w1-ready-container"></div>
+          </div>
+        </div>
 
-            <!-- Coming Up Next -->
-            <div class="col-md-4">
-              <div class="coming-next text-center">
-                <h3>COMING UP NEXT</h3>
-                <ul>
-                  <!-- Dynamic items will be added here -->
-                </ul>
-              </div>
+        <div class="window-card card-yellow">
+          <div class="win-header">Window 2</div>
+          <div class="win-body">
+            <div class="serving-label">Now Serving</div>
+            <div class="current-ticket" id="w2-serving">---</div>
+          </div>
+          <div class="win-footer">
+            <div class="ready-header-row">
+              <span class="ready-label"
+                ><i class="bi bi-check-circle-fill"></i> Ready to Claim</span
+              >
+              <span class="batch-indicator" id="w2-batch"></span>
             </div>
+            <div class="ready-list-container" id="w2-ready-container"></div>
+          </div>
+        </div>
 
-            <!-- Ready to Claim -->
-            <div class="ready-claim mt-4">
-              <h3>READY TO CLAIM ↓</h3>
-              <div class="codes">
-                <!-- Dynamic items will be added here -->
-              </div>
+        <div class="window-card card-green">
+          <div class="win-header">Window 3</div>
+          <div class="win-body">
+            <div class="serving-label">Now Serving</div>
+            <div class="current-ticket" id="w3-serving">---</div>
+          </div>
+          <div class="win-footer">
+            <div class="ready-header-row">
+              <span class="ready-label"
+                ><i class="bi bi-check-circle-fill"></i> Ready to Claim</span
+              >
+              <span class="batch-indicator" id="w3-batch"></span>
             </div>
+            <div class="ready-list-container" id="w3-ready-container"></div>
+          </div>
+        </div>
+
+        <div class="window-card card-yellow">
+          <div class="win-header">Window 4</div>
+          <div class="win-body">
+            <div class="serving-label">Now Serving</div>
+            <div class="current-ticket" id="w4-serving">---</div>
+          </div>
+          <div class="win-footer">
+            <div class="ready-header-row">
+              <span class="ready-label"
+                ><i class="bi bi-check-circle-fill"></i> Ready to Claim</span
+              >
+              <span class="batch-indicator" id="w4-batch"></span>
+            </div>
+            <div class="ready-list-container" id="w4-ready-container"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- <footer class="py-3 border-top text-center mt-2"></footer> -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // 1. CLOCK
+      function updateClock() {
+        const now = new Date();
+        document.getElementById("clock-time").textContent =
+          now.toLocaleTimeString("en-US", { hour12: true });
+        document.getElementById("clock-date").textContent =
+          now.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          });
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // --- STATE MANAGEMENT ---
+      // Holds the raw data from backend
+      let queueData = {
+        window1: { processing: [], completed: [] },
+        window2: { processing: [], completed: [] },
+        window3: { processing: [], completed: [] },
+        window4: { processing: [], completed: [] },
+      };
+
+      // Tracks current index for animation
+      // Format: { win1: { procIndex: 0, compPage: 0 }, ... }
+      let displayState = {
+        1: { procIndex: 0, compPage: 0 },
+        2: { procIndex: 0, compPage: 0 },
+        3: { procIndex: 0, compPage: 0 },
+        4: { procIndex: 0, compPage: 0 },
+      };
+
+      // 2. DATA FETCH (Runs every 2 seconds to keep data fresh)
+      async function fetchQueueData() {
+        try {
+          const response = await fetch("/api/queue/status");
+          const res = await response.json();
+          if (res.success && res.data) {
+            // Update global data storage
+            queueData.window1 = res.data.window1;
+            queueData.window2 = res.data.window2;
+            queueData.window3 = res.data.window3;
+            queueData.window4 = res.data.window4;
+          }
+        } catch (error) {
+          console.error("Fetch error:", error);
+        }
+      }
+
+      // 3. UI RENDERER (Handles Cycling Logic)
+      // This runs logic to decide WHICH ticket to show from the array
+      function renderWindow(winNum) {
+        const data = queueData[`window${winNum}`];
+        const state = displayState[winNum];
+
+        // --- A. PROCESSING CYCLE ---
+        const servingEl = document.getElementById(`w${winNum}-serving`);
+        const procList = data.processing || []; // Array of tickets
+
+        if (procList.length === 0) {
+          servingEl.textContent = "---";
+          servingEl.classList.remove("text-success");
+        } else {
+          // Determine which ticket to show based on state index
+          if (state.procIndex >= procList.length) state.procIndex = 0; // Reset if out of bounds
+
+          const ticketToShow = procList[state.procIndex];
+
+          // Only animate if text changes
+          if (servingEl.textContent !== ticketToShow) {
+            animateTextChange(servingEl, ticketToShow);
+          }
+        }
+
+        // --- B. COMPLETED BATCH CYCLE ---
+        const readyContainer = document.getElementById(
+          `w${winNum}-ready-container`
+        );
+        const batchIndicator = document.getElementById(`w${winNum}-batch`);
+        const compList = data.completed || [];
+        const itemsPerPage = 6; // How many to show at once
+        const totalPages = Math.ceil(compList.length / itemsPerPage);
+
+        if (compList.length === 0) {
+          readyContainer.innerHTML = `<span style="font-size:0.85rem; color:#999; font-style:italic; padding-left:10px;">None yet</span>`;
+          batchIndicator.textContent = "";
+        } else {
+          if (state.compPage >= totalPages) state.compPage = 0; // Reset
+
+          const start = state.compPage * itemsPerPage;
+          const end = start + itemsPerPage;
+          const currentBatch = compList.slice(start, end);
+
+          // Build HTML
+          const html =
+            `<div class="ready-list fade-in">` +
+            currentBatch
+              .map((t) => `<span class="ready-item">${t}</span>`)
+              .join("") +
+            `</div>`;
+
+          // Only update DOM if content is different (simple check)
+          // For batches, we rely on the cycle timer to force update visually
+          // But to prevent flicker on data fetch, we check state.
+
+          // Actually, we should just update innerHTML.
+          // The visual transition happens because we swap the whole inner div.
+          readyContainer.innerHTML = html;
+
+          // Show Page Info if multiple pages
+          if (totalPages > 1) {
+            batchIndicator.textContent = `Page ${
+              state.compPage + 1
+            }/${totalPages}`;
+          } else {
+            batchIndicator.textContent = "";
+          }
+        }
+      }
+
+      // --- ANIMATION HELPER ---
+      function animateTextChange(element, newText) {
+        element.classList.add("fade-out");
+        setTimeout(() => {
+          element.textContent = newText;
+          element.classList.remove("fade-out");
+          element.classList.add("fade-in");
+          // Remove fade-in class after animation so it can be re-triggered
+          setTimeout(() => element.classList.remove("fade-in"), 500);
+        }, 500); // Wait 500ms (match css transition)
+      }
+
+      // --- 4. CYCLE LOOPS ---
+
+      // Cycle Processing Tickets (Every 10 seconds)
+      setInterval(() => {
+        [1, 2, 3, 4].forEach((winNum) => {
+          const list = queueData[`window${winNum}`].processing || [];
+          if (list.length > 1) {
+            displayState[winNum].procIndex =
+              (displayState[winNum].procIndex + 1) % list.length;
+            renderWindow(winNum); // Force re-render with new index
+          }
+        });
+      }, 10000);
+
+      // Cycle Completed Batches (Every 10 seconds, offset by 5s for visual variety)
+      setTimeout(() => {
+        setInterval(() => {
+          [1, 2, 3, 4].forEach((winNum) => {
+            const list = queueData[`window${winNum}`].completed || [];
+            const itemsPerPage = 6;
+            const totalPages = Math.ceil(list.length / itemsPerPage);
+
+            if (totalPages > 1) {
+              displayState[winNum].compPage =
+                (displayState[winNum].compPage + 1) % totalPages;
+              renderWindow(winNum);
+            }
+          });
+        }, 10000);
+      }, 5000);
+
+      // --- INITIALIZATION ---
+      // Fetch data frequently
+      setInterval(async () => {
+        await fetchQueueData();
+        // After fetching new data, re-render current state immediately
+        // (to show new tickets added to the current batch/processing slot)
+        [1, 2, 3, 4].forEach(renderWindow);
+      }, 2000);
+
+      // Initial Call
+      fetchQueueData().then(() => {
+        [1, 2, 3, 4].forEach(renderWindow);
+      });
+    </script>
   </body>
 </html>
-<script>
-  // ---------- LIVE CLOCK ----------
-  function updateClock() {
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-US", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    const date = now.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    document.getElementById("live-time").textContent = time;
-    document.getElementById("live-date").textContent = date;
-  }
-
-  // --- State for "Ready to Claim" paging ---
-  let fullReadyToClaimList = [];
-  let readyToClaimBatchIndex = 0;
-  const readyToClaimBatchSize = 10;
-  // -----------------------------------------
-
-  // --- Display batch (this function just renders the UI) ---
-  function displayReadyToClaimBatch() {
-    const readyClaimCodes = document.querySelector(".ready-claim .codes");
-
-    // 1. Add 'sliding-out' class to slide UP and fade out
-    readyClaimCodes.classList.add("sliding-out");
-
-    // 2. Wait for the 'out' animation to finish (400ms)
-    setTimeout(() => {
-      // 3. Update the content (same as before)
-      readyClaimCodes.innerHTML = "";
-      const totalItems = fullReadyToClaimList.length;
-
-      if (totalItems === 0) {
-        const div = document.createElement("div");
-        div.textContent = "None";
-        readyClaimCodes.appendChild(div);
-        readyToClaimBatchIndex = 0; // Reset index
-      } else {
-        // Check if index is out of bounds (end of list OR list shrank), reset to 0
-        let startIndex = readyToClaimBatchIndex * readyToClaimBatchSize;
-        if (startIndex >= totalItems) {
-          readyToClaimBatchIndex = 0;
-          startIndex = 0;
-        }
-
-        const endIndex = Math.min(
-          startIndex + readyToClaimBatchSize,
-          totalItems
-        );
-        const currentBatch = fullReadyToClaimList.slice(startIndex, endIndex);
-
-        currentBatch.forEach((item) => {
-          const div = document.createElement("div");
-          div.textContent = item;
-          readyClaimCodes.appendChild(div);
-        });
-
-        readyToClaimBatchIndex++; // Increment index for *next* time this runs
-      }
-
-      // 4. Prepare for 'slide in'
-      // Remove 'sliding-out' and add 'sliding-in'
-      // This makes it "jump" to the bottom, still invisible
-      readyClaimCodes.classList.remove("sliding-out");
-      readyClaimCodes.classList.add("sliding-in");
-
-      // 5. Force the browser to apply the 'sliding-in' state
-      // We use a tiny delay (a "tick")
-      setTimeout(() => {
-        // 6. Remove 'sliding-in' to trigger the animation
-        // It will now slide UP and fade IN to its final spot
-        readyClaimCodes.classList.remove("sliding-in");
-      }, 20); // 20ms is all you need
-    }, 400); // This 400ms MUST match your CSS transition duration
-  }
-  // --- Reset UI for a new day ---
-  function resetQueueForNewDay() {
-    document.querySelector(".now-serving .queue-number").textContent = "None";
-    const comingNextList = document.querySelector(".coming-next ul");
-    comingNextList.innerHTML = "<li>None</li>";
-    fullReadyToClaimList = [];
-    readyToClaimBatchIndex = 0;
-  }
-
-  // --- Fetch & update queue (this function just gets data) ---
-  async function updateQueueStatus() {
-    try {
-      const response = await fetch("/api/queue/status");
-      if (!response.ok) throw new Error("API error");
-      const data = await response.json();
-
-      if (data.success) {
-        // ---- DAILY RESET LOGIC ----
-        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-        const lastDay = sessionStorage.getItem("queueDay");
-
-        if (!lastDay || lastDay !== today) {
-          resetQueueForNewDay();
-        }
-        sessionStorage.setItem("queueDay", today);
-        // ---------------------------
-
-        // NOW SERVING
-        const nowServingElem = document.querySelector(
-          ".now-serving .queue-number"
-        );
-        nowServingElem.textContent = data.nowServing || "None";
-
-        // COMING UP NEXT
-        const comingNextList = document.querySelector(".coming-next ul");
-        comingNextList.innerHTML = "";
-        data.comingNext.forEach((item, i) => {
-          const li = document.createElement("li");
-          li.innerHTML = i === 0 ? `<strong>${item}</strong>` : item;
-          comingNextList.appendChild(li);
-        });
-        if (!data.comingNext.length) {
-          comingNextList.innerHTML = "<li>None</li>";
-        }
-
-        // READY TO CLAIM
-        // Only update the list if the data *actually changed*
-        const newList = data.readyToClaim || [];
-        if (JSON.stringify(fullReadyToClaimList) !== JSON.stringify(newList)) {
-          fullReadyToClaimList = newList;
-
-          // *** THE FIX IS HERE ***
-          // We have DELETED the line "readyToClaimBatchIndex = 0;"
-          // The display loop will handle this itself.
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching queue status:", error);
-      document.querySelector(".now-serving .queue-number").textContent =
-        "Loading...";
-      document.querySelector(".coming-next ul").innerHTML =
-        "<li>Loading...</li>";
-      fullReadyToClaimList = [];
-      readyToClaimBatchIndex = 0;
-    }
-  }
-
-  // --- Initial load & timers ---
-  updateClock();
-  setInterval(updateClock, 1000); // 1. Clock loop
-
-  async function initialLoad() {
-    await updateQueueStatus(); // Get data one time
-    displayReadyToClaimBatch(); // Show the first batch immediately
-  }
-
-  initialLoad();
-
-  // --- SEPARATE LOOPS ---
-
-  // 2. API Poll Loop: Fetch data every 5 seconds
-  setInterval(updateQueueStatus, 5000);
-
-  // 3. Display Rotation Loop: Rotate batch every 10 seconds
-  setInterval(displayReadyToClaimBatch, 10000);
-</script>

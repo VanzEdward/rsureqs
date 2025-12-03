@@ -69,7 +69,7 @@ const documentFileFilter = (req, file, cb) => {
 const requirementsUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // ✅ Increased to 10MB
+    fileSize: 2 * 1024 * 1024, // 🟢 CHANGE TO 2MB (Was 10MB)
   },
   fileFilter: documentFileFilter,
 });
@@ -81,18 +81,17 @@ const JWT_SECRET = process.env.JWT_SECRET || "rsu-reqs-admin-secret-key-2024";
 // NEW: JWT Secret for Password Resets (use a different secret!)
 const JWT_RESET_SECRET =
   process.env.JWT_RESET_SECRET || "rsu-reqs-reset-secret-key-9a8b7c6d";
-
-// NEW: Nodemailer "Transporter"
-// This configures how you send emails.
-// We use environment variables for security (see final step)
+// --- 🟢 UPDATED MAIL CONFIGURATION 🟢 ---
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.gmail.com", // Example: smtp.gmail.com
-  port: parseInt(process.env.EMAIL_PORT || "587"), // 587 for TLS, 465 for SSL
-  secure: process.env.EMAIL_PORT === "465", // true for 465, false for other ports
+  service: "gmail", // Use built-in service for better reliability
   auth: {
-    user: process.env.EMAIL_USER, // Your email address
-    pass: process.env.EMAIL_PASS, // Your email password or App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
+  // These settings help prevent timeouts on Vercel
+  pool: true,
+  maxConnections: 1,
+  rateLimit: 3,
 });
 
 const db = mysql.createPool({
@@ -2047,119 +2046,77 @@ app.post("/api/admin/manual-queue-entry", authenticateAdmin, (req, res) => {
     );
   });
 });
-// === END MANUAL QUEUE ENTRY ===
-// New public API endpoint for queue status (no authentication needed) - FIXED DAILY RESET
+// --- 🟢 NEW: TV DASHBOARD QUEUE STATUS API 🟢 ---
 app.get("/api/queue/status", (req, res) => {
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-  // --- 🟢 FIX: Sort by Priority, then Time 🟢 ---
-  const nowServingQuery = `
-    SELECT queue_number 
+  // 1. Get ALL active tickets for today (Processing, Waiting, Completed)
+  const query = `
+    SELECT queue_number, status, window_number, submitted_at, started_at, completed_at
     FROM queue 
-    WHERE status = 'processing' 
-      AND DATE(submitted_at) = ?
-    ORDER BY is_priority DESC, started_at ASC 
-    LIMIT 1
+    WHERE DATE(submitted_at) = ? OR (status = 'completed' AND DATE(completed_at) = ?)
+    ORDER BY 
+      CASE status
+        WHEN 'processing' THEN 1
+        WHEN 'waiting' THEN 2
+        WHEN 'completed' THEN 3
+      END ASC,
+      started_at DESC, -- For processing, show latest started first
+      completed_at DESC -- For completed, show latest finished first
   `;
 
-  db.query(nowServingQuery, [today], (err, nowServingResult) => {
+  db.query(query, [today, today], (err, results) => {
     if (err) {
-      console.error("Database error (nowServing):", err);
+      console.error("Database error (queue status):", err);
       return res
         .status(500)
         .json({ success: false, message: "Database error" });
     }
-    const nowServing =
-      nowServingResult.length > 0 ? nowServingResult[0].queue_number : "None";
 
-    // --- 🟢 FIX: Sort by Priority, then Time 🟢 ---
-    const comingNextQuery = `
-      SELECT queue_number 
-      FROM queue 
-      WHERE status = 'processing' 
-        AND DATE(submitted_at) = ?
-      ORDER BY is_priority DESC, started_at ASC 
-      LIMIT 3 OFFSET 1
-    `;
-    db.query(comingNextQuery, [today], (err, comingNextResult) => {
-      if (err) {
-        console.error("Database error (comingNext):", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error" });
+    // 2. Process Data for Frontend
+    // 🟢 CHANGE: processing is now an ARRAY [], not null
+    const data = {
+      window1: { processing: [], completed: [] },
+      window2: { processing: [], completed: [] },
+      window3: { processing: [], completed: [] },
+      window4: { processing: [], completed: [] },
+      comingUp: [],
+    };
+
+    results.forEach((ticket) => {
+      let winNum = "0";
+      if (ticket.window_number) {
+        const match = ticket.window_number.match(/(\d+)/);
+        if (match) winNum = match[0];
       }
-      const comingNext = comingNextResult.map((row) => row.queue_number);
 
-      // READY TO CLAIM: Only today's completed
-      const readyToClaimQuery = `
-        SELECT queue_number 
-        FROM queue 
-        WHERE status = 'completed' 
-          AND DATE(completed_at) = ?
-        ORDER BY completed_at DESC
-      `;
+      const targetWindow = data[`window${winNum}`];
 
-      db.query(readyToClaimQuery, [today], (err, readyToClaimResult) => {
-        if (err) {
-          console.error("Database error (readyToClaim):", err);
-          return res
-            .status(500)
-            .json({ success: false, message: "Database error" });
+      // -- PROCESSING --
+      if (ticket.status === "processing") {
+        if (targetWindow) {
+          // 🟢 PUSH to array instead of overwriting
+          targetWindow.processing.push(ticket.queue_number);
         }
-        const readyToClaim = readyToClaimResult.map((row) => row.queue_number);
-
-        res.json({
-          success: true,
-          nowServing,
-          comingNext,
-          readyToClaim,
-        });
-      });
+      }
+      // -- COMPLETED --
+      else if (ticket.status === "completed") {
+        if (targetWindow) {
+          // 🟢 REMOVED LIMIT: Send all completed tickets so frontend can batch them
+          targetWindow.completed.push(ticket.queue_number);
+        }
+      }
+      // -- WAITING --
+      else if (ticket.status === "waiting") {
+        if (data.comingUp.length < 5) {
+          data.comingUp.push(ticket.queue_number);
+        }
+      }
     });
+
+    res.json({ success: true, data });
   });
 });
-
-// Add/Complete protected admin route for marking done (sets to 'ready')
-// app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
-//   const { queueId } = req.body;
-//   if (!queueId) {
-//     return res
-//       .status(400)
-//       .json({ success: false, message: "Queue ID is required" });
-//   }
-
-//   const completedBy = req.admin.full_name;
-//   const completedById = req.admin.adminId;
-
-//   const updateQuery = `
-//     UPDATE queue
-//     SET status = 'ready', completed_at = NOW(), completed_by = ?, completed_by_id = ?
-//     WHERE queue_id = ? AND status = 'processing'
-//   `;
-
-//   db.query(
-//     updateQuery,
-//     [completedBy, completedById, queueId],
-//     (err, result) => {
-//       if (err) {
-//         console.error("Database error:", err);
-//         return res
-//           .status(500)
-//           .json({ success: false, message: "Database error" });
-//       }
-
-//       if (result.affectedRows === 0) {
-//         return res.status(404).json({
-//           success: false,
-//           message: "Queue not found or not in processing",
-//         });
-//       }
-
-//       res.json({ success: true, message: "Request marked as ready to claim" });
-//     }
-//   );
-// });
-// --- 🟢 PASTE this entire block before your app.listen() call 🟢 ---
 
 // === API: MARK AS DONE (Complete) ===
 app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
@@ -2224,6 +2181,40 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
     }
   );
 });
+
+// === API: MARK AS CLAIMED (Removes from TV) ===
+app.post("/api/admin/mark-claimed", authenticateAdmin, (req, res) => {
+  const { queueId } = req.body;
+
+  if (!queueId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Queue ID is required" });
+  }
+
+  // Update status to 'claimed' (This status is NOT selected by the TV API)
+  const updateQuery = "UPDATE queue SET status = 'claimed' WHERE queue_id = ?";
+
+  db.query(updateQuery, [queueId], (err, result) => {
+    if (err) {
+      console.error("Database error marking claimed:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database error" });
+    }
+
+    // Also update the service_request status to keep them synced
+    db.query(
+      "UPDATE service_requests SET queue_status = 'claimed' WHERE queue_number = (SELECT queue_number FROM queue WHERE queue_id = ?)",
+      [queueId]
+    );
+
+    res.json({
+      success: true,
+      message: "Request marked as claimed (removed from screen).",
+    });
+  });
+});
 // === API: FORGOT PASSWORD ===
 app.post("/api/forgot-password", (req, res) => {
   const { email } = req.body;
@@ -2261,9 +2252,10 @@ app.post("/api/forgot-password", (req, res) => {
         JWT_RESET_SECRET, // Use the *reset* secret
         { expiresIn: "15m" } // Token is only valid for 15 minutes
       );
-
       // 4. Create the reset link
-      const resetLink = `${process.env.SITE_URL}/reset-password?token=${resetToken}`;
+      // Make sure you use process.env.SITE_URL here
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const resetLink = `${siteUrl}/reset-password?token=${resetToken}`;
 
       // 5. Send the email
       try {
@@ -2514,19 +2506,7 @@ app.post("/api/admin/update-progress", authenticateAdmin, (req, res) => {
     }
   );
 });
-// --- 🟢 END NEW ROUTE 🟢 ---
 
-// Start server
-// const PORT = 3000;
-// app.listen(PORT, () => {
-//   console.log(`🚀 Server running on http://localhost:${PORT}`);
-//   console.log(`📊 Admin dashboard: http://localhost:${PORT}/admin`);
-//   console.log(`🔑 Admin login: http://localhost:${PORT}/adminLogin`);
-//   console.log(`👤 Default admin: admin@rsu.edu.ph / admin123`);
-// });
-
-// export default db;
-// Start server - ONLY IF NOT IN PRODUCTION (Vercel handles this automatically)
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
 const PORT = process.env.PORT || 3000;
@@ -2536,12 +2516,8 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
-// export default app; // Optional for Render
-
 // REQUIRED: Export the 'app' so Vercel can run it
 export default app;
 
 // Export 'db' as a named export (in case other files need it)
 export { db };
-
-// --- 🟢 VERCEL FIX ENDS HERE 🟢 ---

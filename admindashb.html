@@ -2344,13 +2344,76 @@
         }
 
         renderCompletedRequests() {
-          // (Keep your existing renderCompletedRequests logic here)
-          // I'm omitting it for brevity, but make sure it is included!
           const container = document.getElementById(
             "completedRequestsContainer"
           );
           if (!container) return;
-          // ... [Rest of the function you already had] ...
+
+          // Get active queue data
+          const completedItems =
+            queueManager && queueManager.queues
+              ? queueManager.queues.completed
+              : [];
+
+          // Get Current Window Identity
+          let activeWindow = localStorage.getItem("assignedWindow");
+          if (!activeWindow || activeWindow === "null")
+            activeWindow = currentWindow;
+          const cleanString = (str) =>
+            String(str || "")
+              .replace(/[^a-zA-Z0-9]/g, "")
+              .toLowerCase();
+          const myCleanWindow = cleanString(activeWindow);
+
+          // Filter: Only show completed items for THIS window
+          const myCompleted = completedItems.filter(
+            (item) => cleanString(item.window_number) === myCleanWindow
+          );
+
+          // Sort: Newest completed first
+          myCompleted.sort(
+            (a, b) => new Date(b.completed_at) - new Date(a.completed_at)
+          );
+
+          if (myCompleted.length === 0) {
+            container.innerHTML = `<p class="text-muted small ms-2">No completed requests yet.</p>`;
+            return;
+          }
+
+          container.innerHTML = myCompleted
+            .map((req) => {
+              const services = Array.isArray(req.services) ? req.services : [];
+              const timeFinished = new Date(
+                req.completed_at
+              ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+              return `
+              <div class="card border-0 shadow-sm mb-2" style="border-left: 4px solid #198754 !important;">
+                <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="d-flex align-items-center">
+                      <span class="badge bg-success me-2">${
+                        req.queue_number
+                      }</span>
+                      <strong class="text-dark">${this.escapeHtml(
+                        req.user_name
+                      )}</strong>
+                    </div>
+                    <div class="small text-muted mt-1">
+                      <i class="bi bi-check-all"></i> Ready since ${timeFinished}
+                    </div>
+                  </div>
+                  
+                  <button class="btn btn-sm btn-outline-success" 
+                    onclick="queueManager.markAsClaimed('${req.queue_id}')"
+                    title="Remove from TV Screen">
+                    <i class="bi bi-box-seam me-1"></i> Picked Up
+                  </button>
+                </div>
+              </div>
+            `;
+            })
+            .join("");
         }
 
         renderPendingRequests() {
@@ -4018,6 +4081,39 @@
           } catch (error) {
             console.error("Error saving progress:", error);
             alert("Failed to save progress.");
+          }
+        }
+
+        // 🟢 NEW FUNCTION: MARK AS CLAIMED (REMOVES FROM TV) 🟢
+        async markAsClaimed(queueId) {
+          if (
+            !confirm(
+              "Has the student received their documents? This will remove the name from the TV screen."
+            )
+          )
+            return;
+
+          try {
+            const response = await makeAuthenticatedRequest(
+              "/api/admin/mark-claimed",
+              {
+                method: "POST",
+                body: JSON.stringify({ queueId }),
+              }
+            );
+
+            const result = await response.json();
+            if (result.success) {
+              showNotification("Item claimed. Removed from screen.");
+              // Refresh lists
+              await this.loadQueues();
+              if (serviceRequestManager)
+                serviceRequestManager.renderCompletedRequests();
+            } else {
+              alert("Error: " + result.message);
+            }
+          } catch (error) {
+            console.error("Error marking claimed:", error);
           }
         }
       }
