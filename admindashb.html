@@ -1643,65 +1643,53 @@
         }
       }
 
-      // ⬇️ REPLACE THIS FUNCTION ⬇️
       function updateReportsData() {
         // Update report statistics
 
-        // 1. Update from Queue Manager (as before)
+        // 1. Update from Queue Manager
         if (queueManager && queueManager.queues) {
-          // Use all queues for a more accurate total
-          const total =
-            (queueManager.queues.waiting || []).length +
-            (queueManager.queues.processing || []).length +
-            (queueManager.queues.ready || []).length +
-            (queueManager.queues.completed || []).length +
-            (queueManager.queues.priority || []).length;
+          // 🟢 FIX: Calculate totals using ALL statuses (including claimed)
+          const waitingCount = (queueManager.queues.waiting || []).length;
+          const processingCount = (queueManager.queues.processing || []).length;
+          const readyCount = (queueManager.queues.ready || []).length;
+          const completedCount = (queueManager.queues.completed || []).length; // Ready to claim
+          const claimedCount = (queueManager.queues.claimed || []).length; // Picked up (New)
+          const priorityCount = (queueManager.queues.priority || []).length;
 
+          // Total = Everyone who entered the queue today
+          const total =
+            waitingCount +
+            processingCount +
+            readyCount +
+            completedCount +
+            claimedCount +
+            priorityCount;
+
+          // Completed = Ready to Claim + Already Picked Up
+          const totalFinished = completedCount + claimedCount;
+
+          // Update the text on screen
           document.getElementById("totalRequestsSummary").textContent = total;
-          document.getElementById("completedSummary").textContent = (
-            queueManager.queues.completed || []
-          ).length;
+          document.getElementById("completedSummary").textContent =
+            totalFinished;
           document.getElementById("totalRequestsToday").textContent = total;
+
           // 3. Update the Recent Requests list
           renderRecentRequests(queueManager.queues);
           // 4. Update the Report History list
           renderReportHistory(queueManager.queues);
         }
 
-        // 2. Update FCR Chart from Service Request Manager
-        if (serviceRequestManager && serviceRequestManager.requests) {
-          // --- START OF FIX ---
-          // Get today's date as a string (e.g., "2025-10-31")
-          const todayStr = new Date().toLocaleDateString("en-CA");
-
-          // Filter approved for today
-          const approvedCount = serviceRequestManager.requests.filter((req) => {
-            if (req.status !== "approved" || !req.approved_at) {
-              return false;
-            }
-            const requestDateStr = new Date(req.approved_at).toLocaleDateString(
-              "en-CA"
-            );
-            return requestDateStr === todayStr;
-          }).length;
-
-          // Filter declined for today
-          const declinedCount = serviceRequestManager.requests.filter((req) => {
-            if (req.status !== "declined" || !req.declined_at) {
-              return false;
-            }
-            const requestDateStr = new Date(req.declined_at).toLocaleDateString(
-              "en-CA"
-            );
-            return requestDateStr === todayStr;
-          }).length;
-          // --- END OF FIX ---
-
-          // Call the new chart rendering function
-          renderFCRChart(approvedCount, declinedCount);
-        } else {
-          // If manager isn't ready, render an empty chart
-          renderFCRChart(0, 0);
+        // 2. Update Satisfaction Chart (Keep existing logic)
+        // Note: We keep this separate to avoid breaking the chart if it fails
+        if (typeof renderSatisfactionChart === "function") {
+          // Re-fetch satisfaction stats to ensure chart is up to date
+          makeAuthenticatedRequest("/api/admin/satisfaction-stats")
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) renderSatisfactionChart(data.stats);
+            })
+            .catch((e) => console.error("Stats error", e));
         }
       }
       // ⬆️ END OF REPLACEMENT ⬆️
@@ -1788,7 +1776,6 @@
 
       /**
        * Populates the 'Recent Client Requests' list on the Reports page.
-       * Gathers all requests from the queueManager, sorts them, and shows the top 5.
        */
       function renderRecentRequests(queues) {
         const listElement = document.getElementById("recentRequestsList");
@@ -1798,11 +1785,13 @@
         }
 
         // 1. Combine all available queue arrays
+        // 🟢 FIX: We added '...(queues.claimed || [])' so picked-up items stay in the list
         const allRequests = [
           ...(queues.waiting || []),
           ...(queues.processing || []),
           ...(queues.ready || []),
           ...(queues.completed || []),
+          ...(queues.claimed || []),
           ...(queues.priority || []),
         ];
 
@@ -1811,11 +1800,8 @@
           (a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)
         );
 
-        // 3. Use all recent requests (CSS will handle scrolling)
-        const recentRequests = allRequests;
-
-        // 4. Handle empty state
-        if (recentRequests.length === 0) {
+        // 3. Handle empty state
+        if (allRequests.length === 0) {
           listElement.innerHTML = `
                 <li class="request-list-item empty">
                   No requests found for today.
@@ -1824,30 +1810,38 @@
           return;
         }
 
-        // 5. Build and inject the HTML
-        // 5. Build and inject the HTML
-        listElement.innerHTML = recentRequests
+        // 4. Build and inject the HTML
+        listElement.innerHTML = allRequests
           .map((request) => {
             // Safely get service name
             const services = Array.isArray(request.services)
               ? request.services
               : [];
-            let mainService = "General Request"; // Default
+            let mainService = "General Request";
             if (services.length > 0) {
-              // Try to parse if it's JSON string, otherwise use as-is
               try {
                 const parsedServices = JSON.parse(services[0]);
                 mainService = Array.isArray(parsedServices)
                   ? parsedServices[0]
                   : services[0];
               } catch (e) {
-                mainService = services[0]; // It's just a string
+                mainService = services[0];
               }
             } else if (request.service) {
               mainService = request.service;
             }
 
-            // Utility to prevent XSS (HTML injection)
+            // Status Badge Logic
+            let statusBadge = "";
+            if (request.status === "claimed") {
+              statusBadge =
+                '<span class="badge bg-secondary ms-2" style="font-size: 10px;">Picked Up</span>';
+            } else if (request.status === "completed") {
+              statusBadge =
+                '<span class="badge bg-success ms-2" style="font-size: 10px;">Ready</span>';
+            }
+
+            // Utility to prevent XSS
             const escape = (str) => {
               if (str === null || str === undefined) return "";
               return String(str)
@@ -1861,14 +1855,15 @@
 
             return `
                 <li class="request-list-item">
-                  <div class="client-name" title="${clientName}">${clientName}</div>
+                  <div class="client-name" title="${clientName}">
+                    ${clientName} ${statusBadge}
+                  </div>
                   <div class="service-name" title="${serviceName}">${serviceName}</div>
                 </li>
               `;
           })
           .join("");
       }
-      // ⬆️ END OF NEW FUNCTION ⬆️
 
       function setupAutoRefresh() {
         // Refresh queue data every 10 seconds
@@ -4225,10 +4220,15 @@
       }
 
       /**
-       * Populates the Report Detail page with data from 'today' (queueManager.queues.completed)
+       * Populates the Report Detail page with data from 'today'
+       * Includes both 'Completed' (Ready to Claim) and 'Claimed' (Picked Up) requests.
        */
       function populateTodayReportDetail() {
-        const completedRequests = queueManager.queues.completed || [];
+        // 🟢 FIX: Combine 'completed' and 'claimed' arrays to see FULL history
+        const completedRequests = [
+          ...(queueManager.queues.completed || []),
+          ...(queueManager.queues.claimed || []),
+        ];
 
         // --- 1. Set Date and Total ---
         const today = new Date();
@@ -4281,13 +4281,14 @@
 
           services.forEach((serviceName) => {
             const cleanServiceName = escape(serviceName);
+
             // Add to summary count
             serviceSummary.set(
               cleanServiceName,
               (serviceSummary.get(cleanServiceName) || 0) + 1
             );
 
-            // Add request to service group
+            // Add request to service group for the table
             if (!requestsByService.has(cleanServiceName)) {
               requestsByService.set(cleanServiceName, []);
             }
@@ -4295,21 +4296,22 @@
           });
         });
 
-        // --- 3. Populate Service Grid ---
+        // --- 3. Populate Service Grid (Top Section) ---
         const gridContainer = document.getElementById(
           "reportDetailServiceGrid"
         );
         let gridHtml = "<div>"; // Start first column
         let count = 0;
-        serviceSummary.forEach((count, serviceName) => {
+
+        serviceSummary.forEach((qty, serviceName) => {
           gridHtml += `
                 <div class="service-item">
                   <span class="service-name">${serviceName}:</span>
-                  <span class="service-count">${count}</span>
+                  <span class="service-count">${qty}</span>
                 </div>
               `;
           count++;
-          // Split into two columns
+          // Split into two columns for layout balance
           if (count % 5 === 0 && count < serviceSummary.size) {
             gridHtml += "</div><div>";
           }
@@ -4320,10 +4322,10 @@
           gridContainer.innerHTML =
             serviceSummary.size > 0
               ? gridHtml
-              : '<div style="color: #999; font-size: 14px;">No services recorded.</div>';
+              : '<div style="color: #999; font-size: 14px;">No services recorded today.</div>';
         }
 
-        // --- 4. Populate Data Table ---
+        // --- 4. Populate Data Table (Bottom Section) ---
         const tableContainer = document.getElementById("reportDetailDataTable");
         let tableHtml = "";
 
@@ -4335,10 +4337,17 @@
                     <div class="table-cell header">Name</div>
                     <div class="table-cell header">Year/Course</div>
                     <div class="table-cell header">Student ID</div>
+                    <div class="table-cell header">Status</div>
                   </div>
               `;
 
           requests.forEach((req) => {
+            // Show if it was picked up or just ready
+            const statusBadge =
+              req.status === "claimed"
+                ? '<span class="badge bg-secondary">Picked Up</span>'
+                : '<span class="badge bg-success">Ready</span>';
+
             tableHtml += `
                   <div class="table-row">
                     <div class="table-cell">${escape(req.user_name)}</div>
@@ -4348,6 +4357,7 @@
                     <div class="table-cell">${escape(
                       req.student_id || "N/A"
                     )}</div>
+                    <div class="table-cell">${statusBadge}</div>
                   </div>
                 `;
           });
@@ -4361,12 +4371,12 @@
               ? tableHtml
               : `
                 <div style="text-align: center; color: #999; padding: 30px 0;">
-                  No detailed request data to display.
+                  No details found.
                 </div>
               `;
         }
       }
-      // ⬆️ END OF NEW FUNCTIONS ⬆️
+
       // ────── Theme toggle (only on Settings page) ──────
       document.addEventListener("DOMContentLoaded", () => {
         const body = document.body;

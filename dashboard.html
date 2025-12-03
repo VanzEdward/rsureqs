@@ -307,9 +307,11 @@
       </div>
     </div>
 
-    <div
+<div
       class="modal fade"
       id="profileUpdateModal"
+      data-bs-backdrop="static" 
+      data-bs-keyboard="false"
       tabindex="-1"
       aria-labelledby="profileUpdateModalLabel"
       aria-hidden="true"
@@ -1851,26 +1853,16 @@ async function checkUserProfileStatus() {
   return false;
 }
 
-// Locate your loadUserProfile() function
-      async function loadUserProfile() {
-        // --- ⬇️ FIX ⬇️ ---
-        // Changed "token" to "userId"
+async function loadUserProfile() {
         const userId = localStorage.getItem("userId");
         if (!userId) return;
-        // --- ⬆️ END OF FIX ⬆️ ---
 
         try {
-          // --- ⬇️ FIX ⬇️ ---
-          // Changed the URL to be correct and removed the broken "token" header
           const response = await fetch(`/api/user/profile?userId=${userId}`);
-          // --- ⬆️ END OF FIX ⬆️ ---
 
           if (!response.ok) {
             if (response.status === 404) {
-              // User profile not found, likely a new user. Keep modal open.
-              const modal = new bootstrap.Modal(
-                document.getElementById("profileUpdateModal")
-              );
+              const modal = new bootstrap.Modal(document.getElementById("profileUpdateModal"));
               modal.show();
               return;
             }
@@ -1878,45 +1870,33 @@ async function checkUserProfileStatus() {
           }
 
           const data = await response.json();
-          const user = data.user; // Get the nested user object
+          const user = data.user;
 
-          // Populate the form fields in the modal
+          // ... (Keep all your existing form population code: lastName, firstName, etc.) ...
           document.getElementById("lastName").value = user.last_name || "";
           document.getElementById("firstName").value = user.first_name || "";
           document.getElementById("middleName").value = user.middle_name || "";
           document.getElementById("gender").value = user.gender || "";
           document.getElementById("phone").value = user.phone || "";
           document.getElementById("studentId").value = user.student_id || "";
-          document.getElementById("program").value = user.course || ""; // Use 'course' from DB for 'program' field
+          document.getElementById("program").value = user.course || ""; 
           document.getElementById("major").value = user.major || "";
           document.getElementById("yearLevel").value = user.year_level || "";
           document.getElementById("schoolYear").value = user.school_year || "";
-          document.getElementById("yearGraduated").value =
-            user.year_graduated || "";
+          document.getElementById("yearGraduated").value = user.year_graduated || "";
           document.getElementById("email").value = user.email || "";
-
-          // --- ADDED NEW FIELDS ---
+          
           document.getElementById("campus").value = user.campus || "";
-          // Format date for <input type="date"> which requires YYYY-MM-DD
-          document.getElementById("dob").value = user.dob
-            ? user.dob.split("T")[0]
-            : "";
+          document.getElementById("dob").value = user.dob ? user.dob.split("T")[0] : "";
           document.getElementById("pob").value = user.pob || "";
           document.getElementById("nationality").value = user.nationality || "";
-          document.getElementById("home_address").value =
-            user.home_address || "";
-          document.getElementById("previous_school").value =
-            user.previous_school || "";
-          document.getElementById("primary_school").value = 
-            user.primary_school || "";
-          document.getElementById("secondary_school").value =
-            user.secondary_school || "";
-          // --- END ADDED FIELDS ---
+          document.getElementById("home_address").value = user.home_address || "";
+          document.getElementById("previous_school").value = user.previous_school || "";
+          document.getElementById("primary_school").value = user.primary_school || "";
+          document.getElementById("secondary_school").value = user.secondary_school || "";
 
-          // Handle school ID picture preview in the modal
-          const previewContainer = document.getElementById(
-            "schoolIdPicturePreview"
-          );
+          // Image Preview Logic (Keep existing)
+          const previewContainer = document.getElementById("schoolIdPicturePreview");
           const imgElement = previewContainer.querySelector("img");
           if (user.school_id_picture) {
             if (user.school_id_picture.startsWith("data:")) {
@@ -1928,31 +1908,38 @@ async function checkUserProfileStatus() {
             userHasExistingId = true; 
           } else {
             previewContainer.style.display = "none";
-            userHasExistingId = false; // Set flag
+            userHasExistingId = false; 
           }
 
-          // Also update the main profile display just in case
           updateProfileDisplay(user);
 
-          // ---
-          // === THIS IS THE FIX ===
-          // ---
-          // Always show the modal after loading data, whether profile is complete or not.
-          const modal = new bootstrap.Modal(
-            document.getElementById("profileUpdateModal")
-          );
+          // 🟢 NEW LOGIC: Hide Close/Cancel buttons if profile is incomplete 🟢
+          const modalEl = document.getElementById("profileUpdateModal");
+          const closeBtn = modalEl.querySelector(".btn-close");     // The X button in header
+          const cancelBtn = modalEl.querySelector(".btn-secondary"); // The Cancel button in footer
+
+          if (user.profile_complete === 0) {
+             // Mandatory Mode: Hide buttons so they MUST save
+             if (closeBtn) closeBtn.style.display = "none";
+             if (cancelBtn) cancelBtn.style.display = "none";
+          } else {
+             // Edit Mode: Show buttons so they can cancel
+             if (closeBtn) closeBtn.style.display = "block";
+             if (cancelBtn) cancelBtn.style.display = "block";
+          }
+
+          // Show the modal
+          const modal = new bootstrap.Modal(modalEl);
           modal.show();
-          // ---
-          // === END OF FIX ===
-          // ---
+
         } catch (error) {
           console.error("Error loading user profile:", error);
-          const modal = new bootstrap.Modal(
-            document.getElementById("profileUpdateModal")
-          );
+          // Fallback: show modal if error
+          const modal = new bootstrap.Modal(document.getElementById("profileUpdateModal"));
           modal.show();
         }
       }
+
       // Save profile data to server
       async function saveProfileToServer(profileData) {
         const userId = localStorage.getItem("userId");
@@ -2166,13 +2153,7 @@ function checkAllFilesUploaded() {
         }
 
         if (!userProfileComplete) {
-          showProfileUpdateModalWithCallback(() => {
-            refreshModal();
-            const selectedModal = new bootstrap.Modal(
-              document.getElementById("selectedModal")
-            );
-            selectedModal.show();
-          });
+          showProfileUpdateModal(); 
           return;
         }
 
@@ -2866,7 +2847,6 @@ function filterRequests() {
           }
         } catch(e) { console.error(e); }
       }
-}
 // --- END OF NEW FUNCTION ---
 
       // Enhanced status information function

@@ -1716,7 +1716,7 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       queue_id, queue_number, user_name, student_id, course,
       year_level, services, status, is_priority, 
       submitted_at, started_at, completed_at, 
-      window_number, -- CRITICAL: We need this to count completed per window
+      window_number,
       completed_by,
       progress_data
     FROM queue
@@ -1725,7 +1725,7 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       OR 
       (status IN ('waiting', 'processing', 'ready')) 
       OR
-      (DATE(completed_at) = CURDATE() AND status = 'completed') -- Ensure we get today's completed
+      (DATE(completed_at) = CURDATE() AND status IN ('completed', 'claimed')) 
     ORDER BY 
       CASE 
         WHEN status = 'processing' THEN 1
@@ -1768,7 +1768,8 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       ),
       processing: processedQueues.filter((q) => q.status === "processing"),
       ready: processedQueues.filter((q) => q.status === "ready"),
-      completed: processedQueues.filter((q) => q.status === "completed"),
+      completed: processedQueues.filter((q) => q.status === "completed"), // Keep this strictly 'completed' for the "Ready to Claim" list
+      claimed: processedQueues.filter((q) => q.status === "claimed"), // 🟢 New category for stats
       priority: processedQueues.filter(
         (q) => q.is_priority && q.status === "waiting"
       ),
