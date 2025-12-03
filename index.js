@@ -98,16 +98,22 @@ const JWT_SECRET = process.env.JWT_SECRET || "rsu-reqs-admin-secret-key-2024";
 const JWT_RESET_SECRET =
   process.env.JWT_RESET_SECRET || "rsu-reqs-reset-secret-key-9a8b7c6d";
 // --- 🟢 UPDATED MAIL CONFIGURATION 🟢 ---
+// --- 🟢 UPDATED MAIL CONFIGURATION (FIX FOR TIMEOUTS) 🟢 ---
 const transporter = nodemailer.createTransport({
-  service: "gmail", // Use built-in service for better reliability
+  host: "smtp.gmail.com",
+  port: 465, // Use Port 465 (SSL) instead of 587
+  secure: true, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // These settings help prevent timeouts on Vercel
+  // Connection pool settings to prevent hanging
   pool: true,
   maxConnections: 1,
   rateLimit: 3,
+  // Increase timeout
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
 });
 
 const db = mysql.createPool({
@@ -136,6 +142,7 @@ db.getConnection((err, connection) => {
     createServiceRequestsTable();
     createQueueTable();
     createAdminStaffTable();
+    createFeedbackTable();
 
     // 2. === FIX: ADD MISSING COLUMNS ===
     // This adds the columns so the "N/A" will be replaced by real data
