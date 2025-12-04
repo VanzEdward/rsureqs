@@ -676,41 +676,100 @@
     </div>
 
     
-    <div id="feedbackModal" class="modal fade" tabindex="-1">
+<div id="feedbackModal" class="modal fade" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header bg-success text-white">
-            <h5 class="modal-title"><i class="bi bi-star-fill me-2"></i> Service Feedback</h5>
+            <h5 class="modal-title"><i class="bi bi-star-fill me-2"></i> Client Satisfaction Measurement</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <input type="hidden" id="feedbackRequestId">
             
-            <div class="mb-4 text-center">
-              <label class="form-label fw-bold d-block">SQD 0. I am satisfied with the service that I availed.</label>
-              <div class="rating-stars h2 text-warning" style="cursor: pointer;">
-                <i class="bi bi-star" data-value="1" onclick="setRating(1)"></i>
-                <i class="bi bi-star" data-value="2" onclick="setRating(2)"></i>
-                <i class="bi bi-star" data-value="3" onclick="setRating(3)"></i>
-                <i class="bi bi-star" data-value="4" onclick="setRating(4)"></i>
-                <i class="bi bi-star" data-value="5" onclick="setRating(5)"></i>
-              </div>
-              <input type="hidden" id="sqd0Rating" value="0">
-              <div id="ratingText" class="text-muted small">Tap a star to rate</div>
+            <div class="alert alert-light border small text-muted mb-4">
+              <strong>INSTRUCTIONS:</strong> Check the box your answer to the <strong>Citizen's Charter (CC)</strong> questions. The Citizen's Charter is an official document that reflects the services of a government agency/office including its requirements, fees, and processing times among others.
+            </div>
+
+            <h6 class="fw-bold text-success mb-3">Citizen's Charter (CC)</h6>
+            
+            <div class="mb-3 p-3 border rounded bg-light">
+                <p class="fw-bold mb-2 small text-danger">* CC1. Which of the following best describes your awareness of a CC?</p>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc1" id="cc1_1" value="1">
+                    <label class="form-check-label" for="cc1_1">1. I know what a CC is and I saw this office's CC</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc1" id="cc1_2" value="2">
+                    <label class="form-check-label" for="cc1_2">2. I know what a CC is but I did NOT see this office's CC</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc1" id="cc1_3" value="3">
+                    <label class="form-check-label" for="cc1_3">3. I learned of the CC only when I saw this office's CC</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc1" id="cc1_4" value="4">
+                    <label class="form-check-label" for="cc1_4">4. I do not know what a CC is and did not see one in this office. (Answer 'N/A' on CC2 and CC3)</label>
+                </div>
+            </div>
+
+            <div class="mb-3 p-3 border rounded bg-light">
+                <p class="fw-bold mb-2 small text-danger">* CC2. If aware of CC (answered in any codes from 1-3 in CC1), would you say that the CC of this office was ...?</p>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc2" id="cc2_1" value="1">
+                    <label class="form-check-label" for="cc2_1">1. Easy to see</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc2" id="cc2_2" value="2">
+                    <label class="form-check-label" for="cc2_2">2. Somewhat easy to see</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc2" id="cc2_3" value="3">
+                    <label class="form-check-label" for="cc2_3">3. Difficult to see</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc2" id="cc2_4" value="4">
+                    <label class="form-check-label" for="cc2_4">4. Not visible at all</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc2" id="cc2_5" value="0">
+                    <label class="form-check-label" for="cc2_5">5. N/A</label>
+                </div>
+            </div>
+
+            <div class="mb-4 p-3 border rounded bg-light">
+                <p class="fw-bold mb-2 small text-danger">* CC3. If aware of CC (answered codes 1-3 in CC1), how much did the CC help you in your transaction?</p>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc3" id="cc3_1" value="1">
+                    <label class="form-check-label" for="cc3_1">1. Helped very much</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc3" id="cc3_2" value="2">
+                    <label class="form-check-label" for="cc3_2">2. Somewhat helped</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc3" id="cc3_3" value="3">
+                    <label class="form-check-label" for="cc3_3">3. Did not help</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input cc-radio" type="radio" name="cc3" id="cc3_4" value="0">
+                    <label class="form-check-label" for="cc3_4">4. N/A</label>
+                </div>
             </div>
 
             <hr>
 
-            <h6 class="fw-bold">Service Quality Dimensions</h6>
-            <p class="small text-muted">Please check if you Agree/Disagree with the following:</p>
-            
-            <div id="sqdQuestions">
+            <h6 class="fw-bold text-success mb-3">Service Quality Dimensions</h6>
+            <p class="small text-muted">
+                For SQD 0-8, please select the option that best corresponds to your answer.
+            </p>
+
+            <div id="sqdQuestions" class="mb-4">
               </div>
 
             <hr>
             <div class="mb-3">
-              <label class="form-label fw-bold">Comments / Complaints / Suggestions</label>
-              <textarea class="form-control" id="feedbackComments" rows="3" placeholder="Describe your overall experience..."></textarea>
+              <label class="form-label fw-bold text-danger">* Do you have any COMPLAINTS? / Suggestions?</label>
+              <textarea class="form-control" id="feedbackComments" rows="3" placeholder="How do you describe your overall experience..."></textarea>
             </div>
 
           </div>
@@ -2314,17 +2373,21 @@ document
       '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
     joinBtn.disabled = true;
 
-    // Prepare Data
+// --- 1. PREPARE DATA (Fixed) ---
     const userId = localStorage.getItem("userId");
     const formData = new FormData();
     formData.append("userId", userId);
+
+    // 🟢 FIX: Use "services" instead of "services[]"
     selectedServicesList.forEach((service) => {
-      formData.append("services[]", service.trim());
+      formData.append("services", service.trim());
     });
+
     fileInputs.forEach((input) => {
       if (input.files.length > 0) {
         formData.append("requirements_files", input.files[0]);
-        formData.append("requirement_names[]", input.dataset.requirementName);
+        // 🟢 FIX: Use "requirement_names" instead of "requirement_names[]"
+        formData.append("requirement_names", input.dataset.requirementName);
       }
     });
 
@@ -2558,7 +2621,7 @@ if (result.success) {
         }
       }
 
-// Enhanced request display with Progress Bar & Feedback Button
+// Enhanced request display with Progress Bar, Claimed Status & Feedback
       function displayUserRequests(requests) {
         const container = document.getElementById("requestsContainer");
         if (!container) return;
@@ -2592,7 +2655,6 @@ if (result.success) {
             let progressHtml = '';
             if (request.queue_status === 'processing' && request.progress) {
                 const p = request.progress; 
-                // Handle division by zero protection
                 const percent = p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
                 
                 progressHtml = `
@@ -2617,6 +2679,8 @@ if (result.success) {
 
             // --- FEEDBACK BUTTON LOGIC ---
             let feedbackBtn = '';
+            
+            // Allow feedback if status is 'completed' (Ready) OR 'claimed' (Picked Up)
             const isFinished = (request.queue_status === "completed" || request.queue_status === "claimed" || request.live_queue_status === "completed");
             
             if (isFinished && !request.feedback_id) {
@@ -2636,20 +2700,36 @@ if (result.success) {
                 `;
             }
 
-            // --- COMPLETED CARD LOGIC ---
+            // --- COMPLETED / PICKED UP CARD LOGIC (UPDATED) ---
             let completedHtml = '';
+            
             if (isFinished) {
+                // Determine if it is specifically 'claimed' (picked up) or just 'completed' (ready)
+                const isClaimed = request.queue_status === 'claimed';
+                
+                // 1. Customize Text & Icons
+                const statusTitle = isClaimed ? "Documents Picked Up" : "Ready to Claim!";
+                const statusIcon = isClaimed ? "bi-check2-all" : "bi-patch-check-fill";
+                const statusDesc = isClaimed 
+                    ? "Transaction complete. You have received your documents." 
+                    : "Your document processing is complete. Please proceed to the window.";
+
+                // 2. Customize Colors (Blue for Ready, Grey/Green for Claimed)
+                const alertClass = isClaimed ? "alert-secondary" : "alert-primary";
+                const iconColor = isClaimed ? "text-secondary" : "text-success";
+                const titleColor = isClaimed ? "text-dark" : "text-success";
+
                 completedHtml = `
-                    <div class="alert alert-primary mt-3 border-0 shadow-sm" style="background-color: #e7f1ff; color: #004085;">
+                    <div class="alert ${alertClass} mt-3 border-0 shadow-sm">
                         <div class="d-flex">
                             <div class="me-3">
-                                <i class="bi bi-patch-check-fill fs-1 text-success"></i>
+                                <i class="bi ${statusIcon} fs-1 ${iconColor}"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <h5 class="fw-bold mb-1 text-success">Ready to Claim!</h5>
-                                <p class="mb-2 small">Your document processing is complete.</p>
+                                <h5 class="fw-bold mb-1 ${titleColor}">${statusTitle}</h5>
+                                <p class="mb-2 small">${statusDesc}</p>
                                 
-                                <div class="bg-white p-2 rounded border border-primary-subtle mb-2">
+                                <div class="bg-white p-2 rounded border border-light-subtle mb-2">
                                     <div class="d-flex justify-content-between mb-1">
                                         <small class="text-muted">Processed at:</small>
                                         <strong class="text-primary">${request.window_number || "Registrar Office"}</strong>
@@ -2662,9 +2742,9 @@ if (result.success) {
 
                                 ${
                                   request.final_claim_details
-                                    ? `<div class="mt-2 pt-2 border-top border-primary border-opacity-25">
+                                    ? `<div class="mt-2 pt-2 border-top border-secondary border-opacity-25">
                                         <small class="text-uppercase fw-bold opacity-75" style="font-size: 10px;">Message / Instructions:</small><br>
-                                        <div class="fst-italic mt-1">"${request.final_claim_details}"</div>
+                                        <div class="fst-italic mt-1 small">"${request.final_claim_details}"</div>
                                        </div>`
                                     : ""
                                 }
@@ -2700,6 +2780,7 @@ if (result.success) {
                 `
                     : ""
                 }
+                
                 ${
                   request.status === "declined" && request.declined_by
                     ? `
@@ -2718,7 +2799,8 @@ if (result.success) {
                 
                 ${completedHtml}
                 
-                ${feedbackBtn} </div>
+                ${feedbackBtn}
+            </div>
         `;
           })
           .join("");
@@ -2766,36 +2848,34 @@ function filterRequests() {
   }
 }
 
-  // --- FEEDBACK LOGIC ---
-      const sqdQuestionsList = [
+// --- FEEDBACK LOGIC (ARTA CSM) ---
+      
+      const sqdList = [
+        "SQD 0. I am satisfied with the service that I availed.",
         "SQD 1. I spent a reasonable amount of time for my transaction.",
-        "SQD 2. The office followed the transaction's requirements.",
-        "SQD 3. The steps needed to do for my transaction were easy and simple.",
-        "SQD 4. I easily found information about my transaction.",
-        "SQD 5. I paid a reasonable amount of fees.",
-        "SQD 6. I feel the office was fair to everyone.",
-        "SQD 7. I was treated courteously by the staff.",
-        "SQD 8. I got what I needed from the government office."
+        "SQD 2. The office followed the transaction's requirements and steps based on the information provided.",
+        "SQD 3. The steps (including payment) I needed to do for my transaction were easy and simple.",
+        "SQD 4. I easily found information about my transaction from the office or its website.",
+        "SQD 5. I paid a reasonable amount of fees for my transaction.",
+        "SQD 6. I feel the office was fair to everyone, or \"walang palakasan\", during my transaction.",
+        "SQD 7. I was treated courteously by the staff, and (if asked for help) the staff was helpful.",
+        "SQD 8. I got what I needed from the government office, or (if denied) denial of request was sufficiently explained to me."
       ];
 
       function openFeedbackModal(requestId) {
         document.getElementById('feedbackRequestId').value = requestId;
-        setRating(0);
         document.getElementById('feedbackComments').value = '';
         
+        // Reset Radios
+        document.querySelectorAll('.cc-radio').forEach(el => el.checked = false);
+
+        // Generate SQD Questions (0-8)
         const container = document.getElementById('sqdQuestions');
-        container.innerHTML = sqdQuestionsList.map((q, index) => `
-          <div class="mb-2 row align-items-center bg-light p-2 rounded">
-            <div class="col-md-7 small mb-1 mb-md-0">${q}</div>
-            <div class="col-md-5">
-              <select class="form-select form-select-sm sqd-select" data-index="${index+1}">
-                <option value="5">Strongly Agree</option>
-                <option value="4" selected>Agree</option>
-                <option value="3">Neutral</option>
-                <option value="2">Disagree</option>
-                <option value="1">Strongly Disagree</option>
-                <option value="0">N/A</option>
-              </select>
+        container.innerHTML = sqdList.map((q, index) => `
+          <div class="mb-3 border-bottom pb-2">
+            <p class="small fw-semibold mb-2">${q} <span class="text-danger">*</span></p>
+            <div class="d-flex flex-wrap gap-2">
+                ${generateRadioOptions(index)}
             </div>
           </div>
         `).join('');
@@ -2803,36 +2883,67 @@ function filterRequests() {
         new bootstrap.Modal(document.getElementById('feedbackModal')).show();
       }
 
-      function setRating(rating) {
-        document.getElementById('sqd0Rating').value = rating;
-        const stars = document.querySelectorAll('.rating-stars i');
-        const text = document.getElementById('ratingText');
-        const texts = ["Tap a star", "Very Dissatisfied", "Dissatisfied", "Neutral", "Satisfied", "Very Satisfied"];
-        
-        stars.forEach((star, index) => {
-          star.className = index < rating ? 'bi bi-star-fill' : 'bi bi-star';
-        });
-        text.textContent = texts[rating] || texts[0];
+      function generateRadioOptions(index) {
+        const name = `sqd_${index}`;
+        return `
+            <div class="form-check form-check-inline">
+                <input class="form-check-input sqd-radio" type="radio" name="${name}" value="5" id="${name}_5">
+                <label class="form-check-label small" for="${name}_5">Strongly Agree (5)</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input sqd-radio" type="radio" name="${name}" value="4" id="${name}_4">
+                <label class="form-check-label small" for="${name}_4">Agree (4)</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input sqd-radio" type="radio" name="${name}" value="3" id="${name}_3">
+                <label class="form-check-label small" for="${name}_3">Neutral (3)</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input sqd-radio" type="radio" name="${name}" value="2" id="${name}_2">
+                <label class="form-check-label small" for="${name}_2">Disagree (2)</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input sqd-radio" type="radio" name="${name}" value="1" id="${name}_1">
+                <label class="form-check-label small" for="${name}_1">Strongly Disagree (1)</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input sqd-radio" type="radio" name="${name}" value="0" id="${name}_0">
+                <label class="form-check-label small" for="${name}_0">N/A</label>
+            </div>
+        `;
       }
 
       async function submitFeedback() {
         const requestId = document.getElementById('feedbackRequestId').value;
-        const sqd0 = document.getElementById('sqd0Rating').value;
         const comments = document.getElementById('feedbackComments').value;
         const userId = localStorage.getItem("userId");
 
-        if(sqd0 == 0) {
-          alert("Please provide an Overall Satisfaction rating.");
+        // 1. Gather CC Data
+        const ccData = {};
+        let ccComplete = true;
+        ['cc1', 'cc2', 'cc3'].forEach(name => {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            if (!selected) ccComplete = false;
+            else ccData[name] = selected.value;
+        });
+
+        // 2. Gather SQD Data
+        const sqdData = {};
+        let sqdComplete = true;
+        // There are 9 questions (SQD0 - SQD8)
+        for(let i=0; i<=8; i++) {
+            const selected = document.querySelector(`input[name="sqd_${i}"]:checked`);
+            if(!selected) sqdComplete = false;
+            else sqdData[`SQD${i}`] = selected.value;
+        }
+
+        if (!ccComplete || !sqdComplete) {
+          alert("Please answer all required questions marked with (*).");
           return;
         }
 
-        const sqdData = {};
-        document.querySelectorAll('.sqd-select').forEach(sel => {
-           sqdData[`SQD${sel.dataset.index}`] = sel.value;
-        });
-
-        // Mock CC Data (simplified)
-        const ccData = { cc1: 1, cc2: 1, cc3: 1 }; 
+        // Use SQD0 as the main rating for the charts
+        const sqd0 = sqdData['SQD0']; 
 
         try {
           const response = await fetch('/api/user/submit-feedback', {
@@ -2844,13 +2955,12 @@ function filterRequests() {
           if(response.ok) {
             showToast("Feedback submitted! Thank you.", "success");
             bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
-            loadUserRequests(); // Hide button
+            loadUserRequests(); 
           } else {
             showToast("Error submitting feedback.", "error");
           }
         } catch(e) { console.error(e); }
       }
-// --- END OF NEW FUNCTION ---
 
       // Enhanced status information function
       function getStatusInfo(status, queueStatus) {

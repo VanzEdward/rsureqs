@@ -1347,42 +1347,49 @@ app.get("/api/user/can-join-queue", (req, res) => {
   );
 });
 
-// --- 🟢 FIXED SUBMIT ROUTE (Safe for Vercel) 🟢 ---
+// --- 🟢 FIXED SUBMIT ROUTE 🟢 ---
 app.post(
   "/api/queue/submit-request",
   requirementsUpload.array("requirements_files", 10),
   (req, res) => {
-    const { userId, services } = req.body;
-    const files = req.files; // Files are now in buffer (memory), not on disk
+    // 1. Get Fields (Handle both 'services' and legacy 'services[]' just in case)
+    const userId = req.body.userId;
+    let rawServices = req.body.services || req.body["services[]"];
+    let rawReqNames =
+      req.body.requirement_names || req.body["requirement_names[]"];
 
-    // 1. Validation
-    if (!userId || !services) {
+    const files = req.files;
+
+    // 2. Validation
+    if (!userId || !rawServices) {
       return res.status(400).json({
         success: false,
         message: "User ID and services are required",
       });
     }
 
-    // 2. Handle Services Data
-    let parsedServices = services;
-    if (typeof services === "string") {
-      parsedServices = [services];
+    // 3. Force Services to be an Array
+    let parsedServices = [];
+    if (Array.isArray(rawServices)) {
+      parsedServices = rawServices;
+    } else if (typeof rawServices === "string") {
+      parsedServices = [rawServices];
     }
 
-    // 3. Handle File Names (Generate fake names for DB since we aren't saving to disk yet)
-    const { requirement_names } = req.body;
-    let reqNamesArray = requirement_names;
-
-    if (typeof requirement_names === "string") {
-      reqNamesArray = [requirement_names];
+    // 4. Force Requirement Names to be an Array
+    let reqNamesArray = [];
+    if (Array.isArray(rawReqNames)) {
+      reqNamesArray = rawReqNames;
+    } else if (typeof rawReqNames === "string") {
+      reqNamesArray = [rawReqNames];
     }
 
+    // 5. Structure Files (Map files to their names)
     const structuredRequirements = files
       ? files.map((file, index) => {
-          // 🟢 FIX: Save the FILENAME, not the Base64 string
           return {
-            name: reqNamesArray ? reqNamesArray[index] : "Requirement",
-            file: file.filename, // ✅ Saves "12345-my-file.jpg"
+            name: reqNamesArray[index] || "Requirement",
+            file: file.filename, // Saves the filename
           };
         })
       : [];
@@ -1392,7 +1399,7 @@ app.post(
     const requestId =
       "REQ-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
 
-    // 4. Get User Info & Insert
+    // 6. Get User Info
     db.query(
       `SELECT fullname, student_id, course, year_level, email, phone,
         campus, dob, pob, nationality, home_address, previous_school,
@@ -1411,7 +1418,7 @@ app.post(
 
         const user = userResults[0];
 
-        // 5. Insert into Database
+        // 7. Insert into Database
         db.query(
           `INSERT INTO service_requests 
           (request_id, user_id, user_name, student_id, course, year_level, 
@@ -1426,7 +1433,7 @@ app.post(
             user.student_id,
             user.course,
             user.year_level,
-            JSON.stringify(parsedServices),
+            JSON.stringify(parsedServices), // ✅ Correctly saves as ["Service A", "Service B"]
             0,
             requirementsText,
             requirementsPaths,
@@ -1444,15 +1451,16 @@ app.post(
           ],
           (err, result) => {
             if (err) {
-              // 🔴 LOG THE ERROR SO VERCEL SHOWS IT
               console.error("❌ SUBMIT ERROR:", err);
               return res
                 .status(500)
                 .json({ success: false, message: "DB Error: " + err.message });
             }
 
-            // 6. Add to Queue Logic (Fire and forget)
-            addToQueueSystem(requestId);
+            // 8. Add to Queue Logic (Fire and forget)
+            if (typeof addToQueueSystem === "function") {
+              addToQueueSystem(requestId);
+            }
 
             res.json({
               success: true,
@@ -1465,7 +1473,6 @@ app.post(
     );
   }
 );
-// --- 🟢 END OF FIX 🟢 ---
 
 // === API: START PROCESSING REQUEST ===
 app.post("/api/admin/start-processing", authenticateAdmin, (req, res) => {
@@ -1723,11 +1730,15 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       progress_data
     FROM queue
     WHERE 
+      -- 1. New requests submitted today
       (DATE(submitted_at) = CURDATE()) 
       OR 
-      (status IN ('waiting', 'processing', 'ready')) 
+      -- 2. Active items that should PERSIST until finished/claimed
+      -- (Added 'completed' here so they don't vanish at midnight)
+      (status IN ('waiting', 'processing', 'ready', 'completed')) 
       OR
-      (DATE(completed_at) = CURDATE() AND status IN ('completed', 'claimed')) 
+      -- 3. Claimed (Picked Up) items show for Today only (History)
+      (status = 'claimed' AND DATE(completed_at) = CURDATE())
     ORDER BY 
       CASE 
         WHEN status = 'processing' THEN 1
@@ -1831,7 +1842,7 @@ app.get("/api/user/service-requests", (req, res) => {
     });
   }
 
-  // --- 🟢 UPDATED QUERY: Check for Feedback 🟢 ---
+  // 🟢 FIX: Added 'COLLATE utf8mb4_general_ci' to the JOIN conditions
   const query = `
     SELECT sr.*, 
            q.progress_data, 
@@ -1841,8 +1852,8 @@ app.get("/api/user/service-requests", (req, res) => {
            COALESCE(q.claim_details, sr.claim_details) as final_claim_details,
            f.id as feedback_id
     FROM service_requests sr
-    LEFT JOIN queue q ON sr.request_id = q.request_id
-    LEFT JOIN feedback f ON sr.request_id = f.request_id
+    LEFT JOIN queue q ON sr.request_id = q.request_id COLLATE utf8mb4_general_ci
+    LEFT JOIN feedback f ON sr.request_id = f.request_id COLLATE utf8mb4_general_ci
     WHERE sr.user_id = ? 
     ORDER BY sr.submitted_at DESC
   `;
@@ -2077,19 +2088,25 @@ app.post("/api/admin/manual-queue-entry", authenticateAdmin, (req, res) => {
 app.get("/api/queue/status", (req, res) => {
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-  // 1. Get ALL active tickets for today (Processing, Waiting, Completed)
+  // 1. Get tickets:
+  // - Submitted Today (Waiting)
+  // - Processing (Any date, in case it carried over)
+  // - Completed/Ready (Any date, UNTIL it is marked claimed)
   const query = `
     SELECT queue_number, status, window_number, submitted_at, started_at, completed_at
     FROM queue 
-    WHERE DATE(submitted_at) = ? OR (status = 'completed' AND DATE(completed_at) = ?)
+    WHERE 
+      (DATE(submitted_at) = ? AND status = 'waiting')
+      OR 
+      status IN ('processing', 'completed')
     ORDER BY 
       CASE status
         WHEN 'processing' THEN 1
         WHEN 'waiting' THEN 2
         WHEN 'completed' THEN 3
       END ASC,
-      started_at DESC, -- For processing, show latest started first
-      completed_at DESC -- For completed, show latest finished first
+      started_at DESC,
+      completed_at DESC
   `;
 
   db.query(query, [today, today], (err, results) => {

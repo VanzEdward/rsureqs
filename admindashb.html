@@ -265,13 +265,12 @@
           <div class="info-card">
             <h3>Client Satisfaction Rating</h3>
             <p style="font-size: 14px; color: #666">
-              Based on Overall Satisfaction (SQD0).
+              Based on SQD0 (Overall Satisfaction).
             </p>
             <div
               class="chart-container"
               style="position: relative; height: 250px; width: 100%"
             >
-              <!-- 🟢 NEW ID 🟢 -->
               <canvas id="satisfactionChart"></canvas>
             </div>
           </div>
@@ -453,21 +452,6 @@
 
         <div class="settings-section">
           <h2 class="settings-section-title">Manage Queue System Settings</h2>
-
-          <div class="settings-item" onclick="toggleModal('waitingTimeModal')">
-            <div class="settings-item-icon">⏱️</div>
-            <span>Edit Services Waiting Time</span>
-          </div>
-
-          <div class="settings-item" onclick="toggleModal('monitoringModal')">
-            <div class="settings-item-icon">📺</div>
-            <span>Edit Monitoring Details</span>
-          </div>
-
-          <div class="settings-item" onclick="toggleModal('notificationModal')">
-            <div class="settings-item-icon">🔔</div>
-            <span>Edit Notification Details</span>
-          </div>
 
           <div class="settings-item" onclick="toggleFontSize()">
             <div class="settings-item-icon">Aa</div>
@@ -745,90 +729,6 @@
       </div>
     </div>
 
-    <!-- Additional Modals for Settings -->
-    <div id="waitingTimeModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Edit Services Waiting Time</h3>
-          <span class="modal-close" onclick="toggleModal('waitingTimeModal')"
-            >&times;</span
-          >
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Average Service Time (minutes)</label>
-            <input type="number" class="form-input" value="15" min="1" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button
-            class="btn btn-secondary"
-            onclick="toggleModal('waitingTimeModal')"
-          >
-            Cancel
-          </button>
-          <button class="btn btn-primary" onclick="saveWaitingTime()">
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="monitoringModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Edit Monitoring Details</h3>
-          <span class="modal-close" onclick="toggleModal('monitoringModal')"
-            >&times;</span
-          >
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Auto-refresh Interval (seconds)</label>
-            <input type="number" class="form-input" value="5" min="1" />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button
-            class="btn btn-secondary"
-            onclick="toggleModal('monitoringModal')"
-          >
-            Cancel
-          </button>
-          <button class="btn btn-primary" onclick="saveMonitoring()">
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="notificationModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Edit Notification Details</h3>
-          <span class="modal-close" onclick="toggleModal('notificationModal')"
-            >&times;</span
-          >
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Enable Sound Notifications</label>
-            <input type="checkbox" checked />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button
-            class="btn btn-secondary"
-            onclick="toggleModal('notificationModal')"
-          >
-            Cancel
-          </button>
-          <button class="btn btn-primary" onclick="saveNotification()">
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
     <div
       id="windowSelectionModal"
       class="modal fade"
@@ -1266,6 +1166,71 @@
         </div>
       </div>
     </div>
+
+    <div id="confirmServeModal" class="modal">
+      <div class="modal-content" style="max-width: 450px">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-person-check-fill me-2"></i> Confirm Action
+          </h5>
+          <span
+            class="modal-close text-white"
+            onclick="toggleModal('confirmServeModal')"
+            >&times;</span
+          >
+        </div>
+        <div class="modal-body text-center">
+          <input type="hidden" id="serveQueueId" />
+
+          <div class="mb-3">
+            <div
+              class="avatar-circle bg-light text-primary mx-auto mb-2"
+              style="
+                width: 70px;
+                height: 70px;
+                font-size: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+              "
+            >
+              <i class="bi bi-person-up"></i>
+            </div>
+            <h5 class="fw-bold" id="serveClientName">Student Name</h5>
+            <span class="badge bg-primary fs-6 mb-2" id="serveQueueNumber"
+              >A-000</span
+            >
+          </div>
+
+          <p class="text-muted">
+            Are you sure you want to serve this client at
+            <strong class="text-dark" id="serveWindowName">Window X</strong>?
+          </p>
+
+          <div class="alert alert-warning small d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>
+              This will move the request to "Now Serving" on the TV screen.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button
+            class="btn btn-secondary px-4"
+            onclick="toggleModal('confirmServeModal')"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary px-4 fw-bold"
+            onclick="queueManager.confirmStartProcessing()"
+          >
+            Yes, Serve Client
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- --------------------------------------------- END OF MANUAL TRANSACTION MODAL ------------------------------------------------->
 
     <!-- Add Bootstrap JS Bundle -->
@@ -1696,15 +1661,43 @@
       // ⬇️ ADD THIS ENTIRE NEW FUNCTION ⬇️
 
       async function updateReportsData() {
-        // ... (Keep existing Queue Manager stats logic) ...
+        // 1. Update Queue Counts (Keep your existing logic)
+        if (queueManager && queueManager.queues) {
+          // ... (Your existing counting logic for Total, Completed, etc.)
+          const waitingCount = (queueManager.queues.waiting || []).length;
+          const processingCount = (queueManager.queues.processing || []).length;
+          const readyCount = (queueManager.queues.ready || []).length;
+          const completedCount = (queueManager.queues.completed || []).length;
+          const claimedCount = (queueManager.queues.claimed || []).length;
+          const priorityCount = (queueManager.queues.priority || []).length;
 
-        // 🟢 REPLACE FCR LOGIC WITH THIS:
+          const total =
+            waitingCount +
+            processingCount +
+            readyCount +
+            completedCount +
+            claimedCount +
+            priorityCount;
+          const totalFinished = completedCount + claimedCount;
+
+          document.getElementById("totalRequestsSummary").textContent = total;
+          document.getElementById("completedSummary").textContent =
+            totalFinished;
+          document.getElementById("totalRequestsToday").textContent = total;
+
+          renderRecentRequests(queueManager.queues);
+          renderReportHistory(queueManager.queues);
+        }
+
+        // 2. 🟢 NEW: FETCH & RENDER SATISFACTION CHART 🟢
         try {
           const response = await makeAuthenticatedRequest(
             "/api/admin/satisfaction-stats"
           );
           const result = await response.json();
+
           if (result.success) {
+            // Pass the stats array (e.g. [{rating: 5, count: 10}, ...]) to the renderer
             renderSatisfactionChart(result.stats);
           }
         } catch (e) {
@@ -1716,60 +1709,91 @@
         const ctx = document.getElementById("satisfactionChart");
         if (!ctx) return;
 
-        // Map data to [count1, count2, count3, count4, count5]
+        // Initialize counts for 5 stars, 4 stars, ... 1 star
+        // Index 0 = 5 Stars, Index 4 = 1 Star
         const counts = [0, 0, 0, 0, 0];
         let total = 0;
         let weightedSum = 0;
 
-        stats.forEach((item) => {
-          const r = item.rating;
-          if (r >= 1 && r <= 5) {
-            counts[r - 1] = item.count;
-            total += item.count;
-            weightedSum += r * item.count;
-          }
-        });
+        // Process the data from the API
+        // stats example: [{rating: 5, count: 10}, {rating: 4, count: 2}]
+        if (Array.isArray(stats)) {
+          stats.forEach((item) => {
+            const r = item.rating;
+            if (r >= 1 && r <= 5) {
+              // Map rating to array index (5 -> 0, 4 -> 1, etc.)
+              counts[5 - r] = item.count;
+              total += item.count;
+              weightedSum += r * item.count;
+            }
+          });
+        }
 
-        const average = total > 0 ? (weightedSum / total).toFixed(1) : 0.0;
+        // Calculate Average (e.g., 4.85)
+        const average = total > 0 ? (weightedSum / total).toFixed(2) : "0.00";
 
-        const chartData = {
-          labels: ["1 Star", "2 Stars", "3 Stars", "4 Stars", "5 Stars"],
-          datasets: [
-            {
-              label: "Ratings",
-              data: counts,
-              backgroundColor: [
-                "#dc3545",
-                "#fd7e14",
-                "#ffc107",
-                "#20c997",
-                "#198754",
-              ],
-              borderWidth: 1,
-            },
-          ],
-        };
-
+        // Destroy old chart if it exists to prevent glitching/overlay
         if (window.satisfactionChartInstance) {
           window.satisfactionChartInstance.destroy();
         }
 
+        // Create the Chart
         window.satisfactionChartInstance = new Chart(ctx, {
           type: "bar",
-          data: chartData,
+          data: {
+            labels: [
+              "5 - Very Satisfied",
+              "4 - Satisfied",
+              "3 - Neutral",
+              "2 - Dissatisfied",
+              "1 - Very Dissatisfied",
+            ],
+            datasets: [
+              {
+                label: "Responses",
+                data: counts,
+                backgroundColor: [
+                  "#198754", // Green (5)
+                  "#20c997", // Teal (4)
+                  "#ffc107", // Yellow (3)
+                  "#fd7e14", // Orange (2)
+                  "#dc3545", // Red (1)
+                ],
+                borderRadius: 5,
+                barThickness: 20,
+              },
+            ],
+          },
           options: {
-            indexAxis: "y", // Horizontal Bar
+            indexAxis: "y", // Horizontal Bar Chart
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
               title: {
                 display: true,
-                text: `Average: ${average} / 5.0 (${total} reviews)`,
+                text: `Average Rating: ${average} / 5.0 (${total} reviews)`,
                 font: { size: 16 },
               },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const value = context.raw;
+                    const percentage =
+                      total > 0
+                        ? ((value / total) * 100).toFixed(1) + "%"
+                        : "0%";
+                    return `${value} Responses (${percentage})`;
+                  },
+                },
+              },
             },
-            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 },
+              },
+            },
           },
         });
       }
@@ -1980,21 +2004,6 @@
       function changePassword() {
         showNotification("Password changed successfully!");
         toggleModal("passwordModal");
-      }
-
-      function saveWaitingTime() {
-        showNotification("Waiting time settings saved!");
-        toggleModal("waitingTimeModal");
-      }
-
-      function saveMonitoring() {
-        showNotification("Monitoring settings saved!");
-        toggleModal("monitoringModal");
-      }
-
-      function saveNotification() {
-        showNotification("Notification settings saved!");
-        toggleModal("notificationModal");
       }
 
       // Notification system
@@ -2234,7 +2243,7 @@
                                 <i class="bi bi-gear-wide-connected me-2 text-primary"></i>
                                 ${this.escapeHtml(services.join(", "))}
                             </div>
-                            
+
                             <div class="d-flex align-items-center mt-3">
                                 <div class="flex-grow-1 me-3">
                                     <div class="d-flex justify-content-between small mb-1">
@@ -2270,10 +2279,10 @@
                             }>
                                 <button class="btn ${
                                   isComplete ? "btn-success" : "btn-secondary"
-                                } px-4 fw-bold shadow-sm" 
+                                } px-4 fw-bold shadow-sm"
                                     onclick="queueManager.markAsDone('${
                                       req.queue_id
-                                    }')" 
+                                    }')"
                                     ${
                                       !isComplete
                                         ? 'disabled style="cursor: not-allowed; opacity: 0.6;"'
@@ -2356,8 +2365,8 @@
                       <i class="bi bi-check-all"></i> Ready since ${timeFinished}
                     </div>
                   </div>
-                  
-                  <button class="btn btn-sm btn-outline-success" 
+
+                  <button class="btn btn-sm btn-outline-success"
                     onclick="queueManager.markAsClaimed('${
                       req.queue_id
                     }', this)"
@@ -2566,7 +2575,7 @@
                   )}</span></td>
                   <td class="p-3">${staff.department || "N/A"}</td>
                   <td class="p-3">
-                      ${statusBadge} 
+                      ${statusBadge}
                   </td>
                   <td class="p-3 text-end pe-4">
                       <button class="btn btn-sm btn-outline-primary" onclick='staffManager.openEditModal(${JSON.stringify(
@@ -2574,7 +2583,7 @@
                       )})'>
                           <i class="bi bi-pencil"></i> Edit
                       </button>
-                      ${deleteButton} 
+                      ${deleteButton}
                   </td>
               </tr>
           `;
@@ -3611,7 +3620,7 @@
                                 <i class="bi bi-person-badge me-2 fs-5"></i>
                                 <h6 class="text-uppercase fw-bold small mb-0">Student Profile</h6>
                             </div>
-                            
+
                             <div class="bg-white p-3 rounded-3 border shadow-sm">
                                 <div class="mb-3 border-bottom pb-2">
                                     <small class="text-secondary d-block fw-bold" style="font-size:11px">COURSE & YEAR</small>
@@ -3692,7 +3701,8 @@
             toggleModal("requestDetailsModal");
           }
         }
-        async startProcessing(queueId) {
+        // 🟢 OPEN CONFIRMATION MODAL 🟢
+        startProcessing(queueId) {
           // 1. Check Window Assignment
           if (!currentWindow) {
             currentWindow = localStorage.getItem("assignedWindow");
@@ -3705,65 +3715,28 @@
             }
           }
 
-          // 🟢 2. OPTIMISTIC UPDATE: Remove the card IMMEDIATELY 🟢
-          // This prevents double-clicking and makes the UI feel instant.
-          const cardToRemove = document.getElementById(`req-${queueId}`);
-          if (cardToRemove) {
-            // Visual fade out
-            cardToRemove.style.transition = "all 0.3s ease";
-            cardToRemove.style.opacity = "0";
-            cardToRemove.style.transform = "translateX(20px)";
+          // 2. Get Request Details (Locally)
+          // We search both priority and regular queues to find the name/number
+          const request =
+            (this.queues.priority || []).find((q) => q.queue_id == queueId) ||
+            (this.queues.waiting || []).find((q) => q.queue_id == queueId);
 
-            // Remove from HTML after animation
-            setTimeout(() => {
-              if (cardToRemove.parentNode) cardToRemove.remove();
-            }, 300);
+          if (!request) {
+            console.error("Request not found locally");
+            return;
           }
 
-          try {
-            // 3. Call Backend
-            const response = await makeAuthenticatedRequest(
-              "/api/admin/start-processing",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  queueId: queueId,
-                  windowNumber: currentWindow,
-                }),
-              }
-            );
+          // 3. Populate Modal
+          document.getElementById("serveQueueId").value = queueId;
+          document.getElementById("serveClientName").textContent =
+            request.user_name;
+          document.getElementById("serveQueueNumber").textContent =
+            request.queue_number;
+          document.getElementById("serveWindowName").textContent =
+            currentWindow;
 
-            const result = await response.json();
-
-            if (result.success) {
-              showNotification(`Success! Now Serving at ${currentWindow}`);
-              await this.loadQueues();
-              this.renderNowServing();
-            } else {
-              // 🟢 FIX: Handle "Already Taken" gracefully 🟢
-              console.warn("Server response:", result.message);
-
-              // Refresh the list to remove the ghost card
-              await this.loadQueues();
-              this.renderQueueDashboard();
-
-              // Show a nice warning so the user knows why it disappeared
-              if (result.message.toLowerCase().includes("already")) {
-                showNotification(
-                  "This request was just taken by another window.",
-                  "warning"
-                );
-              } else {
-                alert("System Update: " + result.message);
-              }
-            }
-          } catch (error) {
-            console.error("Error starting processing:", error);
-            // If network fails, put the card back by refreshing
-            await this.loadQueues();
-            this.renderQueueDashboard();
-            alert("Connection error. Please try again.");
-          }
+          // 4. Show Modal
+          toggleModal("confirmServeModal");
         }
 
         async notifyStudent(queueId) {
@@ -4089,6 +4062,65 @@
               btnElement.innerHTML =
                 '<i class="bi bi-box-seam me-1"></i> Picked Up';
             }
+          }
+        }
+
+        // 🟢 EXECUTE API CALL 🟢
+        async confirmStartProcessing() {
+          const queueId = document.getElementById("serveQueueId").value;
+
+          // Disable button to prevent double clicks
+          const btn = document.querySelector("#confirmServeModal .btn-primary");
+          const originalText = btn.innerHTML;
+          btn.innerHTML =
+            '<span class="spinner-border spinner-border-sm"></span> Processing...';
+          btn.disabled = true;
+
+          // --- OPTIMISTIC UI UPDATE ---
+          // Remove card immediately from the "New Requests" list behind the modal
+          const cardToRemove = document.getElementById(`req-${queueId}`);
+          if (cardToRemove) cardToRemove.remove();
+
+          try {
+            const response = await makeAuthenticatedRequest(
+              "/api/admin/start-processing",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  queueId: queueId,
+                  windowNumber: currentWindow,
+                }),
+              }
+            );
+
+            const result = await response.json();
+
+            if (result.success) {
+              showNotification(
+                `Now Serving: ${
+                  document.getElementById("serveQueueNumber").textContent
+                }`
+              );
+              toggleModal("confirmServeModal");
+              await this.loadQueues();
+              this.renderNowServing();
+            } else {
+              alert("Error: " + result.message);
+              // If error, reload queue to bring card back
+              this.loadQueues();
+            }
+          } catch (error) {
+            console.error("Error starting processing:", error);
+            alert("Connection error. Please try again.");
+            this.loadQueues();
+          } finally {
+            // Reset button
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            // Close modal if still open
+            const modal = document.getElementById("confirmServeModal");
+            if (modal.classList.contains("active"))
+              toggleModal("confirmServeModal");
           }
         }
       }
