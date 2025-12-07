@@ -178,6 +178,314 @@
       .toast-info .toast-icon { color: #0d6efd; }
       .toast-success .toast-icon { color: #198754; }
       .toast-error .toast-icon { color: #dc3545; }
+/* --- COOL DASHBOARD MENU CARDS (Mobile Safe) --- */
+      .dashboard-menu-card {
+        background: #ffffff;
+        border: none;
+        border-radius: 25px;
+        padding: 2.5rem 1.5rem;
+        height: 100%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+        cursor: pointer;
+        /* Mobile: Add subtle border */
+        border: 1px solid rgba(0,0,0,0.05);
+      }
+
+      /* Decorative background circle (Static on mobile) */
+      .dashboard-menu-card::after {
+        content: '';
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: var(--card-theme);
+        opacity: 0.08;
+        z-index: -1;
+        transition: transform 0.5s ease;
+      }
+
+      /* Remove old top border line */
+      .dashboard-menu-card::before {
+        display: none;
+      }
+
+      .card-icon-wrapper {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 3rem;
+        background: var(--card-theme-light);
+        color: var(--card-theme);
+        transition: transform 0.5s ease;
+      }
+
+      /* Typography & Buttons (Same as before) */
+      .menu-title {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        color: #2d3748;
+        letter-spacing: -0.5px;
+      }
+
+      .menu-desc {
+        color: #718096;
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      .btn-menu-action {
+        background: var(--card-theme);
+        color: white;
+        border: none;
+        padding: 12px 35px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 15px var(--card-shadow);
+      }
+
+      /* --- 🟢 MOUSE-ONLY ANIMATIONS 🟢 --- */
+      /* These effects will NOT run on phones */
+      @media (hover: hover) {
+        
+        .dashboard-menu-card:hover {
+          transform: translateY(-15px);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+          border-color: transparent;
+        }
+
+        .dashboard-menu-card:hover::after {
+          transform: scale(1.4);
+        }
+
+        .dashboard-menu-card:hover .card-icon-wrapper {
+          transform: rotateY(180deg);
+        }
+
+        .btn-menu-action:hover {
+          transform: scale(1.05);
+          color: white;
+          filter: brightness(1.1);
+        }
+      }
+
+      /* --- Card Themes (Keep these) --- */
+      .card-profile {
+        --card-theme: #6f42c1;
+        --card-theme-light: rgba(111, 66, 193, 0.1);
+        --card-shadow: rgba(111, 66, 193, 0.4);
+      }
+      .card-services {
+        --card-theme: #198754; 
+        --card-theme-light: rgba(25, 135, 84, 0.1);
+        --card-shadow: rgba(25, 135, 84, 0.4);
+      }
+      .card-about {
+        --card-theme: #ffc107;
+        --card-theme-light: rgba(255, 193, 7, 0.15);
+        --card-shadow: rgba(255, 193, 7, 0.4);
+      }
+      .card-about .btn-menu-action { color: #000; font-weight: 800; }
+      .card-about .btn-menu-action:hover { color: #000; }
+      /* --- COOL SERVICES CATEGORY CARDS --- */
+      .service-category-card {
+        background: #ffffff;
+        border: none;
+        border-radius: 25px;
+        padding: 3rem 2rem;
+        height: 100%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+        cursor: pointer;
+        /* Mobile: Add a subtle border so cards are defined without shadow */
+        border: 1px solid rgba(0,0,0,0.05); 
+      }
+
+      /* Decorative Circle Effect */
+      .service-category-card::after {
+        content: '';
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: var(--service-theme);
+        opacity: 0.08;
+        z-index: -1;
+        transition: transform 0.5s ease;
+      }
+
+      /* Icon Styling */
+      .service-category-card i {
+        display: inline-block;
+        font-size: 4rem !important;
+        margin-bottom: 1.5rem;
+        transition: transform 0.5s ease;
+      }
+
+      /* Typography */
+      .service-category-card h4 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #2d3748;
+        margin-bottom: 1rem;
+      }
+
+      .service-category-card p {
+        color: #718096;
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+
+      /* Button Styling */
+      .service-category-card .btn {
+        border-radius: 50px;
+        padding: 10px 30px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 1.5rem;
+        transition: all 0.3s ease;
+      }
+
+      /* --- 🟢 MOUSE-ONLY ANIMATIONS 🟢 --- */
+      /* These rules will ONLY apply if the user has a mouse (Desktop/Laptop) */
+      @media (hover: hover) {
+        
+        .service-category-card:hover {
+          transform: translateY(-15px);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+          border-color: transparent; /* Remove border on hover */
+        }
+
+        .service-category-card:hover::after {
+          transform: scale(1.5);
+        }
+
+        .service-category-card:hover i {
+          transform: rotateY(180deg) scale(1.1);
+        }
+      }
+
+      /* --- Assign Colors via nth-child (Automatic Coloring) --- */
+      
+      /* Card 1: Academic (Blue) */
+      .col-md-4:nth-child(1) .service-category-card {
+        --service-theme: #0d6efd;
+      }
+      
+      /* Card 2: Certifications (Green) */
+      .col-md-4:nth-child(2) .service-category-card {
+        --service-theme: #198754;
+      }
+
+      /* Card 3: Graduation (Yellow/Gold) */
+      .col-md-4:nth-child(3) .service-category-card {
+        --service-theme: #ffc107;
+      }
+      /* --- FLOATING "VIEW SELECTED" BUTTON (Mobile Only) --- */
+      /* By default (Desktop), keep it where it is */
+      .view-selected-container {
+        margin-top: 3rem;
+        text-align: center;
+      }
+
+      /* On Mobile (Screen width < 768px) */
+      @media (max-width: 768px) {
+        .view-selected-container {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 90%;
+          max-width: 400px;
+          z-index: 1050; /* Above everything */
+          margin-top: 0;
+          
+          /* Add a subtle animation when it appears */
+          animation: slideUp 0.3s ease-out;
+        }
+
+        .view-selected-container .btn {
+          width: 100%;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+          border-radius: 50px;
+          padding: 12px 20px;
+          font-size: 1rem;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: #0d6efd; /* Consistent Blue */
+          border: none;
+        }
+
+        /* Hide button if nothing is selected (Optional enhancement) */
+        /* You can toggle a class 'show-fab' via JS if you want it to hide when empty */
+      }
+
+      @keyframes slideUp {
+        from { transform: translate(-50%, 100%); opacity: 0; }
+        to { transform: translate(-50%, 0); opacity: 1; }
+      }
+      /* --- FIX FOR HAMBURGER MENU --- */
+      .navbar-toggler {
+        background-color: transparent !important; /* Force remove white background */
+        border: none !important;                  /* Remove border */
+        box-shadow: none !important;              /* Remove focus glow */
+        padding: 0 !important;                    /* Remove padding */
+      }
+
+      /* Ensure it stays transparent when clicked/focused */
+      .navbar-toggler:focus, .navbar-toggler:active {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+
+      /* Ensure the icon image (the lines) is visible */
+      .navbar-toggler-icon {
+        width: 1.5em; 
+        height: 1.5em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+      }
+      /* --- FIX HAMBURGER MENU --- */
+      .navbar-toggler {
+        border: none !important;                  /* No border */
+        outline: none !important;                 /* No outline */
+        box-shadow: none !important;              /* No glow on click */
+        background-color: transparent !important; /* No background color */
+        padding: 0 !important;                    /* No padding */
+      }
+
+      /* Ensure the icon lines are white */
+      .navbar-toggler-icon {
+        width: 1.5em; 
+        height: 1.5em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+      }
+      
     </style>
   </head>
 
@@ -307,368 +615,206 @@
       </div>
     </div>
 
-<div
+<!-- 🟢 OPTIMIZED PROFILE MODAL (Dynamic Dropdowns) 🟢 -->
+    <div
       class="modal fade"
       id="profileUpdateModal"
-      data-bs-backdrop="static" 
+      data-bs-backdrop="static"
       data-bs-keyboard="false"
       tabindex="-1"
       aria-labelledby="profileUpdateModalLabel"
       aria-hidden="true"
     >
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-          <div class="modal-header">
+          <div class="modal-header bg-primary text-white">
             <h5 class="modal-title fw-bold" id="profileUpdateModalLabel">
-              <i class="bi bi-person-check me-2 text-primary"></i> Complete Your
-              Profile
+              <i class="bi bi-person-lines-fill me-2"></i> Update Student Profile
             </h5>
+            <!-- Close button hidden by default logic if profile incomplete -->
             <button
               type="button"
-              class="btn-close"
+              class="btn-close btn-close-white"
               data-bs-dismiss="modal"
               aria-label="Close"
             ></button>
           </div>
-          <div class="modal-body">
-            <div class="alert alert-info">
-              <i class="bi bi-info-circle me-2"></i> Please complete your
-              profile information before joining the queue.
+          <div class="modal-body bg-light">
+            <div class="alert alert-warning border-start border-4 border-warning shadow-sm">
+              <div class="d-flex">
+                <i class="bi bi-exclamation-circle-fill me-3 fs-4"></i>
+                <div>
+                  <strong>Action Required:</strong> Please fill out all fields marked with <span class="text-danger">*</span> to access services.
+                </div>
+              </div>
             </div>
 
             <form id="profileUpdateForm">
-              <h6 class="fw-bold mb-3 mt-0">Personal Information</h6>
-              <div class="row mb-3">
-                <div class="col-md-4">
-                  <label for="lastName" class="form-label required-field"
-                    >Last Name</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="lastName"
-                    required
-                  />
+              
+              <!-- 1. PERSONAL INFORMATION -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold text-primary">
+                  <i class="bi bi-person me-2"></i> Personal Information
                 </div>
-                <div class="col-md-4">
-                  <label for="firstName" class="form-label required-field"
-                    >First Name</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="firstName"
-                    required
-                  />
-                </div>
-                <div class="col-md-4">
-                  <label for="middleName" class="form-label">Middle Name</label>
-                  <input type="text" class="form-control" id="middleName" />
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="gender" class="form-label required-field"
-                    >Gender</label
-                  >
-                  <select class="form-select" id="gender" required>
-                    <option value="" selected disabled>Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label for="phone" class="form-label required-field"
-                    >Phone Number</label
-                  >
-                  <input
-                    type="tel"
-                    class="form-control"
-                    id="phone"
-                    required
-                    placeholder="+639..."
-                  />
-                  <div class="form-text">
-                    Use the same number from registration.
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Last Name <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="lastName" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">First Name <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="firstName" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Middle Name <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="middleName" required placeholder="Type N/A if none">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Gender <span class="text-danger">*</span></label>
+                      <select class="form-select" id="gender" required>
+                        <option value="" selected disabled>Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Date of Birth <span class="text-danger">*</span></label>
+                      <input type="date" class="form-control" id="dob" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-bold">Nationality <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="nationality" value="Filipino" required>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-bold">Place of Birth <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="pob" placeholder="City/Municipality, Province" required>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <h6 class="fw-bold mb-3 mt-4">Academic Information</h6>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="studentId" class="form-label required-field"
-                    >Student ID</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="studentId"
-                    required
-                    placeholder="000-0000-000000"
-                    maxlength="15"
-                  />
-                  <div class="form-text">
-                    Format: 000-0000-000000
-                  </div>
+              <!-- 2. ACADEMIC INFORMATION -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold text-primary">
+                  <i class="bi bi-mortarboard me-2"></i> Academic Information
                 </div>
-                <div class="col-md-6">
-                  <label for="program" class="form-label required-field"
-                    >Program</label
-                  >
-                  <select class="form-select" id="program" required>
-                    <option value="" selected disabled>Select Program</option>
-                    <option value="BS Computer Science">
-                      BS Computer Science
-                    </option>
-                    <option value="BS Information Technology">
-                      BS Information Technology
-                    </option>
-                    <option value="BS Business Administration">
-                      BS Business Administration
-                    </option>
-                    <option value="BS Education">BS Education</option>
-                    <option value="BS Engineering">BS Engineering</option>
-                    <option value="BS Nursing">BS Nursing</option>
-                    <option value="BS Accountancy">BS Accountancy</option>
-                    <option value="BS Psychology">BS Psychology</option>
-                  </select>
-                </div>
-              </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Student ID <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="studentId" placeholder="000-0000-000000" required>
+                    </div>
+                                        <div class="col-md-12">
+                      <label class="form-label small fw-bold">Program / Course <span class="text-danger">*</span></label>
+                      <select class="form-select" id="program" required disabled onchange="populateMajors()">
+                        <option value="" selected disabled>Select College first...</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">College / Department <span class="text-danger">*</span></label>
+                      <select class="form-select" id="campus" required onchange="populatePrograms()">
+                        <option value="" selected disabled>Select College...</option>
+                        <!-- Populated by JS -->
+                      </select>
+                    </div>
 
-              <div class="row mb-3 align-items-center">
-                <div class="col-md-6">
-                  <label for="schoolIdPicture" class="form-label required-field"
-                    >School ID Picture (Front)</label
-                  >
-                  <input
-                    type="file"
-                    class="form-control"
-                    id="schoolIdPicture"
-                    accept="image/*"
-                  />
-                  <div class="form-text">
-                    Upload a clear picture of your School ID.
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">ID Preview:</label>
-                  <div
-                    id="schoolIdPicturePreview"
-                    class="mt-1"
-                    style="
-                      width: 150px;
-                      height: 95px;
-                      overflow: hidden;
-                      border: 1px solid #ddd;
-                      border-radius: 5px;
-                      display: none;
-                      background: #f8f9fa;
-                    "
-                  >
-                    <img
-                      src=""
-                      alt="ID Preview"
-                      style="
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                      "
-                    />
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Major <span class="text-danger">*</span></label>
+                      <select class="form-select" id="major" required disabled>
+                        <option value="N/A" selected>N/A</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Year Level <span class="text-danger">*</span></label>
+                      <select class="form-select" id="yearLevel" required>
+                        <option value="" selected disabled>Select...</option>
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                        <option value="5th Year">5th Year</option>
+                        <option value="Graduate">Graduate</option>
+                        <option value="Alumni">Alumni</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">School Year <span class="text-danger">*</span></label>
+                      <select class="form-select" id="schoolYear" required>
+                        <option value="2023-2024">2023-2024</option>
+                        <option value="2024-2025" selected>2024-2025</option>
+                        <option value="2025-2026">2025-2026</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Year Graduated (If Alumni)</label>
+                      <input type="number" class="form-control" id="yearGraduated" placeholder="YYYY (Optional)">
+                    </div>
+
+                    <!-- ID Picture Upload -->
+                    <div class="col-md-8">
+                      <label class="form-label small fw-bold">School ID / Valid ID (Photo) <span class="text-danger">*</span></label>
+                      <input type="file" class="form-control" id="schoolIdPicture" accept="image/*">
+                      <div class="form-text small">Please upload a clear photo of your ID.</div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                       <div id="schoolIdPicturePreview" class="border rounded p-1 d-none" style="height: 100px; width: 100%; overflow: hidden;">
+                          <img src="" style="width: 100%; height: 100%; object-fit: contain;">
+                       </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="major" class="form-label"
-                    >Major (if applicable)</label
-                  >
-                  <input type="text" class="form-control" id="major" />
+              <!-- 3. ADDRESS & EDUCATION -->
+              <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold text-primary">
+                  <i class="bi bi-geo-alt me-2"></i> Address & Background
                 </div>
-                <div class="col-md-6">
-                  <label for="yearLevel" class="form-label required-field"
-                    >Year Level</label
-                  >
-                  <select class="form-select" id="yearLevel" required>
-                    <option value="" selected disabled>
-                      Select Year Level
-                    </option>
-                    <option value="1st Year">1st Year</option>
-                    <option value="2nd Year">2nd Year</option>
-                    <option value="3rd Year">3rd Year</option>
-                    <option value="4th Year">4th Year</option>
-                    <option value="5th Year">5th Year</option>
-                    <option value="Graduate">Graduate</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="schoolYear" class="form-label required-field"
-                    >School Year</label
-                  >
-                  <select class="form-select" id="schoolYear" required>
-                    <option value="" selected disabled>
-                      Select School Year
-                    </option>
-                    <option value="2023-2024">2023-2024</option>
-                    <option value="2024-2025">2024-2025</option>
-                    <option value="2025-2026">2025-2026</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label for="yearGraduated" class="form-label"
-                    >Year Graduated (if applicable)</label
-                  >
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="yearGraduated"
-                    min="2000"
-                    max="2030"
-                    placeholder="e.g. 2024"
-                  />
-                </div>
-              </div>
-
-              <h6 class="fw-bold mb-3 mt-4">Additional Information</h6>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="campus" class="form-label required-field"
-                    >Campus/College</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="campus"
-                    placeholder="e.g. Main Campus, CAS, etc."
-                    required
-                  />
-                </div>
-                <div class="col-md-6">
-                  <label for="dob" class="form-label required-field"
-                    >Date of Birth</label
-                  >
-                  <input type="date" class="form-control" id="dob" required />
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="pob" class="form-label required-field"
-                    >Place of Birth</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="pob"
-                    placeholder="City, Province"
-                    required
-                  />
-                </div>
-                <div class="col-md-6">
-                  <label for="nationality" class="form-label required-field"
-                    >Nationality</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="nationality"
-                    placeholder="e.g. Filipino"
-                    required
-                  />
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-12">
-                  <label for="home_address" class="form-label required-field"
-                    >Home Address</label
-                  >
-                  <textarea
-                    class="form-control"
-                    id="home_address"
-                    rows="2"
-                    placeholder="Street, Barangay, City/Municipality, Province"
-                    required
-                  ></textarea>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-12">
-                  <label for="previous_school" class="form-label"
-                    >Previous School Attended (if applicable)</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="previous_school"
-                    placeholder="Name of last school attended"
-                  />
-                </div>
-              </div>
-              <h6 class="fw-bold mb-3 mt-4">Education Background</h6>
-          <div class="row mb-3">
-            <div class="col-12">
-              <label for="primary_school" class="form-label required-field"
-                >Primary (Elementary)</label
-              >
-              <input
-                type="text"
-                class="form-control"
-                id="primary_school"
-                placeholder="Name of your primary/elementary school"
-                required
-              />
-            </div>
-          </div>
-          <div class="row mb-3">
-            <div class="col-12">
-              <label for="secondary_school" class="form-label required-field"
-                >Secondary (High School)</label
-              >
-              <input
-                type="text"
-                class="form-control"
-                id="secondary_school"
-                placeholder="Name of your secondary/high school"
-                required
-              />
-            </div>
-          </div>
-
-              <h6 class="fw-bold mb-3 mt-4">Contact Information</h6>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="email" class="form-label required-field"
-                    >Email Address</label
-                  >
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="email"
-                    required
-                    placeholder="example@gmail.com"
-                  />
-                  <div class="form-text">
-                    Use the same email from registration.
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label small fw-bold">Permanent Home Address <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="home_address" required placeholder="House No., Street, Brgy, Town/City, Province">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Primary School (Elementary) <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="primary_school" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small fw-bold">Secondary School (High School) <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="secondary_school" required>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-bold">Last School Attended (If Transferee)</label>
+                      <input type="text" class="form-control" id="previous_school" placeholder="Optional">
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <!-- 4. CONTACT -->
+              <div class="card border-0 shadow-sm mb-3">
+                 <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" readonly style="background-color: #e9ecef;">
+                        </div>
+                        <div class="col-md-6">
+                             <label class="form-label small fw-bold">Phone Number <span class="text-danger">*</span></label>
+                             <input type="tel" class="form-control" id="phone" required>
+                        </div>
+                    </div>
+                 </div>
+              </div>
+
             </form>
           </div>
           <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Cancel
-            </button>
-            <button type="button" class="btn btn-primary" id="saveProfileBtn">
-              Save Profile
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary px-4 fw-bold" id="saveProfileBtn">
+              <i class="bi bi-save me-1"></i> Save Profile
             </button>
           </div>
         </div>
@@ -785,76 +931,92 @@
       class="d-flex flex-grow-1 justify-content-center align-items-center margin-auto"
     >
       <div class="card-custom">
-        <nav class="navbar navbar-expand-lg navbar-dark">
-          <div class="container-fluid navbar-container">
-            <!-- Brand (Logo + Text) -->
-            <a class="navbar-brand" href="#">
-              <img
-                src="../assets/img/updated_RegistrarLogo.jpg"
-                alt="Admission, Registration, and Scholarship & Grants Office"
-                class="me-2"
-              />
-              <span class="info text-white fw-bold">
-                RSU REQS
-                <!-- <p id="welcome" style="font-size: 15px;">Welcome!</p>
-                            <p id="info" style="font-size: 15px;"></p> -->
-              </span>
-            </a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm fixed-top">
+          <div class="container-fluid px-3">
+            
+            <div class="d-flex align-items-center me-auto">
+              <button
+                class="navbar-toggler d-lg-none me-3"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarNav"
+                aria-controls="navbarNav"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+              >
+                <span class="navbar-toggler-icon"></span>
+              </button>
 
-            <!-- Modern Mobile Toggler -->
-            <button
-              class="navbar-toggler"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#navbarNav"
-              aria-controls="navbarNav"
-              aria-expanded="false"
-              aria-label="Toggle navigation"
+              <a class="navbar-brand d-flex align-items-center me-0" href="#">
+                <img
+                  src="../assets/img/updated_RegistrarLogo.jpg"
+                  alt="Logo"
+                  width="35"
+                  height="35"
+                  class="me-2 rounded-circle border border-white"
+                />
+                <span class="fw-bold text-white small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.85rem;">
+                  Registrar Services Portal
+                </span>
+              </a>
+            </div>
+
+            <button 
+              class="btn btn-link text-white d-lg-none ms-3 p-0 text-decoration-none" 
+              onclick="logout(this)"
+              title="Logout"
+              style="font-size: 1.5rem;"
             >
-              <span class="navbar-toggler-icon"></span>
+              <i class="bi bi-box-arrow-right"></i>
             </button>
 
-            <!-- Navbar Links -->
-            <div
-              class="collapse navbar-collapse justify-content-end"
-              id="navbarNav"
-            >
-              <ul class="navbar-nav">
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+              <ul class="navbar-nav mt-3 mt-lg-0 align-items-lg-center">
                 <li class="nav-item">
-                  <a class="nav-link active" href="#" data-target="home">
-                    <i class="bi bi-house-door me-1"></i> Home
+                  <a class="nav-link active" href="#" data-target="home" onclick="showSection('home')">
+                    <i class="bi bi-house-door me-2"></i> Home
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="#" data-target="services">
-                    <i class="bi bi-list-check me-1"></i> Services
+                  <a class="nav-link" href="#" data-target="services" onclick="showSection('services')">
+                    <i class="bi bi-list-check me-2"></i> Services
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="#" data-target="docs">
-                    <i class="bi bi-file-earmark-pdf me-1"></i> Docs
+                  <a class="nav-link" href="#" data-target="docs" onclick="showSection('docs')">
+                    <i class="bi bi-file-earmark-pdf me-2"></i> Docs
                   </a>
                 </li>
-                <li class="nav-item" style="position: relative;">
-              <a class="nav-link" href="#" data-target="updates">
-                <i class="bi bi-megaphone me-1"></i> Updates
-              </a>
-              <span class="notification-dot" id="updates-notification-dot" style="display: none;"></span>
-            </li>
+                <li class="nav-item position-relative">
+                  <a class="nav-link" href="#" data-target="updates" onclick="showSection('updates')">
+                    <i class="bi bi-megaphone me-2"></i> Updates
+                  </a>
+                  <span class="notification-dot" id="updates-notification-dot" style="display: none; top: 12px; right: auto; margin-left: 5px; position: relative;"></span>
+                </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="#" data-target="profile">
-                    <i class="bi bi-person-circle me-1"></i> Profile
+                  <a class="nav-link" href="#" data-target="profile" onclick="showSection('profile')">
+                    <i class="bi bi-person-circle me-2"></i> Profile
                   </a>
                 </li>
+
+                <li class="nav-item ms-lg-3 d-none d-lg-block">
+                  <button 
+                    class="btn btn-outline-light btn-sm w-100 d-flex align-items-center justify-content-center" 
+                    onclick="logout(this)"
+                    style="border-radius: 20px; padding: 5px 15px;"
+                  >
+                    <i class="bi bi-box-arrow-right me-2"></i> Logout
+                  </button>
+                </li>
+
               </ul>
             </div>
           </div>
         </nav>
-
+        <div style="padding-top: 70px;"></div>
         <!-- Home Section -->
-        <div id="home" class="section active">
+<div id="home" class="section active">
           <div class="home-content">
-            <!-- Queue Number Display (shown when user has active queue) -->
             <div
               id="queueNumberDisplay"
               class="queue-number-display"
@@ -865,16 +1027,11 @@
               <p id="queueStatusMessage">Waiting for approval</p>
             </div>
 
-            <div class="text-center">
-              <h2>Registrar's Office Services</h2>
-              <p>
-                Select the service you need from the Registrar's Office. <br />
-                Queue numbers will be assigned automatically based on current
-                demand.
-              </p>
+            <div class="text-center mb-5">
+              <h2 class="fw-bold">Welcome to Registrar's Office</h2>
+              <p class="text-muted">What would you like to do today?</p>
             </div>
 
-            <!-- Profile Warning (shown when profile incomplete) -->
             <div
               id="profileWarning"
               class="profile-warning"
@@ -888,8 +1045,7 @@
                 <div>
                   <h5 class="mb-1">Complete Your Profile</h5>
                   <p class="mb-0">
-                    You need to complete your profile before submitting service
-                    requests.
+                    You need to complete your profile before submitting service requests.
                   </p>
                 </div>
                 <button
@@ -900,195 +1056,58 @@
                 </button>
               </div>
             </div>
-            <div class="text-center mt-4" id="homeActionBtnContainer">
-              <button
-                id="viewServicesBtn"
-                class="btn btn-primary btn-lg"
-                style="display: none"
-                onclick="showSection('services')"
-              >
-                <i class="bi bi-list-check me-1"></i> View Services
-              </button>
-            </div>
-            <div class="container mt-5">
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="card mb-4">
-                    <div
-                      class="card-header bg-dark text-white fw-bold text-center"
-                    >
-                      REMINDERS
+
+            <div class="container">
+              <div class="row g-4 justify-content-center">
+                
+                <div class="col-md-4">
+                  <div class="dashboard-menu-card card-profile" onclick="showSection('profile')">
+                    <div class="card-icon-wrapper">
+                      <i class="bi bi-person-vcard-fill"></i>
                     </div>
-                    <div class="card-body">
-                      <ol class="list-unstyled">
-                        <li>
-                          <p>
-                            Under existing laws, only the record owner may
-                            request or claim documents related to their school
-                            records. To verify the identity of the requester or
-                            claimant, one (1) valid ID must be presented when
-                            requesting or claiming documents. Acceptable IDs
-                            include: Student ID, PhilHealth ID, National ID,
-                            Police Clearance, Driver's License, Passport, UMID,
-                            PRC ID, Voter's ID, Postal ID, TIN ID, or any valid
-                            ID with the requester's or claimant's photo and
-                            signature.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            RSU reserves the right to deny or cancel any
-                            document request due to incomplete requirements or
-                            pending accountabilities.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            When claiming documents, present the claim stub
-                            along with the Official Receipt and a valid ID. If a
-                            representative will pick up the documents, they must
-                            present an authorization letter and a valid ID.
-                          </p>
-                        </li>
-                      </ol>
-                    </div>
+                    <h3 class="menu-title">My Profile</h3>
+                    <p class="menu-desc">
+                      View and update your personal information, school ID, and contact details.
+                    </p>
+                    <button class="btn btn-outline-primary btn-menu-action">
+                      Manage Profile
+                    </button>
                   </div>
                 </div>
 
-                <div class="col-md-6">
-                  <div class="card mb-4">
-                    <div
-                      class="card-header bg-dark text-white fw-bold text-center"
-                    >
-                      PROCEDURES
+                <div class="col-md-4">
+                  <div class="dashboard-menu-card card-services" onclick="showSection('services')">
+                    <div class="card-icon-wrapper">
+                      <i class="bi bi-collection-fill"></i>
                     </div>
-                    <div class="card-body">
-                      <ol class="list-unstyled">
-                        <li>
-                          <p>
-                            <strong>Obtain and Fill-Out the Form:</strong>
-                            Secure this form from the Registration Unit. Ensure
-                            all required fields are properly filled out.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            <strong>Make payment:</strong> Visit the Cashier's
-                            Office to pay the fee for the documents.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            <strong>Return to the Registration Unit:</strong>
-                            After payment, submit this form to the Registration
-                            Unit for student record verification and other
-                            instructions.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            <strong>Submit Lacking Documents:</strong> If
-                            notified of any lacking documents, provide them to
-                            complete your request.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            <strong>Collect the Claim Stub:</strong> Once
-                            verification is complete, receive the claim stub
-                            from the Registration Unit.
-                          </p>
-                        </li>
-                        <li>
-                          <p>
-                            <strong>Pick Up Your Documents:</strong> On the date
-                            indicated on your claim stub, return to the
-                            Registration Unit to collect your documents.
-                          </p>
-                        </li>
-                      </ol>
-                    </div>
+                    <h3 class="menu-title">Services</h3>
+                    <p class="menu-desc">
+                      Request documents like Transcript of Records, Grades, Diplomas, and more.
+                    </p>
+                    <button class="btn btn-outline-success btn-menu-action">
+                      Request Now
+                    </button>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="container mt-5 mb-5">
-            <div class="card">
-              <div
-                class="card-header bg-dark text-white fw-bold text-center py-3"
-              >
-                PROCESSING FEE AND TIME
-              </div>
-              <div class="card-body p-0">
-                <div class="table-responsive">
-                  <table class="table table-bordered table-striped mb-0">
-                    <thead>
-                      <tr>
-                        <th scope="col">Document Type</th>
-                        <th scope="col">Document Fee</th>
-                        <th scope="col">Processing Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>CAV Graduate/ Undergraduate</td>
-                        <td>25.00</td>
-                        <td>5 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Certificate of Upper 25</td>
-                        <td>25.00</td>
-                        <td>14 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Certificate of Graduation</td>
-                        <td>25.00</td>
-                        <td>5 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Certificate of Honors/ PD907</td>
-                        <td>25.00</td>
-                        <td>5 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Certificate of Grades</td>
-                        <td>25.00</td>
-                        <td>7 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Certificate of Enrolment</td>
-                        <td>25.00</td>
-                        <td>5 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Certificate of Units Earned</td>
-                        <td>25.00</td>
-                        <td>5 working days</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          Certificate of English as a Medium of Instruction
-                        </td>
-                        <td>25.00</td>
-                        <td>5 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Transcript of Records (Duplicate Copy)</td>
-                        <td>40.00/page</td>
-                        <td>7 working days</td>
-                      </tr>
-                      <tr>
-                        <td>Diploma (Duplicate Copy)</td>
-                        <td>100.00</td>
-                        <td>1 month</td>
-                      </tr>
-                    </tbody>
-                  </table>
+
+                <div class="col-md-4">
+                  <div class="dashboard-menu-card card-about" data-bs-toggle="modal" data-bs-target="#aboutModal">
+                    <div class="card-icon-wrapper">
+                      <i class="bi bi-info-circle-fill"></i>
+                    </div>
+                    <h3 class="menu-title">About & Fees</h3>
+                    <p class="menu-desc">
+                      Read important reminders, procedures, processing times, and document fees.
+                    </p>
+                    <button class="btn btn-outline-warning text-dark btn-menu-action">
+                      View Details
+                    </button>
+                  </div>
                 </div>
+
               </div>
             </div>
-          </div>
+            </div>
         </div>
 
 <div id="services" class="section">
@@ -1145,10 +1164,10 @@
       </div>
     </div>
 
-    <div class="hero-buttons mt-5 text-center">
-      <button class="btn btn-custom btn-lg px-5" onclick="viewSelectedServices()">
+    <div class="view-selected-container hero-buttons mt-5 text-center">
+      <button class="btn btn-primary btn-lg px-5" onclick="viewSelectedServices()">
         <i class="bi bi-basket me-2"></i> View Selected Items
-        <span id="selectedCountBadge" class="badge bg-danger ms-2" style="display: none">0</span>
+        <span id="selectedCountBadge" class="badge bg-danger ms-2 rounded-pill" style="display: none">0</span>
       </button>
     </div>
   </div>
@@ -1325,7 +1344,7 @@
 
                 <div class="row mb-3">
                   <div class="col-md-6">
-                    <strong>Course:</strong>
+                    <strong>Collage/Department:</strong>
                     <span id="profileCourse">Not set</span>
                   </div>
                   <div class="col-md-6">
@@ -1419,9 +1438,9 @@
                 >
                   <i class="bi bi-pencil me-1"></i> Update Profile
                 </button>
-                <button class="btn btn-outline-danger">
-                  <i class="bi bi-box-arrow-right me-1"></i> Logout
-                </button>
+                <!-- <button class="btn btn-outline-danger" onclick="logout(this)">
+  <i class="bi bi-box-arrow-right me-1"></i> Logout
+</button> -->
               </div>
             </div>
 
@@ -1436,6 +1455,145 @@
                 <!-- Form content would go here -->
               </form>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-info-square-fill me-2 text-warning"></i> 
+              Registrar Information Center
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body bg-light p-4">
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card mb-4 border-0 shadow-sm h-100">
+                  <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="fw-bold text-danger"><i class="bi bi-bell-fill me-2"></i>REMINDERS</h5>
+                  </div>
+                  <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                      <li class="list-group-item border-0 ps-0">
+                        <i class="bi bi-dot text-danger"></i> 
+                        Only the record owner may request/claim documents. Valid ID required.
+                      </li>
+                      <li class="list-group-item border-0 ps-0">
+                        <i class="bi bi-dot text-danger"></i> 
+                        Accepted IDs: Student ID, National ID, Driver's License, Passport, etc.
+                      </li>
+                      <li class="list-group-item border-0 ps-0">
+                        <i class="bi bi-dot text-danger"></i> 
+                        Representatives must present an Authorization Letter and Valid ID.
+                      </li>
+                      <li class="list-group-item border-0 ps-0">
+                        <i class="bi bi-dot text-danger"></i> 
+                        Requests may be denied due to pending accountabilities.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card mb-4 border-0 shadow-sm h-100">
+                  <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="fw-bold text-primary"><i class="bi bi-list-ol me-2"></i>PROCEDURES</h5>
+                  </div>
+                  <div class="card-body">
+                    <ol class="ps-3">
+                      <li class="mb-2"><strong>Fill-Out Form:</strong> Secure & fill out form from Registration Unit (or via this App).</li>
+                      <li class="mb-2"><strong>Payment:</strong> Pay fees at the Cashier's Office.</li>
+                      <li class="mb-2"><strong>Verification:</strong> Submit form/receipt to Registration Unit.</li>
+                      <li class="mb-2"><strong>Lacking Docs:</strong> Submit any missing requirements if notified.</li>
+                      <li class="mb-2"><strong>Claim Stub:</strong> Receive stub (or digital notification).</li>
+                      <li><strong>Claiming:</strong> Pick up documents on the scheduled date.</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mt-2">
+              <div class="card-header bg-success text-white fw-bold py-3">
+                <i class="bi bi-cash-coin me-2"></i> PROCESSING FEE AND TIME
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-striped table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col" class="ps-4">Document Type</th>
+                        <th scope="col">Fee</th>
+                        <th scope="col">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="ps-4">CAV Graduate/ Undergraduate</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>5 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of Upper 25</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>14 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of Graduation</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>5 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of Honors/ PD907</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>5 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of Grades</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>7 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of Enrolment</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>5 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of Units Earned</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>5 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Certificate of English (Medium of Instruction)</td>
+                        <td class="fw-bold text-success">₱25.00</td>
+                        <td>5 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Transcript of Records (Duplicate)</td>
+                        <td class="fw-bold text-success">₱40.00 <span class="text-muted small fw-normal">/page</span></td>
+                        <td>7 working days</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4">Diploma (Duplicate Copy)</td>
+                        <td class="fw-bold text-success">₱100.00</td>
+                        <td>1 month</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
@@ -1470,16 +1628,36 @@
         inactivityTimer = setTimeout(logout, 1800000); // 30 minutes
       }
 
-      function logout() {
-        // Remove user data from localStorage
-        localStorage.removeItem("fullname");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userPhone");
-        localStorage.removeItem("userEmail");
-        localStorage.removeItem("loginTime");
+      // ===== LOGOUT FUNCTION (With Confirmation & Loading) =====
+      function logout(btnElement = null) {
+        // 1. Ask for Confirmation
+        if (!confirm("Are you sure you want to log out?")) {
+            return;
+        }
 
-        // Redirect to login page
-        window.location.href = "/login";
+        // 2. Set Loading State (Visual Feedback)
+        showToast("Logging out...", "info");
+        
+        // If the click came from a button, make it spin
+        if (btnElement && typeof setButtonLoading === "function") {
+            // Using your existing helper function
+            // We don't need to reset it because the page will navigate away
+            btnElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Logging out...';
+            btnElement.disabled = true;
+        }
+
+        // 3. Process Logout (with small delay for UX)
+        setTimeout(() => {
+            // Clear all user data
+            localStorage.removeItem("fullname");
+            localStorage.removeItem("userId");
+            localStorage.removeItem("userPhone");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("loginTime");
+            
+            // Redirect
+            window.location.href = "/login";
+        }, 1000);
       }
 
       function setupActivityListeners() {
@@ -1512,6 +1690,27 @@
         }
         return true;
       }
+
+      // ===== BUTTON LOADING HELPER =====
+      function setButtonLoading(button, isLoading, originalText = "") {
+        if (!button) return;
+
+        if (isLoading) {
+          // Check if already loading to prevent double execution
+          if (button.dataset.loading === "true") return false; 
+          
+          button.dataset.loading = "true";
+          button.dataset.originalText = button.innerHTML;
+          button.disabled = true;
+          button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing...';
+          return true; // Success: Loading started
+        } else {
+          button.dataset.loading = "false";
+          button.disabled = false;
+          button.innerHTML = originalText || button.dataset.originalText || "Submit";
+          return true;
+        }
+      }
       // --- NEW: Function to check for unread notifications ---
 async function checkNotificationStatus() {
   const userId = localStorage.getItem("userId");
@@ -1533,7 +1732,106 @@ async function checkNotificationStatus() {
     console.error("Error checking notifications:", error);
   }
 }
+// 🟢 UNIVERSITY DATA STRUCTURE 🟢
+      const universityData = {
+        "College of Arts and Sciences": {
+          "Bachelor of Arts in English Language Studies": ["N/A"],
+          "Bachelor of Arts in Political Science": ["N/A"],
+          "Bachelor in Public Administration": ["N/A"],
+          "Bachelor of Science in Biology": ["Microbiology"]
+        },
+        "College of Business and Accountancy": {
+          "Bachelor of Science in Accountancy": ["N/A"],
+          "Bachelor of Science in Business Administration": ["Financial Management", "Operations Management"]
+        },
+        "College of Computing, Multimedia Arts and Digital Innovation": {
+          "Bachelor of Science in Information Technology": ["N/A"],
+          "Bachelor of Arts in Multimedia Arts": ["N/A"]
+        },
+        "College of Education": {
+          "Bachelor of Secondary Education": ["Filipino", "Mathematics", "English", "Science", "Values Education"],
+          "Bachelor of Elementary Education": ["N/A"],
+          "Bachelor of Physical Education": ["N/A"],
+          "Bachelor of Technology and Livelihood Education": ["N/A"]
+        },
+        "College of Engineering and Technology": {
+          "Bachelor of Science in Mechanical Engineering": ["N/A"],
+          "Bachelor of Science in Electrical Engineering": ["N/A"],
+          "Bachelor of Science in Civil Engineering": ["N/A"],
+          "Bachelor of Science in Agriculture and Biosystems Engineering": ["N/A"]
+        }
+      };
 
+      // 1. Populate Colleges on Load (Called automatically later)
+      function initDropdowns() {
+          const campusSelect = document.getElementById("campus");
+          campusSelect.innerHTML = '<option value="" selected disabled>Select College...</option>';
+          
+          for (const college in universityData) {
+              const option = document.createElement("option");
+              option.value = college;
+              option.textContent = college;
+              campusSelect.appendChild(option);
+          }
+      }
+
+      // 2. Populate Programs based on College Selection
+      function populatePrograms() {
+          const college = document.getElementById("campus").value;
+          const programSelect = document.getElementById("program");
+          const majorSelect = document.getElementById("major");
+
+          // Reset
+          programSelect.innerHTML = '<option value="" selected disabled>Select Program...</option>';
+          programSelect.disabled = true;
+          majorSelect.innerHTML = '<option value="N/A" selected>N/A</option>';
+          majorSelect.disabled = true;
+
+          if (college && universityData[college]) {
+              const programs = universityData[college];
+              for (const prog in programs) {
+                  const option = document.createElement("option");
+                  option.value = prog;
+                  option.textContent = prog;
+                  programSelect.appendChild(option);
+              }
+              programSelect.disabled = false;
+          }
+      }
+
+      // 3. Populate Majors based on Program Selection
+      function populateMajors() {
+          const college = document.getElementById("campus").value;
+          const program = document.getElementById("program").value;
+          const majorSelect = document.getElementById("major");
+
+          // Reset
+          majorSelect.innerHTML = '';
+          
+          if (college && program && universityData[college][program]) {
+              const majors = universityData[college][program];
+              
+              majors.forEach(major => {
+                  const option = document.createElement("option");
+                  option.value = major;
+                  option.textContent = major;
+                  majorSelect.appendChild(option);
+              });
+              
+              // If only "N/A" exists, disable it for better UX
+              if (majors.length === 1 && majors[0] === "N/A") {
+                  majorSelect.disabled = true; 
+              } else {
+                  majorSelect.disabled = false;
+              }
+          } else {
+               majorSelect.innerHTML = '<option value="N/A" selected>N/A</option>';
+               majorSelect.disabled = true;
+          }
+      }
+
+      // Call this once on page load
+      document.addEventListener("DOMContentLoaded", initDropdowns);
       // Show profile update modal function
       // Show profile update modal function
       function showProfileUpdateModal() {
@@ -1828,6 +2126,7 @@ function showSection(targetId) {
   }
 }
 
+
       // ===== API FUNCTIONS =====
 
       // Check if profile is complete
@@ -1929,23 +2228,20 @@ async function loadUserProfile() {
           }
 
           const data = await response.json();
+          // ... inside loadUserProfile, after fetching data ...
           const user = data.user;
 
-          // ... (Keep all your existing form population code: lastName, firstName, etc.) ...
+          // Standard Fields
           document.getElementById("lastName").value = user.last_name || "";
           document.getElementById("firstName").value = user.first_name || "";
           document.getElementById("middleName").value = user.middle_name || "";
           document.getElementById("gender").value = user.gender || "";
           document.getElementById("phone").value = user.phone || "";
           document.getElementById("studentId").value = user.student_id || "";
-          document.getElementById("program").value = user.course || ""; 
-          document.getElementById("major").value = user.major || "";
           document.getElementById("yearLevel").value = user.year_level || "";
           document.getElementById("schoolYear").value = user.school_year || "";
           document.getElementById("yearGraduated").value = user.year_graduated || "";
           document.getElementById("email").value = user.email || "";
-          
-          document.getElementById("campus").value = user.campus || "";
           document.getElementById("dob").value = user.dob ? user.dob.split("T")[0] : "";
           document.getElementById("pob").value = user.pob || "";
           document.getElementById("nationality").value = user.nationality || "";
@@ -1954,21 +2250,27 @@ async function loadUserProfile() {
           document.getElementById("primary_school").value = user.primary_school || "";
           document.getElementById("secondary_school").value = user.secondary_school || "";
 
-          // Image Preview Logic (Keep existing)
-          const previewContainer = document.getElementById("schoolIdPicturePreview");
-          const imgElement = previewContainer.querySelector("img");
-          if (user.school_id_picture) {
-            if (user.school_id_picture.startsWith("data:")) {
-               imgElement.src = user.school_id_picture;
-            } else {
-               imgElement.src = `/uploads/${user.school_id_picture}`;
-            }
-            previewContainer.style.display = "block";
-            userHasExistingId = true; 
-          } else {
-            previewContainer.style.display = "none";
-            userHasExistingId = false; 
+          // 🟢 DYNAMIC DROPDOWN LOGIC FOR EDITING 🟢
+          if (user.campus) {
+              const campusSelect = document.getElementById("campus");
+              campusSelect.value = user.campus;
+              
+              // Trigger Program Load
+              populatePrograms(); 
+              
+              if (user.course) { // Note: database column 'course' holds the 'Program'
+                  const programSelect = document.getElementById("program");
+                  programSelect.value = user.course;
+                  
+                  // Trigger Major Load
+                  populateMajors();
+                  
+                  if (user.major) {
+                      document.getElementById("major").value = user.major;
+                  }
+              }
           }
+          // 🟢 END DYNAMIC LOGIC 🟢
 
           updateProfileDisplay(user);
 
@@ -2159,12 +2461,18 @@ const servicesData = {
       // Update selected services count
       function updateSelectedCount() {
         const badge = document.getElementById("selectedCountBadge");
+        const container = document.querySelector(".view-selected-container"); // Get the container
+
         if (badge) {
           if (selectedServicesList.length > 0) {
             badge.textContent = selectedServicesList.length;
             badge.style.display = "inline";
+            // Show container
+            if(container) container.style.display = "block";
           } else {
             badge.style.display = "none";
+            // Hide container on mobile if empty (Optional, remove line below if you always want it visible)
+            if(container && window.innerWidth < 768) container.style.display = "none";
           }
         }
       }
@@ -2328,122 +2636,110 @@ function refreshModal() {
 }
 
 // Enhanced Join Queue Function with Loading & Toast
-document
-  .getElementById("joinQueueBtn")
-  .addEventListener("click", async function () {
-    if (!checkAuthentication() || !checkSession()) return;
+      document.getElementById("joinQueueBtn").addEventListener("click", async function () {
+          const joinBtn = this; // Capture button reference
 
-    if (selectedServicesList.length === 0) {
-      showToast("Please select at least one service.", "error");
-      return;
-    }
+          // 🟢 1. START LOADING & PREVENT DOUBLE CLICK 🟢
+          // If already loading, stop immediately
+          if (!setButtonLoading(joinBtn, true)) return;
 
-    if (!userProfileComplete) {
-      showToast("Please complete your profile first.", "error");
-      return;
-    }
+          // --- CHECKS ---
+          if (!checkAuthentication() || !checkSession()) {
+             setButtonLoading(joinBtn, false, "Join Queue Now");
+             return;
+          }
 
-    // --- Validation Logic ---
-    const fileInputs = document.querySelectorAll(
-      ".requirement-upload[required]"
-    );
-    let allFilesUploaded = true;
+          if (selectedServicesList.length === 0) {
+            showToast("Please select at least one service.", "error");
+            setButtonLoading(joinBtn, false, "Join Queue Now");
+            return;
+          }
 
-    fileInputs.forEach((input) => {
-      if (input.files.length === 0) {
-        allFilesUploaded = false;
-        input.classList.add("is-invalid");
-      } else {
-        input.classList.remove("is-invalid");
-      }
-    });
+          if (!userProfileComplete) {
+            showToast("Please complete your profile first.", "error");
+            setButtonLoading(joinBtn, false, "Join Queue Now");
+            return;
+          }
 
-    if (!allFilesUploaded) {
-      showToast("Please upload all required files.", "error");
-      return;
-    }
+          // --- VALIDATION ---
+          const fileInputs = document.querySelectorAll(".requirement-upload[required]");
+          let allFilesUploaded = true;
 
-    // --- 1. SHOW LOADING TOAST ---
-    showToast("Submitting your request...", "info");
+          fileInputs.forEach((input) => {
+            if (input.files.length === 0) {
+              allFilesUploaded = false;
+              input.classList.add("is-invalid");
+            } else {
+              input.classList.remove("is-invalid");
+            }
+          });
 
-    // --- 2. BUTTON LOADING STATE ---
-    const joinBtn = document.getElementById("joinQueueBtn");
-    const originalText = joinBtn.innerHTML;
-    joinBtn.innerHTML =
-      '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
-    joinBtn.disabled = true;
+          if (!allFilesUploaded) {
+            showToast("Please upload all required files.", "error");
+            setButtonLoading(joinBtn, false, "Join Queue Now");
+            return;
+          }
 
-// --- 1. PREPARE DATA (Fixed) ---
-    const userId = localStorage.getItem("userId");
-    const formData = new FormData();
-    formData.append("userId", userId);
+          // --- PREPARE DATA ---
+          showToast("Submitting your request...", "info");
 
-    // 🟢 FIX: Use "services" instead of "services[]"
-    selectedServicesList.forEach((service) => {
-      formData.append("services", service.trim());
-    });
+          const userId = localStorage.getItem("userId");
+          const formData = new FormData();
+          formData.append("userId", userId);
 
-    fileInputs.forEach((input) => {
-      if (input.files.length > 0) {
-        formData.append("requirements_files", input.files[0]);
-        // 🟢 FIX: Use "requirement_names" instead of "requirement_names[]"
-        formData.append("requirement_names", input.dataset.requirementName);
-      }
-    });
+          selectedServicesList.forEach((service) => {
+            formData.append("services", service.trim());
+          });
 
-    try {
-      // Submit to backend
-      const response = await fetch("/api/queue/submit-request", {
-        method: "POST",
-        body: formData,
+          fileInputs.forEach((input) => {
+            if (input.files.length > 0) {
+              formData.append("requirements_files", input.files[0]);
+              formData.append("requirement_names", input.dataset.requirementName);
+            }
+          });
+
+          try {
+            // --- SUBMIT ---
+            const response = await fetch("/api/queue/submit-request", {
+              method: "POST",
+              body: formData,
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              // Trigger Admin Update
+              const studentName = localStorage.getItem("fullname") || "Student";
+              localStorage.setItem('latestRequest', JSON.stringify({ 
+                  name: studentName, 
+                  timestamp: Date.now() 
+              }));
+
+              // Close Modal
+              const selectedModal = bootstrap.Modal.getInstance(document.getElementById("selectedModal"));
+              if (selectedModal) selectedModal.hide();
+
+              showToast("Request submitted successfully!", "success");
+              showSubmissionSuccessModal(result.requestId);
+
+              // Reset UI
+              selectedServicesList = [];
+              resetServiceSelectionUI();
+              updateSelectedCount();
+              await loadUserRequests();
+            } else {
+              showToast("Error: " + result.message, "error");
+            }
+          } catch (error) {
+            console.error("Error submitting service request:", error);
+            showToast("Network error. Please try again.", "error");
+          } finally {
+            // 🟢 2. STOP LOADING (Always runs, success or fail) 🟢
+            setTimeout(() => {
+              setButtonLoading(joinBtn, false, "Join Queue Now");
+            }, 500); // Small delay for visual smoothness
+          }
       });
-
-      const result = await response.json();
-
-if (result.success) {
-        // --- PASTE THIS NEW CODE HERE ---
-        // 1. Get the current user's name from LocalStorage
-        const studentName = localStorage.getItem("fullname") || "Student";
-        
-        // 2. Trigger the Admin Dashboard event
-        localStorage.setItem('latestRequest', JSON.stringify({ 
-            name: studentName, 
-            timestamp: Date.now() 
-        }));
-        // --- END OF NEW CODE ---
-
-        // Close modal
-        const selectedModal = bootstrap.Modal.getInstance(
-          document.getElementById("selectedModal")
-        );
-        if (selectedModal) selectedModal.hide();
-
-        // --- 3. SHOW SUCCESS TOAST ---
-        showToast("Request submitted successfully!", "success");
-
-        // Show detailed success modal (your existing one)
-        showSubmissionSuccessModal(result.requestId);
-
-        // Reset UI
-        selectedServicesList = [];
-        resetServiceSelectionUI();
-        updateSelectedCount();
-        await loadUserRequests();
-      }else {
-        showToast("Error: " + result.message, "error");
-      }
-    } catch (error) {
-      console.error("Error submitting service request:", error);
-      showToast("Network error. Please try again.", "error");
-    } finally {
-      // --- 4. RESET BUTTON STATE ---
-      // Slight delay to prevent flickering if the response is instant
-      setTimeout(() => {
-        joinBtn.innerHTML = "Join Queue Now";
-        joinBtn.disabled = false;
-      }, 500);
-    }
-  });
       // Enhanced service request submission
       async function submitServiceRequest() {
         const userId = localStorage.getItem("userId");
@@ -2621,190 +2917,158 @@ if (result.success) {
         }
       }
 
-// Enhanced request display with Progress Bar, Claimed Status & Feedback
-      function displayUserRequests(requests) {
-        const container = document.getElementById("requestsContainer");
-        if (!container) return;
+// 🟢 FINAL COMPLETE VERSION (Restores Feedback Button) 🟢
+function displayUserRequests(requests) {
+  const container = document.getElementById("requestsContainer");
+  if (!container) return;
 
-        if (requests.length === 0) {
-          container.innerHTML = `
-            <div class="update-card text-center">
-                <i class="bi bi-inbox display-4 text-muted mb-3"></i>
-                <h4>No Service Requests</h4>
-                <p>You haven't submitted any service requests yet.</p>
+  if (requests.length === 0) {
+    container.innerHTML = `
+      <div class="update-card text-center">
+          <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+          <h4>No Service Requests</h4>
+          <p>You haven't submitted any service requests yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = requests.map((request) => {
+      // 1. Get basic status info
+      const statusInfo = getStatusInfo(request.status, request.queue_status);
+      
+      // 2. Prepare Staff & Window Info (Use "Registrar Staff" if missing)
+      const staffName = request.processed_by || request.declined_by || "Registrar Staff";
+      const windowName = request.window_number ? `Window ${request.window_number}` : "Registrar Office";
+      
+      // 3. Queue Badge
+      const queueInfo = request.queue_number
+        ? `<div class="mt-2">
+             <strong>Queue Number:</strong> 
+             <span class="badge queue-status-badge bg-secondary">${request.queue_number}</span>
+           </div>`
+        : "";
+
+      // 4. PROCESSING BAR
+      let progressHtml = "";
+      if (request.queue_status === 'processing' && request.progress) {
+          const p = request.progress; 
+          const percent = p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
+          progressHtml = `
+            <div class="mt-3 p-3 bg-light rounded border">
+              <div class="d-flex justify-content-between small fw-bold mb-1">
+                <span class="text-primary">Processing Status</span>
+                <span>${percent}%</span>
+              </div>
+              <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-primary" style="width: ${percent}%"></div>
+              </div>
+              <div class="text-muted small mt-1 text-end">
+                 Processed by: ${staffName} (${windowName})
+              </div>
             </div>
-        `;
-          return;
-        }
+          `;
+      }
 
-        container.innerHTML = requests
-          .map((request) => {
-            const statusInfo = getStatusInfo(
-              request.status,
-              request.queue_status
-            );
-            
-            const queueInfo = request.queue_number
-              ? `<div class="mt-2">
-                <strong>Queue Number:</strong> 
-                <span class="badge queue-status-badge bg-secondary">${request.queue_number}</span>
-            </div>`
-              : "";
-
-            // --- PROGRESS BAR LOGIC ---
-            let progressHtml = '';
-            if (request.queue_status === 'processing' && request.progress) {
-                const p = request.progress; 
-                const percent = p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
-                
-                progressHtml = `
-                  <div class="mt-3 p-3 bg-light rounded border">
-                    <div class="d-flex justify-content-between align-items-end mb-1">
-                      <label class="small fw-bold text-primary">Processing Status</label>
-                      <span class="small fw-bold text-dark">${percent}%</span>
-                    </div>
-                    <div class="progress" style="height: 8px;">
-                      <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-                           role="progressbar" 
-                           style="width: ${percent}%">
-                      </div>
-                    </div>
-                    <div class="d-flex justify-content-between mt-1">
-                       <small class="text-muted" style="font-size: 11px;">Day ${p.current} of ${p.total}</small>
-                       <small class="text-muted" style="font-size: 11px;">${p.total - p.current} days remaining</small>
-                    </div>
-                  </div>
-                `;
-            }
-
-            // --- FEEDBACK BUTTON LOGIC ---
-            let feedbackBtn = '';
-            
-            // Allow feedback if status is 'completed' (Ready) OR 'claimed' (Picked Up)
-            const isFinished = (request.queue_status === "completed" || request.queue_status === "claimed" || request.live_queue_status === "completed");
-            
-            if (isFinished && !request.feedback_id) {
-                feedbackBtn = `
-                  <div class="mt-3 text-end border-top pt-2">
-                    <span class="small text-muted me-2">How was our service?</span>
-                    <button class="btn btn-sm btn-outline-warning" onclick="openFeedbackModal('${request.request_id}')">
-                      <i class="bi bi-star"></i> Rate Service
-                    </button>
-                  </div>
-                `;
-            } else if (request.feedback_id) {
-                 feedbackBtn = `
-                  <div class="mt-3 text-end border-top pt-2">
-                    <span class="badge bg-light text-success border"><i class="bi bi-check-circle-fill me-1"></i> Rated</span>
-                  </div>
-                `;
-            }
-
-            // --- COMPLETED / PICKED UP CARD LOGIC (UPDATED) ---
-            let completedHtml = '';
-            
-            if (isFinished) {
-                // Determine if it is specifically 'claimed' (picked up) or just 'completed' (ready)
-                const isClaimed = request.queue_status === 'claimed';
-                
-                // 1. Customize Text & Icons
-                const statusTitle = isClaimed ? "Documents Picked Up" : "Ready to Claim!";
-                const statusIcon = isClaimed ? "bi-check2-all" : "bi-patch-check-fill";
-                const statusDesc = isClaimed 
-                    ? "Transaction complete. You have received your documents." 
-                    : "Your document processing is complete. Please proceed to the window.";
-
-                // 2. Customize Colors (Blue for Ready, Grey/Green for Claimed)
-                const alertClass = isClaimed ? "alert-secondary" : "alert-primary";
-                const iconColor = isClaimed ? "text-secondary" : "text-success";
-                const titleColor = isClaimed ? "text-dark" : "text-success";
-
-                completedHtml = `
-                    <div class="alert ${alertClass} mt-3 border-0 shadow-sm">
-                        <div class="d-flex">
-                            <div class="me-3">
-                                <i class="bi ${statusIcon} fs-1 ${iconColor}"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="fw-bold mb-1 ${titleColor}">${statusTitle}</h5>
-                                <p class="mb-2 small">${statusDesc}</p>
-                                
-                                <div class="bg-white p-2 rounded border border-light-subtle mb-2">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <small class="text-muted">Processed at:</small>
-                                        <strong class="text-primary">${request.window_number || "Registrar Office"}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <small class="text-muted">Staff:</small>
-                                        <strong>${request.completed_by || "Staff"}</strong>
-                                    </div>
-                                </div>
-
-                                ${
-                                  request.final_claim_details
-                                    ? `<div class="mt-2 pt-2 border-top border-secondary border-opacity-25">
-                                        <small class="text-uppercase fw-bold opacity-75" style="font-size: 10px;">Message / Instructions:</small><br>
-                                        <div class="fst-italic mt-1 small">"${request.final_claim_details}"</div>
-                                       </div>`
-                                    : ""
-                                }
-                            </div>
+      // 5. RED DECLINE BOX (Reason + Staff)
+      let declineHtml = "";
+      if (request.status === "declined" || request.status === "cancelled") {
+          declineHtml = `
+            <div class="alert alert-danger mt-3 border-0 shadow-sm">
+                <div class="d-flex">
+                    <div class="me-3"><i class="bi bi-x-circle-fill fs-1 text-danger"></i></div>
+                    <div>
+                        <h5 class="fw-bold text-danger mb-1">Request Declined</h5>
+                        <p class="mb-0 small"><strong>Reason:</strong> ${request.decline_reason || "Requirements not met."}</p>
+                        
+                        <div class="mt-2 pt-2 border-top border-danger border-opacity-25 small text-danger text-opacity-75">
+                            <i class="bi bi-person-badge-fill me-1"></i> Reviewed by: <strong>${staffName}</strong> 
+                            <span class="ms-1 opacity-75">(${windowName})</span>
                         </div>
                     </div>
-                `;
-            }
-
-            return `
-            <div class="update-card">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h4 class="mb-0">${request.services.join(", ")}</h4>
-                    <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
                 </div>
-                <p class="text-muted">
-                    <strong>Request ID:</strong> ${request.request_id} | 
-                    <strong>Submitted:</strong> ${new Date(request.submitted_at).toLocaleString()}
-                </p>
-                
-                ${queueInfo}
-                ${progressHtml}
-
-                ${
-                  request.status === "approved" && request.approved_by && !isFinished
-                    ? `
-                    <div class="alert alert-success mt-2">
-                        <i class="bi bi-check-circle-fill me-1"></i>
-                        <strong>Approved</strong> by ${request.approved_by} 
-                        <span class="text-muted small ms-1">(${new Date(request.approved_at).toLocaleDateString()})</span>
-                        ${request.approve_notes ? `<br><small class="text-muted">${request.approve_notes}</small>` : ""}
-                    </div>
-                `
-                    : ""
-                }
-                
-                ${
-                  request.status === "declined" && request.declined_by
-                    ? `
-                    <div class="alert alert-danger mt-2">
-                        <strong>✗ Declined</strong> by ${request.declined_by} on ${new Date(request.declined_at).toLocaleString()}
-                        <br><strong>Reason:</strong> ${request.decline_reason}
-                    </div>
-                    <div class="mt-2 text-end">
-                        <button class="btn btn-warning btn-sm" onclick="resubmitRequest('${request.request_id}')">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Resubmit This Request
-                        </button>
-                    </div>
-                    `
-                    : ""
-                }
-                
-                ${completedHtml}
-                
-                ${feedbackBtn}
             </div>
-        `;
-          })
-          .join("");
+            <div class="text-end mt-2">
+                <button class="btn btn-warning btn-sm" onclick="resubmitRequest('${request.request_id}')">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Resubmit Request
+                </button>
+            </div>
+          `;
       }
+
+      // 6. GREEN COMPLETED/CLAIMED BOX
+      let completedHtml = "";
+      // Check if finished (completed OR claimed)
+      const isFinished = (request.queue_status === "completed" || request.queue_status === "claimed");
+      
+      if (isFinished) {
+          const isClaimed = request.queue_status === 'claimed';
+          const alertClass = isClaimed ? "alert-secondary" : "alert-success"; 
+          const icon = isClaimed ? "bi-check2-all" : "bi-check-circle-fill";
+          const title = isClaimed ? "Documents Picked Up" : "Ready to Claim!";
+          const desc = isClaimed ? "Transaction complete. Documents received." : "Your document is ready. Please proceed to the window.";
+          
+          completedHtml = `
+              <div class="alert ${alertClass} mt-3 border-0 shadow-sm">
+                  <div class="d-flex">
+                      <div class="me-3"><i class="bi ${icon} fs-1"></i></div>
+                      <div>
+                          <h5 class="fw-bold mb-1">${title}</h5>
+                          <p class="mb-0 small">${desc}</p>
+                          <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 small">
+                              <i class="bi bi-person-badge-fill me-1"></i> Processed by: <strong>${request.completed_by || staffName}</strong>
+                              <span class="ms-1">(${windowName})</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          `;
+      }
+
+      // 🟢 7. FEEDBACK BUTTON (RESTORED HERE) 🟢
+      let feedbackBtn = '';
+      if (isFinished) {
+          if (!request.feedback_id) {
+              // Not rated yet -> Show Button
+              feedbackBtn = `
+                <div class="mt-3 text-end border-top pt-2">
+                  <span class="small text-muted me-2">How was our service?</span>
+                  <button class="btn btn-sm btn-outline-warning" onclick="openFeedbackModal('${request.request_id}')">
+                    <i class="bi bi-star"></i> Rate Service
+                  </button>
+                </div>
+              `;
+          } else {
+              // Already rated -> Show Badge
+              feedbackBtn = `
+                <div class="mt-3 text-end border-top pt-2">
+                  <span class="badge bg-light text-success border"><i class="bi bi-check-circle-fill me-1"></i> Rated</span>
+                </div>
+              `;
+          }
+      }
+
+      // 8. ASSEMBLE CARD (Now includes feedbackBtn)
+      return `
+      <div class="update-card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+              <h4 class="mb-0">${request.services.join(", ")}</h4>
+              <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
+          </div>
+          <p class="text-muted small mb-0">
+              <strong>ID:</strong> ${request.request_id} | 
+              <strong>Date:</strong> ${new Date(request.submitted_at).toLocaleDateString()}
+          </p>
+          
+          ${queueInfo}
+          ${progressHtml}
+          ${declineHtml} 
+          ${completedHtml}
+          ${feedbackBtn}  </div>
+      `;
+    })
+    .join("");
+}
 
 // --- NEW FUNCTION: Filters requests on the "Updates" page ---
 function filterRequests() {
@@ -2982,6 +3246,7 @@ function filterRequests() {
             return { class: "status-approved", text: "✅ Approved" };
           case "declined":
             return { class: "status-declined", text: "❌ Declined" };
+            
           default:
             return { class: "status-pending", text: "⏳ Pending" };
         }
@@ -3219,16 +3484,21 @@ function filterRequests() {
           displaySuccessModal();
         }
       }
-// REPLACES the "saveProfileBtn" click listener to handle FormData AND auto-refresh
+// REPLACES the "saveProfileBtn" click listener to handle Loading State
       document
         .getElementById("saveProfileBtn")
         .addEventListener("click", async function () {
+          const saveBtn = this; // Capture the button
+
+          // 🟢 1. START LOADING (Prevent double clicks) 🟢
+          if (!setButtonLoading(saveBtn, true)) return;
 
           const formData = new FormData();
           const userId = localStorage.getItem("userId");
 
           if (!userId) {
               showAlert("User session not found. Please log in again.", "error");
+              setButtonLoading(saveBtn, false, "Save Profile"); // Reset
               return;
           }
 
@@ -3241,14 +3511,9 @@ function filterRequests() {
           formData.append("gender", document.getElementById("gender").value);
 
           // Academic Info
-          // ---
-          // === THIS IS THE FIX: Get studentId value directly ===
-          // ---
           const studentIdValue = document.getElementById("studentId").value;
           formData.append("studentId", studentIdValue);
-          // ---
-          // === END OF FIX ===
-          // ---
+          
           formData.append("course", document.getElementById("program").value); 
           formData.append("major", document.getElementById("major").value);
           formData.append("yearLevel", document.getElementById("yearLevel").value);
@@ -3261,7 +3526,7 @@ function filterRequests() {
           formData.append("email", document.getElementById("email").value);
           formData.append("phone", document.getElementById("phone").value);
 
-          // --- ADDED NEW FIELDS ---
+          // Additional Fields
           formData.append("campus", document.getElementById("campus").value);
           formData.append("dob", document.getElementById("dob").value);
           formData.append("pob", document.getElementById("pob").value);
@@ -3270,7 +3535,6 @@ function filterRequests() {
           formData.append("previous_school", document.getElementById("previous_school").value);
           formData.append("primary_school", document.getElementById("primary_school").value);
           formData.append("secondary_school", document.getElementById("secondary_school").value);
-          // --- END ADDED FIELDS ---
 
           // Get the file
           const schoolIdFile = document.getElementById("schoolIdPicture").files[0];
@@ -3278,26 +3542,18 @@ function filterRequests() {
             formData.append("school_id_picture", schoolIdFile);
           }
 
-          // --- ⬇️ MODIFIED VALIDATION BLOCK ⬇️ ---
-
-          // --- 1. ADD NEW, SPECIFIC VALIDATION FOR STUDENT ID ---
+          // --- VALIDATION ---
           const studentIdRegex = /^\d{3}-\d{4}-\d{6}$/;
           if (!studentIdRegex.test(studentIdValue)) {
-            showAlert(
-              "Invalid Student ID format. Please use 000-0000-000000.",
-              "warning"
-            );
-            return; // Stop execution
+            showAlert("Invalid Student ID format. Please use 000-0000-000000.", "warning");
+            setButtonLoading(saveBtn, false, "Save Profile"); // Reset
+            return; 
           }
-          // --- END OF NEW VALIDATION ---
 
-
-          // --- 2. REMOVE studentId check from the main 'if' block ---
           if (
             !formData.get("lastName") ||
             !formData.get("firstName") ||
             !formData.get("gender") ||
-            // !formData.get("studentId") || <-- THIS LINE IS REMOVED
             !formData.get("course") || 
             !formData.get("yearLevel") ||
             !formData.get("schoolYear") ||
@@ -3309,13 +3565,12 @@ function filterRequests() {
             !formData.get("home_address") ||
             !formData.get("primary_school") ||
             !formData.get("secondary_school") ||
-            (!schoolIdFile && !userHasExistingId) // Validated ID check
+            (!schoolIdFile && !userHasExistingId)
           ) {
-            // Updated error message
-            showAlert( "Please fill in all required fields. The School ID Picture is required for first-time profile completion.", "warning" );
+            showAlert("Please fill in all required fields.", "warning");
+            setButtonLoading(saveBtn, false, "Save Profile"); // Reset
             return;
           }
-          // --- ⬆️ END OF MODIFICATION ⬆️ ---
 
           try {
             const response = await fetch("/api/user/update-profile", {
@@ -3334,10 +3589,6 @@ function filterRequests() {
 
               showAlert("Profile updated successfully!", "success");
 
-              // await loadUserProfile(); // <-- THIS LINE WAS THE BUG. IT IS NOW REMOVED.
-
-              // This function will now fetch the new data, update the
-              // profile page, and hide the warning banners.
               await checkUserProfileStatus(); 
 
               if (window.profileSaveCallback) {
@@ -3351,6 +3602,11 @@ function filterRequests() {
           } catch (error) {
             console.error("Error saving profile:", error);
             showAlert("Error updating profile. Please try again.", "error");
+          } finally {
+            // 🟢 2. STOP LOADING (Always runs) 🟢
+            setTimeout(() => {
+                setButtonLoading(saveBtn, false, "Save Profile");
+            }, 500);
           }
         });
 
@@ -3575,7 +3831,142 @@ function addServiceFromModal(serviceName, noteInputId) {
     }, 300);
   }
 }
+// 🟢 UPDATED: Force 'Declined' to match 'Completed' Layout
+// 🟢 UPDATED: Force Footer Display (Fixes Missing Info)
+async function loadRecentUpdates() {
+    const container = document.getElementById('recentUpdatesList');
+    if (!container) return;
 
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch('/api/student/updates', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+
+        if (result.success && result.updates && result.updates.length > 0) {
+            container.innerHTML = result.updates.map(update => {
+                let statusIcon = '';
+                let statusTitle = '';
+                let statusDesc = '';
+
+                // 🟢 FIX: Use Fallbacks so it NEVER hides
+                const staffName = update.processed_by || "Registrar Staff";
+                const windowName = update.window_number ? `Window ${update.window_number}` : "Registrar Office";
+
+                // 🟢 THE FOOTER HTML (Always Visible for certain statuses)
+                const footerHtml = `
+                    <div class="mt-2 small text-muted border-top pt-2 d-flex align-items-center">
+                         <i class="bi bi-person-badge-fill me-2"></i> 
+                         <span class="fw-bold me-2">${staffName}</span> 
+                         <span class="badge bg-light text-dark border">${windowName}</span>
+                    </div>`;
+
+                switch (update.status) {
+                    case 'waiting':
+                    case 'pending':
+                         statusIcon = '<div class="update-icon bg-secondary text-white"><i class="bi bi-clock"></i></div>';
+                         statusTitle = 'Request Pending';
+                         statusDesc = 'Your request is waiting for admin review.';
+                         break;
+                    case 'reviewing':
+                         statusIcon = '<div class="update-icon bg-warning text-dark"><i class="bi bi-search"></i></div>';
+                         statusTitle = 'Under Review';
+                         statusDesc = 'The admin is currently reviewing your submitted requirements.';
+                         break;
+                    case 'processing':
+                         statusIcon = '<div class="update-icon bg-primary text-white"><i class="bi bi-gear-fill"></i></div>';
+                         statusTitle = 'Processing';
+                         statusDesc = 'Your request has been approved and is now being processed.';
+                         break;
+                    case 'completed':
+                    case 'claimed':
+                        statusIcon = '<div class="update-icon bg-success text-white"><i class="bi bi-check-circle-fill"></i></div>';
+                        statusTitle = 'Completed';
+                        statusDesc = 'Transaction finished. Document has been claimed.';
+                        break;
+                    case 'cancelled':
+                    case 'declined':
+                        statusIcon = '<div class="update-icon bg-danger text-white"><i class="bi bi-x-circle-fill"></i></div>';
+                        statusTitle = 'Request Declined';
+                        statusDesc = update.decline_reason 
+                            ? `<span class="text-danger fw-bold">Reason:</span> ${update.decline_reason}` 
+                            : 'Your request was cancelled by the admin.';
+                        break;
+                    default:
+                        statusIcon = '<div class="update-icon bg-light text-muted"><i class="bi bi-question-circle"></i></div>';
+                        statusTitle = 'Status Updated';
+                        statusDesc = `Current status: ${update.status}`;
+                }
+
+                const timeString = new Date(update.submitted_at).toLocaleDateString();
+
+                // 🟢 Logic: Show footer for Processed, Completed, OR Declined
+                const showFooter = ['processing', 'completed', 'claimed', 'cancelled', 'declined'].includes(update.status);
+
+                return `
+                <div class="update-item animate__animated animate__fadeIn">
+                    ${statusIcon}
+                    <div class="update-content w-100">
+                        <div class="d-flex justify-content-between">
+                            <h4 class="update-title mb-1">${statusTitle}</h4>
+                            <small class="text-muted" style="font-size: 0.75rem;">${timeString}</small>
+                        </div>
+                        <div class="update-desc mb-1">${statusDesc}</div>
+                        ${showFooter ? footerHtml : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            container.innerHTML = `<div class="text-center py-4 text-muted">No recent updates.</div>`;
+        }
+    } catch (error) {
+        console.error('Error loading updates:', error);
+    }
+}
+// Initialize everything when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("Dashboard initialized"); // Debug log
+
+  // Initialize services manager
+  window.servicesManager = new ServicesManager();
+
+  // Load initial data
+  fetchUserProfile();
+  
+  // 🟢 ADD THIS LINE HERE 🟢
+  loadRecentUpdates(); 
+
+  // Setup navigation
+  setupNavigation();
+
+  // Setup sidebar toggle
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      document.querySelector(".sidebar").classList.toggle("active");
+    });
+  }
+
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener("click", (e) => {
+    const sidebar = document.querySelector(".sidebar");
+    const toggle = document.getElementById("sidebarToggle");
+    if (
+      window.innerWidth <= 768 &&
+      sidebar.classList.contains("active") &&
+      !sidebar.contains(e.target) &&
+      e.target !== toggle
+    ) {
+      sidebar.classList.remove("active");
+    }
+  });
+  
+  // 🟢 OPTIONAL: Auto-refresh updates every 5 seconds
+  setInterval(loadRecentUpdates, 5000);
+});
 
     </script>
   </body>

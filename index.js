@@ -32,7 +32,30 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + "-" + cleanName);
   },
 });
+// 🟢 MISSING MIDDLEWARE: Paste this near the top of index.js 🟢
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
+  if (token == null)
+    return res
+      .status(401)
+      .json({ success: false, message: "No token provided" });
+
+  // Use your JWT_SECRET (it might be 'your_secret_key' or process.env.JWT_SECRET)
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET || "your_secret_key",
+    (err, user) => {
+      if (err)
+        return res
+          .status(403)
+          .json({ success: false, message: "Invalid token" });
+      req.user = user;
+      next();
+    }
+  );
+};
 // ------------------- THIS IS THE FIX -------------------
 // Secure file filter to only allow images
 const imageFileFilter = (req, file, cb) => {
@@ -933,10 +956,10 @@ function addToQueueSystem(requestId) {
               }
 
               const updateRequestQuery = `
-        UPDATE service_requests 
-        SET status = 'approved', queue_status = 'in_queue', queue_number = ? 
-        WHERE request_id = ?
-      `;
+  UPDATE service_requests 
+  SET status = 'waiting', queue_status = 'in_queue', queue_number = ? 
+  WHERE request_id = ?
+`;
 
               db.query(updateRequestQuery, [queueNumber, requestId], (err) => {
                 if (err) console.error("Error updating service request:", err);
@@ -1425,7 +1448,7 @@ app.post(
           services, total_amount, requirements, requirements_paths, status, queue_status, submitted_at, contact_email, contact_phone,
           campus, dob, pob, nationality, home_address, previous_school, 
           primary_school, secondary_school, school_id_picture) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'in_queue', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', 'in_queue', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             requestId,
             userId,
@@ -1730,14 +1753,10 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       progress_data
     FROM queue
     WHERE 
-      -- 1. New requests submitted today
       (DATE(submitted_at) = CURDATE()) 
       OR 
-      -- 2. Active items that should PERSIST until finished/claimed
-      -- (Added 'completed' here so they don't vanish at midnight)
-      (status IN ('waiting', 'processing', 'ready', 'completed')) 
+      (status IN ('waiting', 'reviewing', 'processing', 'ready', 'completed'))
       OR
-      -- 3. Claimed (Picked Up) items show for Today only (History)
       (status = 'claimed' AND DATE(completed_at) = CURDATE())
     ORDER BY 
       CASE 
@@ -1779,7 +1798,10 @@ app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
       waiting: processedQueues.filter(
         (q) => q.status === "waiting" && !q.is_priority
       ),
-      processing: processedQueues.filter((q) => q.status === "processing"),
+      // Add 'reviewing' here so it gets sent to the frontend
+      processing: processedQueues.filter(
+        (q) => q.status === "processing" || q.status === "reviewing"
+      ),
       ready: processedQueues.filter((q) => q.status === "ready"),
       completed: processedQueues.filter((q) => q.status === "completed"), // Keep this strictly 'completed' for the "Ready to Claim" list
       claimed: processedQueues.filter((q) => q.status === "claimed"), // 🟢 New category for stats
@@ -2161,6 +2183,66 @@ app.get("/api/queue/status", (req, res) => {
     res.json({ success: true, data });
   });
 });
+// 🟢 FIXED: FETCH HISTORY (Gets Major from User Profile) 🟢
+// 🟢 FIXED: FETCH HISTORY (With Staff Name) 🟢
+app.get("/api/admin/history", authenticateAdmin, (req, res) => {
+  const query = `
+    SELECT 
+      q.queue_number,
+      q.user_name AS client_name,
+      q.student_id,
+      q.course,
+      q.year_level,
+      sr.campus AS department,
+      u.major, 
+      q.services,
+      q.status,
+      q.completed_at,
+      q.completed_by,  -- 🟢 FETCH WHO FINISHED IT
+      q.processed_by   -- 🟢 FETCH WHO STARTED IT (Fallback)
+    FROM queue q
+    LEFT JOIN service_requests sr ON q.request_id = sr.request_id
+    LEFT JOIN users u ON q.user_id = u.id 
+    WHERE q.status IN ('completed', 'claimed')
+    ORDER BY q.completed_at DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching history:", err);
+      return res.status(500).json({ success: false, message: "DB Error" });
+    }
+
+    const parseServices = (servicesData) => {
+      try {
+        if (typeof servicesData === "string") return JSON.parse(servicesData);
+        if (Array.isArray(servicesData)) return servicesData;
+        return [];
+      } catch (e) {
+        return [String(servicesData)];
+      }
+    };
+
+    const history = results.map((row) => ({
+      ...row,
+      services: parseServices(row.services),
+      completed_at: row.completed_at || new Date(),
+    }));
+
+    res.json({ success: true, history });
+  });
+});
+
+// Helper to safely parse services
+function parseServices(servicesData) {
+  try {
+    if (typeof servicesData === "string") return JSON.parse(servicesData);
+    if (Array.isArray(servicesData)) return servicesData;
+    return [];
+  } catch (e) {
+    return [String(servicesData)];
+  }
+}
 
 // === API: MARK AS DONE (Complete) ===
 app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
@@ -2603,6 +2685,273 @@ app.get("/api/admin/satisfaction-stats", authenticateAdmin, (req, res) => {
       return res.status(500).json({ success: false, message: "DB Error" });
     }
     res.json({ success: true, stats: results });
+  });
+});
+// 🟢 NEW: INSTANT FETCH FOR REVIEW MODAL 🟢
+app.get(
+  "/api/admin/request-details-by-queue/:queueId",
+  authenticateAdmin,
+  (req, res) => {
+    const queueId = req.params.queueId;
+
+    // 1. Get the Link (Request ID) from the Ticket
+    db.query(
+      "SELECT request_id, queue_number, user_name FROM queue WHERE queue_id = ?",
+      [queueId],
+      (err, qRows) => {
+        if (err)
+          return res.status(500).json({ success: false, message: "DB Error" });
+        if (qRows.length === 0)
+          return res.json({ success: false, message: "Ticket not found." });
+
+        const ticket = qRows[0];
+
+        // 2. Fetch the Full Details (Files, etc) from Service Requests
+        db.query(
+          "SELECT * FROM service_requests WHERE request_id = ?",
+          [ticket.request_id],
+          (err, rRows) => {
+            if (err)
+              return res
+                .status(500)
+                .json({ success: false, message: "DB Error" });
+
+            // If data is missing, send basic info so the modal doesn't crash
+            const requestData = rRows.length > 0 ? rRows[0] : {};
+
+            // Safe File Parsing
+            let files = [];
+            try {
+              const rawPaths = requestData.requirements_paths;
+              if (typeof rawPaths === "string") files = JSON.parse(rawPaths);
+              else if (Array.isArray(rawPaths)) files = rawPaths;
+            } catch (e) {
+              files = [];
+            }
+
+            // Send Combined Data
+            res.json({
+              success: true,
+              data: {
+                ...requestData,
+                user_name: ticket.user_name, // Ensure we have a name
+                queue_number: ticket.queue_number,
+                requirements_paths: files, // Send parsed files
+              },
+            });
+          }
+        );
+      }
+    );
+  }
+);
+// === API: LOCK REQUEST (Review Mode - Solves the Conflict) ===
+app.post("/api/admin/lock-request", authenticateAdmin, (req, res) => {
+  const { queueId, windowNumber } = req.body;
+  const adminId = req.admin.adminId;
+  const adminName = req.admin.full_name;
+
+  // 1. Try to update ONLY if status is still 'waiting'
+  // This prevents two people from grabbing it at the same time.
+  const query = `
+    UPDATE queue 
+    SET status = 'reviewing', 
+        window_number = ?, 
+        processed_by = ?, 
+        processed_by_id = ? 
+    WHERE queue_id = ? AND status = 'waiting'
+  `;
+
+  db.query(
+    query,
+    [windowNumber, adminName, adminId, queueId],
+    (err, result) => {
+      if (err) {
+        console.error("Database error locking request:", err);
+        return res.status(500).json({ success: false, message: "DB Error" });
+      }
+
+      // 2. Check if we actually locked it
+      if (result.affectedRows === 0) {
+        return res.json({
+          success: false,
+          message: "This request is already being reviewed by another window.",
+        });
+      }
+
+      // 3. Sync service_requests table for Client View
+      // We need the request_id first
+      db.query(
+        "SELECT request_id FROM queue WHERE queue_id = ?",
+        [queueId],
+        (err, rows) => {
+          if (rows.length > 0) {
+            db.query(
+              "UPDATE service_requests SET status = 'reviewing', queue_status = 'reviewing' WHERE request_id = ?",
+              [rows[0].request_id]
+            );
+          }
+        }
+      );
+
+      res.json({ success: true, message: "Locked for review" });
+    }
+  );
+});
+
+// 🟢 STEP 1 FIX: CRASH-PROOF REVIEW DECISION
+app.post("/api/admin/review-decision", authenticateAdmin, (req, res) => {
+  const { queueId, action, reason } = req.body;
+
+  // 🛡️ SAFETY: Use NULL if ID is missing. Database allows NULL, but hates 0.
+  const adminObj = req.user || req.admin || {};
+  const adminName =
+    adminObj.full_name || adminObj.fullname || "Registrar Staff";
+  const adminId = adminObj.id || null; // <--- This prevents the "Foreign Key" crash
+
+  // 1. Get Request ID
+  db.query(
+    "SELECT request_id FROM queue WHERE queue_id = ?",
+    [queueId],
+    (err, rows) => {
+      if (err || rows.length === 0)
+        return res
+          .status(500)
+          .json({ success: false, message: "Request not found." });
+
+      const requestId = rows[0].request_id;
+
+      if (action === "decline") {
+        // 2. DECLINE: Save Status + Staff Name + Reason
+        const updateQueue =
+          "UPDATE queue SET status = 'cancelled', processed_by = ?, processed_by_id = ?, completed_at = NOW() WHERE queue_id = ?";
+
+        // We use 'declined' here to match your student dashboard logic
+        const updateRequest =
+          "UPDATE service_requests SET status = 'declined', queue_status = 'declined', decline_reason = ? WHERE request_id = ?";
+
+        db.query(updateQueue, [adminName, adminId, queueId], (err) => {
+          if (err) {
+            console.error("Queue Error:", err);
+            return res
+              .status(500)
+              .json({ success: false, message: "DB Error" });
+          }
+
+          // Sync Student Data
+          db.query(updateRequest, [reason, requestId], (err) => {
+            if (err) console.error("Sync Error:", err);
+          });
+
+          res.json({ success: true, message: "Request declined." });
+        });
+      } else if (action === "process") {
+        // 3. ACCEPT Logic
+        const updateQueue =
+          "UPDATE queue SET status = 'processing', processed_by = ?, processed_by_id = ?, started_at = NOW() WHERE queue_id = ?";
+        const updateRequest =
+          "UPDATE service_requests SET status = 'processing', queue_status = 'processing' WHERE request_id = ?";
+
+        db.query(updateQueue, [adminName, adminId, queueId], (err) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ success: false, message: "DB Error" });
+          db.query(updateRequest, [requestId]);
+          res.json({ success: true, message: "Request accepted." });
+        });
+      }
+    }
+  );
+});
+// // 🟢 NEW: LOCK REQUEST (Sets status to 'reviewing' so student sees it)
+// app.post("/api/admin/lock-request", authenticateAdmin, (req, res) => {
+//   const { queueId } = req.body;
+//   const adminName = req.user.fullname; // Assuming token has fullname
+//   const adminId = req.user.id;
+
+//   // 1. Get the Request ID first
+//   db.query(
+//     "SELECT request_id FROM queue WHERE queue_id = ?",
+//     [queueId],
+//     (err, rows) => {
+//       if (err || rows.length === 0) {
+//         return res
+//           .status(500)
+//           .json({ success: false, message: "Queue item not found." });
+//       }
+//       const requestId = rows[0].request_id;
+
+//       // 2. Update Queue Status
+//       const updateQueue =
+//         "UPDATE queue SET status = 'reviewing', processed_by = ?, processed_by_id = ? WHERE queue_id = ? AND status = 'waiting'";
+
+//       db.query(updateQueue, [adminName, adminId, queueId], (err, result) => {
+//         if (err)
+//           return res.status(500).json({ success: false, message: "DB Error" });
+
+//         if (result.affectedRows > 0) {
+//           // 3. Update Service Request Status (Sync for Student Dashboard)
+//           const updateRequest =
+//             "UPDATE service_requests SET status = 'reviewing', queue_status = 'reviewing' WHERE request_id = ?";
+//           db.query(updateRequest, [requestId]);
+
+//           res.json({ success: true, message: "Request locked for review." });
+//         } else {
+//           // If rows affected is 0, someone else might have clicked it
+//           res.json({
+//             success: false,
+//             message: "Request is already being reviewed or processed.",
+//           });
+//         }
+//       });
+//     }
+//   );
+// });
+// 🟢 GET ALL REQUESTS FOR A STUDENT (Main Dashboard Table)
+app.get("/api/student/requests", authenticateToken, (req, res) => {
+  const userId = req.user.id;
+
+  const query = `
+        SELECT * FROM service_requests 
+        WHERE user_id = ? 
+        ORDER BY submitted_at DESC
+    `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error("Error fetching student requests:", err);
+      return res.status(500).json({ success: false, message: "DB Error" });
+    }
+    res.json({ success: true, requests: results });
+  });
+});
+// 🟢 STEP 2 FIX: FETCH UPDATES WITH STAFF & WINDOW INFO
+app.get("/api/student/updates", authenticateToken, (req, res) => {
+  const userId = req.user.id;
+
+  // We LEFT JOIN 'queue' to get processed_by (Staff Name) and window_number
+  const query = `
+        SELECT 
+            sr.request_id, 
+            sr.status, 
+            sr.decline_reason, 
+            sr.submitted_at,
+            q.processed_by, 
+            q.window_number
+        FROM service_requests sr
+        LEFT JOIN queue q ON sr.request_id = q.request_id
+        WHERE sr.user_id = ? 
+        ORDER BY sr.submitted_at DESC 
+        LIMIT 5
+    `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error("Error fetching updates:", err);
+      return res.status(500).json({ success: false });
+    }
+    res.json({ success: true, updates: results });
   });
 });
 
