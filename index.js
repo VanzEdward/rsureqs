@@ -170,6 +170,11 @@ db.getConnection((err, connection) => {
     addColumnIfNotExists("service_requests", "nationality", "VARCHAR(100)");
     addColumnIfNotExists("service_requests", "home_address", "TEXT");
     addColumnIfNotExists("service_requests", "school_id_picture", "LONGTEXT");
+    addColumnIfNotExists(
+      "service_requests",
+      "requirements_confirmed",
+      "TINYINT(1) DEFAULT 0"
+    );
 
     // 3. Keep existing columns
     addColumnIfNotExists("service_requests", "claim_details", "TEXT");
@@ -1382,6 +1387,9 @@ app.post(
       req.body.requirement_names || req.body["requirement_names[]"];
 
     const files = req.files;
+    // 🟢 READ THE VALUE 🟢
+    // Convert string "true" to integer 1, otherwise 0
+    const reqConfirmed = req.body.requirements_confirmed === "true" ? 1 : 0;
 
     // 2. Validation
     if (!userId || !rawServices) {
@@ -1471,6 +1479,7 @@ app.post(
             user.primary_school,
             user.secondary_school,
             user.school_id_picture,
+            reqConfirmed, // 🟢 Added this variable at the end
           ],
           (err, result) => {
             if (err) {

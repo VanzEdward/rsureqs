@@ -17,91 +17,6 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
     />
     <link href="/assets/css/style.css" rel="stylesheet" />
-
-    <style>
-      .hero-buttons .btn-login-register {
-        background: rgb(5, 218, 87);
-        color: #313a3f;
-      }
-
-      .hero-buttons .btn-login-register:hover {
-        background: rgb(5, 218, 87);
-        color: #313a3f;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        transform: translateY(-2px);
-      }
-
-      .admin-badge {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        display: inline-block;
-        margin-bottom: 10px;
-      }
-
-      /* --- Notification Toast Styles (Same as User Login) --- */
-      .notification-toast {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        background: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        display: flex;
-        align-items: center;
-        animation: slideInRight 0.3s ease-out forwards;
-        border-left: 5px solid;
-        font-family: "Poppins", sans-serif;
-      }
-
-      .toast-error {
-        border-left-color: #dc3545; /* Red for error */
-      }
-
-      .toast-success {
-        border-left-color: #198754; /* Green for success */
-      }
-
-      .toast-icon {
-        margin-right: 15px;
-        font-size: 1.2rem;
-      }
-
-      .toast-error .toast-icon {
-        color: #dc3545;
-      }
-      .toast-success .toast-icon {
-        color: #198754;
-      }
-
-      @keyframes slideInRight {
-        from {
-          transform: translateX(120%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
-
-      @keyframes slideOutRight {
-        from {
-          transform: translateX(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateX(120%);
-          opacity: 0;
-        }
-      }
-    </style>
   </head>
 
   <body>
@@ -134,9 +49,10 @@
 
         <div class="content">
           <div class="admin-badge">
-            <i class="bi bi-shield-check me-2"></i>Registrar's Staff Portal
+            <i class="bi bi-shield-check me-2"></i>Registrar's Staff/Admin
+            Portal
           </div>
-          <h3 class="mt-3 mb-2 fw-bold">Staff Login</h3>
+          <h3 class="mt-3 mb-2 fw-bold">Staff/Admin Login</h3>
           <p
             class="mb-3"
             style="
@@ -162,23 +78,24 @@
               />
             </div>
 
-            <div class="mb-3 d-flex justify-content-between align-items-center">
-              <label for="password" class="form-label mb-0">Password</label>
-              <a
-                href="./forgot-password.html"
-                style="font-size: 0.9rem; color: #888; font-weight: 600"
-                >Forgot Password?</a
+            <div class="input-group mb-3">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="form-control"
+                placeholder="Enter your password"
+                required
+                style="border-right: 0"
+              />
+              <span
+                class="input-group-text bg-white text-secondary"
+                style="cursor: pointer; border-left: 0"
+                onclick="togglePasswordVisibility()"
               >
+                <i class="bi bi-eye-slash" id="toggleIcon"></i>
+              </span>
             </div>
-
-            <input
-              type="password"
-              id="password"
-              name="password"
-              class="form-control mb-3"
-              placeholder="Enter your password"
-              required
-            />
 
             <div class="hero-buttons">
               <button
@@ -199,6 +116,21 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+      // Toggle Password Visibility Function
+      function togglePasswordVisibility() {
+        const passwordInput = document.getElementById("password");
+        const toggleIcon = document.getElementById("toggleIcon");
+
+        if (passwordInput.type === "password") {
+          passwordInput.type = "text";
+          toggleIcon.classList.remove("bi-eye-slash");
+          toggleIcon.classList.add("bi-eye");
+        } else {
+          passwordInput.type = "password";
+          toggleIcon.classList.remove("bi-eye");
+          toggleIcon.classList.add("bi-eye-slash");
+        }
+      }
       document.addEventListener("DOMContentLoaded", function () {
         const adminLoginForm = document.getElementById("staffLoginForm");
         const staffLoginBtn = document.getElementById("staffLoginBtn");

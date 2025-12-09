@@ -561,59 +561,71 @@
     </div>
     <!-- Selected Services Modal -->
     <div
-      class="modal fade"
-      id="selectedModal"
-      tabindex="-1"
-      aria-labelledby="selectedModalLabel"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title fw-bold" id="selectedModalLabel">
-              <i class="bi bi-pencil-square me-2 text-primary"></i> Selected
-              Services
-            </h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
+  class="modal fade"
+  id="selectedModal"
+  tabindex="-1"
+  aria-labelledby="selectedModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="selectedModalLabel">
+          <i class="bi bi-pencil-square me-2 text-primary"></i> Selected
+          Services
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6 class="fw-bold mb-2">Services</h6>
+            <ul
+              id="selectedServicesList"
+              class="list-group list-group-flush"
+            ></ul>
           </div>
 
-          <div class="modal-body">
-            <div class="row">
-              <!-- Left Column: Services -->
-              <div class="col-md-6">
-                <h6 class="fw-bold mb-2">Services</h6>
-                <ul
-                  id="selectedServicesList"
-                  class="list-group list-group-flush"
-                ></ul>
-              </div>
-
-              <!-- Right Column: Requirements -->
-              <div class="col-md-6">
-                <h6 class="fw-bold mb-2">Check List of Requirements</h6>
-                <div id="requirementsList"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer flex-column">
-            <div class="w-100 d-flex justify-content-between">
-              <span class="fw-bold"
-                >Total amount: <span id="totalAmount">₱0.00</span></span
-              >
-            </div>
-            <button id="joinQueueBtn" class="btn btn-success w-100 mt-2">
-              Join Queue Now
-            </button>
+          <div class="col-md-6">
+            <h6 class="fw-bold mb-2">Check List of Requirements</h6>
+            <div id="requirementsList"></div>
           </div>
         </div>
+        
+        <div class="alert alert-info mt-3 small">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Reminder:</strong> Please frequently visit the <u>Updates</u> page to check your request progress.
+        </div>
+
+        <div class="mt-2 p-3 bg-light border rounded d-flex justify-content-center align-items-center">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="confirmRequirementsCheck" onchange="checkAllFilesUploaded()" style="cursor: pointer;">
+                <label class="form-check-label fw-bold small user-select-none" for="confirmRequirementsCheck" style="cursor: pointer;">
+                    I certify that the attached requirements are correct and complete.
+                </label>
+            </div>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-column">
+        <div class="w-100 d-flex justify-content-between">
+          <span class="fw-bold"
+            >Total amount: <span id="totalAmount">₱0.00</span></span
+          >
+        </div>
+        <button id="joinQueueBtn" class="btn btn-success w-100 mt-2" disabled>
+          Send Request Now
+        </button>
       </div>
     </div>
+  </div>
+</div>
 
 <!-- 🟢 OPTIMIZED PROFILE MODAL (Dynamic Dropdowns) 🟢 -->
     <div
@@ -982,11 +994,11 @@
                     <i class="bi bi-list-check me-2"></i> Services
                   </a>
                 </li>
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                   <a class="nav-link" href="#" data-target="docs" onclick="showSection('docs')">
                     <i class="bi bi-file-earmark-pdf me-2"></i> Docs
                   </a>
-                </li>
+                </li> -->
                 <li class="nav-item position-relative">
                   <a class="nav-link" href="#" data-target="updates" onclick="showSection('updates')">
                     <i class="bi bi-megaphone me-2"></i> Updates
@@ -1250,15 +1262,31 @@
               </button>
             </div>
             <div class="mb-3 px-3">
-            <label for="serviceFilter" class="form-label fw-bold">Filter by Service:</label>
-            <select class="form-select" id="serviceFilter" onchange="filterRequests()">
-              <option value="all" selected>All Services</option>
-              <option value="Transcript of Records">Issuance of Transcript of Records</option>
-              <option value="Completion Grade Form">Issuance of Completion Grade Form</option>
-              <option value="Diploma Issuance">Issuance of Diploma</option>
-              <option value="Issuance of Transfer Credentials">Issuance of Transfer Credentials</option>
-            </select>
-          </div>
+              <label for="serviceFilter" class="form-label fw-bold">Filter by Service:</label>
+              <select class="form-select" id="serviceFilter" onchange="filterRequests()">
+                <option value="all" selected>All Services</option>
+                
+                <optgroup label="Academic Records">
+                  <option value="Transcript of Records">Transcript of Records</option>
+                  <option value="Certificate of Grades">Certificate of Grades</option>
+                  <option value="Certificate of Units Earned">Certificate of Units Earned</option>
+                </optgroup>
+
+                <optgroup label="Certifications">
+                  <option value="Certificate of Enrolment">Certificate of Enrolment</option>
+                  <option value="Certificate of Honors">Certificate of Honors</option>
+                  <option value="Certificate of Upper 25">Certificate of Upper 25</option>
+                  <option value="Certificate of English as Medium">Certificate of English as Medium</option>
+                </optgroup>
+
+                <optgroup label="Graduation">
+                  <option value="Certificate of Graduation">Certificate of Graduation</option>
+                  <option value="Diploma (Duplicate Copy)">Diploma (Duplicate Copy)</option>
+                  <option value="CAV (CHED/DFA)">CAV (CHED/DFA)</option>
+                  <option value="Transfer Credentials">Transfer Credentials</option>
+                </optgroup>
+              </select>
+            </div>
 
             <!-- Real-time status indicators -->
             <div class="row mb-4">
@@ -1268,14 +1296,6 @@
                     0
                   </div>
                   <div class="stat-label">Total Requests</div>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="stat-card text-center">
-                  <div class="stat-number text-warning" id="pendingRequests">
-                    0
-                  </div>
-                  <div class="stat-label">Pending</div>
                 </div>
               </div>
               <div class="col-md-3">
@@ -2476,14 +2496,16 @@ const servicesData = {
           }
         }
       }
-      // --- NEW FUNCTION: Checks if all required files are uploaded ---
+// 🟢 UPDATED: Checks Files + Profile + Verification Checkbox 🟢
 function checkAllFilesUploaded() {
   const joinQueueBtn = document.getElementById("joinQueueBtn");
   const requiredUploadInputs = document.querySelectorAll(
     ".requirement-upload[required]"
   );
+  // Get the new checkbox
+  const confirmCheck = document.getElementById("confirmRequirementsCheck");
 
-  // If no services are selected, or no required inputs, the button should be disabled by default
+  // If no services selected, button disabled
   if (selectedServicesList.length === 0) {
     joinQueueBtn.disabled = true;
     return;
@@ -2496,16 +2518,18 @@ function checkAllFilesUploaded() {
     }
   });
 
-  // Enable button only if all required files are provided AND profile is complete
-  joinQueueBtn.disabled = !allFilesProvided || !userProfileComplete;
+  // 🟢 LOGIC UPDATE: Files OK? AND Profile OK? AND Checkbox Checked?
+  const isCheckboxChecked = confirmCheck ? confirmCheck.checked : false;
 
-  // Optional: Add/remove a class for styling if you want a visual change
+  joinQueueBtn.disabled = !allFilesProvided || !userProfileComplete || !isCheckboxChecked;
+
+  // Styling update
   if (joinQueueBtn.disabled) {
     joinQueueBtn.classList.remove("btn-success");
-    joinQueueBtn.classList.add("btn-secondary"); // Gray out
+    joinQueueBtn.classList.add("btn-secondary");
   } else {
     joinQueueBtn.classList.remove("btn-secondary");
-    joinQueueBtn.classList.add("btn-success"); // Green
+    joinQueueBtn.classList.add("btn-success");
   }
 }
 // --- END NEW FUNCTION ---
@@ -2686,6 +2710,10 @@ function refreshModal() {
           const userId = localStorage.getItem("userId");
           const formData = new FormData();
           formData.append("userId", userId);
+
+          const confirmCheck = document.getElementById("confirmRequirementsCheck");
+          const isConfirmed = confirmCheck ? confirmCheck.checked : false;
+          formData.append("requirements_confirmed", isConfirmed);
 
           selectedServicesList.forEach((service) => {
             formData.append("services", service.trim());
@@ -3227,64 +3255,79 @@ function filterRequests() {
       }
 
       // Enhanced status information function
-      function getStatusInfo(status, queueStatus) {
-        // If queue is completed, show completed status regardless of approval status
-        if (queueStatus === "completed") {
-          return { class: "status-completed", text: "✅ Completed" };
-        }
+      // 🟢 FIXED: Handles 'claimed' status correctly 🟢
+function getStatusInfo(status, queueStatus) {
+  // If picked up, show as Completed
+  if (queueStatus === "claimed") {
+    return { class: "status-completed", text: "✅ Picked Up" };
+  }
 
-        // If queue is processing, show processing status
-        if (queueStatus === "processing") {
-          return { class: "status-processing", text: "⚙️ Processing" };
-        }
+  // If queue is completed (Ready to Claim)
+  if (queueStatus === "completed") {
+    return { class: "status-completed", text: "✅ Ready to Claim" };
+  }
 
-        // Otherwise, show the regular approval status
-        switch (status) {
-          case "pending":
-            return { class: "status-pending", text: "⏳ Pending Approval" };
-          case "approved":
-            return { class: "status-approved", text: "✅ Approved" };
-          case "declined":
-            return { class: "status-declined", text: "❌ Declined" };
-            
-          default:
-            return { class: "status-pending", text: "⏳ Pending" };
-        }
-      }
+  // If queue is processing
+  if (queueStatus === "processing") {
+    return { class: "status-processing", text: "⚙️ Processing" };
+  }
 
-      // Update request statistics
-      function updateRequestStats(requests) {
-        // --- Calculations ---
-        const total = requests.length;
-        const pending = requests.filter((r) => r.status === "pending").length;
-        const approved = requests.filter(
-          (r) => r.status === "approved" && r.queue_status === "in_queue"
-        ).length;
-        
-        // FIX: This now correctly counts "processing" status
-        const processing = requests.filter(
-          (r) => r.queue_status === "processing"
-        ).length;
+  // Otherwise, show the regular approval status
+  switch (status) {
+    case "pending":
+      return { class: "status-pending", text: "⏳ Pending Approval" };
+    case "approved":
+      return { class: "status-approved", text: "✅ Approved" };
+    case "declined":
+      return { class: "status-declined", text: "❌ Declined" };
+      
+    default:
+      return { class: "status-pending", text: "⏳ Pending" };
+  }
+}
 
-        // --- NEW: Profile Stat Calculations ---
-        const completed = requests.filter(
-          (r) => r.queue_status === "completed"
-        ).length;
+// 🟢 UPDATED: Removed Pending Counter Logic 🟢
+function updateRequestStats(requests) {
+  // --- Calculations ---
+  const total = requests.length;
+  // We still calculate 'pending' for internal logic if needed, but won't display it
+  const pending = requests.filter((r) => r.status === "pending").length;
+  
+  const approved = requests.filter(
+    (r) => r.status === "approved" && r.queue_status === "in_queue"
+  ).length;
+  
+  const processing = requests.filter(
+    (r) => r.queue_status === "processing"
+  ).length;
 
-        // "In Progress" = pending + approved (in_queue) + processing
-        const inProgress = pending + approved + processing; 
+  const completed = requests.filter(
+    (r) => r.queue_status === "completed"
+  ).length;
 
-        // --- Update "Updates" Tab Stats ---
-        document.getElementById("totalRequests").textContent = total;
-        document.getElementById("pendingRequests").textContent = pending;
-        document.getElementById("approvedRequests").textContent = approved;
-        document.getElementById("processingRequests").textContent = processing;
+  const inProgress = pending + approved + processing; 
 
-        // --- NEW: Update "Profile" Tab Stats ---
-        document.getElementById("profileStatTotal").textContent = total;
-        document.getElementById("profileStatCompleted").textContent = completed;
-        document.getElementById("profileStatInProgress").textContent = inProgress;
-      }
+  // --- Update "Updates" Tab Stats ---
+  // Only update elements that still exist
+  if(document.getElementById("totalRequests")) 
+      document.getElementById("totalRequests").textContent = total;
+  
+  // Pending element removed, so line removed
+  
+  if(document.getElementById("approvedRequests")) 
+      document.getElementById("approvedRequests").textContent = approved;
+  
+  if(document.getElementById("processingRequests")) 
+      document.getElementById("processingRequests").textContent = processing;
+
+  // --- Update "Profile" Tab Stats ---
+  if(document.getElementById("profileStatTotal")) 
+      document.getElementById("profileStatTotal").textContent = total;
+  if(document.getElementById("profileStatCompleted")) 
+      document.getElementById("profileStatCompleted").textContent = completed;
+  if(document.getElementById("profileStatInProgress")) 
+      document.getElementById("profileStatInProgress").textContent = inProgress;
+}
 
       // Enhanced function to check for active queue
       function checkForActiveQueue(requests) {
