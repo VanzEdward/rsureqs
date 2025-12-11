@@ -61,121 +61,49 @@
         </div>
       </div>
     </div>
+
     <script>
       document
         .getElementById("forgotForm")
-        .addEventListener("submit", async (e) => {
+        .addEventListener("submit", async function (e) {
           e.preventDefault();
 
-          const email = document.getElementById("email").value;
+          const emailInput = document.getElementById("email").value;
           const formAlert = document.getElementById("formAlert");
           const submitBtn = document.getElementById("submitBtn");
 
           submitBtn.disabled = true;
           submitBtn.innerHTML =
             '<span class="spinner-border spinner-border-sm"></span> Sending...';
+          formAlert.classList.add("d-none");
 
           try {
+            // Send request to your Node.js backend
             const response = await fetch("/api/forgot-password", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email }),
+              body: JSON.stringify({ email: emailInput }),
             });
 
             const result = await response.json();
 
-            // We ALWAYS show a generic success message, even if the email
-            // isn't found, to prevent email enumeration attacks.
-            formAlert.classList.remove("d-none", "alert-danger");
-            formAlert.classList.add("alert-success");
-            formAlert.textContent = result.message;
+            if (result.success) {
+              formAlert.classList.remove("d-none", "alert-danger");
+              formAlert.classList.add("alert-success");
+              formAlert.textContent = "Reset link sent! Check your email.";
+              submitBtn.innerHTML = "Link Sent";
+            } else {
+              throw new Error(result.message);
+            }
           } catch (error) {
+            console.error(error);
             formAlert.classList.remove("d-none", "alert-success");
             formAlert.classList.add("alert-danger");
-            formAlert.textContent =
-              "An error occurred. Please try again later.";
-          } finally {
-            // Re-enable button but leave it showing success
-            if (formAlert.classList.contains("alert-success")) {
-              submitBtn.innerHTML = "Link Sent!";
-            } else {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = "Send Reset Link";
-            }
+            formAlert.textContent = "Failed to send email. Try again.";
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = "Send Reset Link";
           }
         });
-      // ==========================================
-      // WINDOW ASSIGNMENT LOGIC
-      // ==========================================
-
-      function checkWindowAssignment() {
-        // 1. Check if window is already saved in Local Storage
-        const savedWindow = localStorage.getItem("assignedWindow");
-
-        if (!savedWindow) {
-          // 2. If not set, show the modal using Bootstrap API
-          const modalElement = document.getElementById("windowSelectionModal");
-          if (modalElement) {
-            const windowModal = new bootstrap.Modal(modalElement, {
-              backdrop: "static",
-              keyboard: false,
-            });
-            windowModal.show();
-          }
-        } else {
-          // 3. If set, apply it
-          currentWindow = savedWindow;
-          updateUIWithWindow(currentWindow);
-        }
-      }
-
-      // Make global so buttons can access it
-      window.selectWindow = function (windowName) {
-        // 1. Save to storage
-        localStorage.setItem("assignedWindow", windowName);
-        currentWindow = windowName;
-
-        // 2. Hide Modal using Bootstrap API
-        const modalElement = document.getElementById("windowSelectionModal");
-        const modalInstance = bootstrap.Modal.getInstance(modalElement);
-        if (modalInstance) {
-          modalInstance.hide();
-        }
-
-        // 3. Update UI
-        updateUIWithWindow(windowName);
-        showNotification(`You are now working at ${windowName}`);
-      };
-
-      function updateUIWithWindow(windowName) {
-        // Update the sidebar title or add a badge to show current window
-        const sidebarTitle = document.querySelector(".sidebar-title");
-        if (sidebarTitle) {
-          // Prevent duplicate appending
-          if (!sidebarTitle.innerHTML.includes("<small>")) {
-            sidebarTitle.innerHTML += `<br><small style="font-size: 12px; color: #aab0bc;">${windowName}</small>`;
-          }
-        }
-      }
-
-      // Hook into existing initialization
-      document.addEventListener("DOMContentLoaded", function () {
-        checkWindowAssignment();
-      });
-
-      // Update Logout to clear the window selection
-      // We override the handleLogout defined earlier in your script
-      const oldLogout = window.handleLogout;
-      window.handleLogout = function () {
-        if (confirm("Are you sure you want to log out?")) {
-          showNotification("Logging out...");
-          setTimeout(() => {
-            // CLEAR THE WINDOW ASSIGNMENT ON LOGOUT
-            localStorage.removeItem("assignedWindow");
-            adminLogout();
-          }, 1000);
-        }
-      };
     </script>
   </body>
 </html>

@@ -1929,8 +1929,8 @@
                 </optgroup>
 
                 <optgroup label="Certifications">
-                  <option value="Certificate of Enrolment">
-                    Certificate of Enrolment
+                  <option value="Certificate of Enrollment">
+                    Certificate of Enrollment
                   </option>
                   <option value="Certificate of Honors">
                     Certificate of Honors
@@ -2290,7 +2290,7 @@
                         <td>7 working days</td>
                       </tr>
                       <tr>
-                        <td class="ps-4">Certificate of Enrolment</td>
+                        <td class="ps-4">Certificate of Enrollment</td>
                         <td class="fw-bold text-success">₱25.00</td>
                         <td>5 working days</td>
                       </tr>
@@ -3158,7 +3158,7 @@
         },
 
         // --- Group 2: Certifications ---
-        "Certificate of Enrolment": {
+        "Certificate of Enrollment": {
           category: "certifications",
           description: "Proof that the student is currently enrolled.",
           requirements: [
@@ -4304,7 +4304,7 @@ function previewFile(inputId) {
         }
       }
 
-      //  Handles 'claimed' status correctly 
+      //  Handles Request status correctly 
       function getStatusInfo(status, queueStatus) {
         // If picked up, show as Completed
         if (queueStatus === "claimed") {
@@ -5099,7 +5099,7 @@ function updateRequestStats(requests) {
         console.log("Dashboard initialized"); // Debug log
 
         // Initialize services manager
-        window.servicesManager = new ServicesManager();
+        // window.servicesManager = new ServicesManager();
 
         // Load initial data
         fetchUserProfile();

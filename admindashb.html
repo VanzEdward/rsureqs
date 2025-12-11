@@ -1534,10 +1534,10 @@
       // These names MUST match the keys in dashboard.html
       // ---------------------------------------------------
       const SERVICE_DURATIONS = {
-        "Transcript of Records": 7,
+        "Transcript of Records": 7, //7 dayss
         "Certificate of Grades": 7,
         "Certificate of Units Earned": 5,
-        "Certificate of Enrolment": 5,
+        "Certificate of Enrollment": 5,
         "Certificate of Honors": 5, // Fixed name
         "Certificate of Upper 25": 14,
         "Certificate of English as Medium": 5, // Fixed name
@@ -5327,7 +5327,7 @@
           navigator.sendBeacon("/api/admin/beacon-unlock", blob);
         }
       });
-      // 🟢 NEW: History Manager Class (Hierarchical Reporting) 🟢
+      // 🟢 NEW: History Manager Class (Hierarchical Reporting)
       class HistoryManager {
         constructor() {
           this.rawData = [];

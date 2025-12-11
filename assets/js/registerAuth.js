@@ -113,6 +113,13 @@ if (registerForm) {
       alertBox.classList.remove("d-none");
       return;
     }
+    if (!nameRegex.test(middleName)) {
+      alertBox.className = "alert alert-danger";
+      alertBox.textContent =
+        "Middle Name must be 2-50 letters and spaces only.";
+      alertBox.classList.remove("d-none");
+      return;
+    }
     if (!gender) {
       alertBox.className = "alert alert-danger";
       alertBox.textContent = "Please select your Gender.";
