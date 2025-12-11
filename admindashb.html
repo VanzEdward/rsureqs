@@ -129,7 +129,10 @@
         <div class="row mb-4">
           <div class="col-12">
             <h3 class="section-title fs-5 mb-3">Newly Processing Request</h3>
-            <div id="current-serving-container">
+            <div
+              id="current-serving-container"
+              class="current-serving-container"
+            >
               <div class="card shadow-sm">
                 <div class="card-body text-center text-muted py-4">
                   <i class="bi bi-hourglass-split mb-2 fs-3"></i>
@@ -234,6 +237,7 @@
           </div>
         </div>
 
+        <div id="onQueueContainer" class="mb-5"></div>
         <div id="processingRequestsContainer" class="mb-5"></div>
 
         <hr class="border-secondary opacity-10 my-4" />
@@ -1382,6 +1386,34 @@
         </div>
       </div>
     </div>
+    <div
+      class="modal fade"
+      id="imagePreviewModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-transparent shadow-none border-0">
+          <div class="modal-header border-0 p-2">
+            <button
+              type="button"
+              class="btn-close btn-close-white ms-auto"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-0 text-center">
+            <img
+              src=""
+              id="previewImageTarget"
+              class="img-fluid rounded shadow-lg"
+              style="max-height: 85vh; object-fit: contain"
+              alt="Expanded Proof"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- --------------------------------------------- END OF MANUAL TRANSACTION MODAL ------------------------------------------------->
 
     <!-- Add Bootstrap JS Bundle -->
@@ -2279,19 +2311,22 @@
           this.renderDeclinedRequests();
         }
 
+        // 🟢 REPLACED FUNCTION: Splits requests into 'Processing' and 'On Queue' 🟢
         renderProcessingRequests() {
-          const container = document.getElementById(
+          const containerProcessing = document.getElementById(
             "processingRequestsContainer"
           );
-          if (!container) return;
+          const containerOnQueue = document.getElementById("onQueueContainer");
 
-          // Get active queue data
+          if (!containerProcessing || !containerOnQueue) return;
+
+          // 1. Get active queue data
           const processingQueueItems =
             queueManager && queueManager.queues
               ? queueManager.queues.processing
               : [];
 
-          // Get Current Window Identity
+          // 2. Get Current Window Identity
           let activeWindow = localStorage.getItem("assignedWindow");
           if (!activeWindow || activeWindow === "null")
             activeWindow = currentWindow;
@@ -2303,27 +2338,23 @@
               .toLowerCase();
           const myCleanWindow = cleanString(activeWindow);
 
-          // 1. Filter: Find ALL requests for THIS window
+          // 3. Filter: Find ALL requests for THIS window
           const myRequests = processingQueueItems.filter(
             (item) =>
               cleanString(item.window_number) === myCleanWindow &&
-              item.status !== "reviewing" // <-- Added this check
+              item.status !== "reviewing"
           );
 
-          // 2. Sort: Oldest Started to Newest Started
+          // 4. Sort: Oldest Started to Newest Started
           myRequests.sort(
             (a, b) => new Date(a.started_at) - new Date(b.started_at)
           );
 
-          if (myRequests.length === 0) {
-            container.innerHTML = `
-              <div class="text-center py-5 bg-white rounded shadow-sm border">
-                  <h3 class="fw-bold text-secondary">No Active Requests</h3>
-                  <p class="text-muted">You are not currently serving any clients.</p>
-              </div>`;
-            return;
-          }
+          // 🟢 5. SEPARATE LISTS BASED ON PROGRESS 🟢
+          const listProcessing = [];
+          const listOnQueue = [];
 
+          // Style Config
           let borderColor = "#0d6efd";
           let badgeClass = "bg-primary";
           if (myCleanWindow.includes("2")) {
@@ -2339,70 +2370,70 @@
             badgeClass = "bg-danger";
           }
 
-          // Generate HTML
-          const cardsHtml = myRequests
-            .map((req) => {
-              const services = Array.isArray(req.services) ? req.services : [];
+          // Process Loop
+          myRequests.forEach((req) => {
+            const services = Array.isArray(req.services) ? req.services : [];
 
-              // 🟢 Calculate Progress Days 🟢
-              let maxDays = 3; // Default minimum
-              services.forEach((s) => {
-                // Handle "Service Name [Note: ...]" format
-                let sName = s;
-                if (s.includes("[")) sName = s.split(" [")[0];
-
-                // Lookup duration
-                if (
-                  typeof SERVICE_DURATIONS !== "undefined" &&
-                  SERVICE_DURATIONS[sName] &&
-                  SERVICE_DURATIONS[sName] > maxDays
-                ) {
-                  maxDays = SERVICE_DURATIONS[sName];
-                }
-              });
-
-              // 🟢 Robust Progress Parsing 🟢
-              let progress = { current: 0, total: maxDays, checked: [] };
-
-              if (req.progress_data) {
-                try {
-                  // Handle both Object (already parsed by mysql2) and String
-                  const parsed =
-                    typeof req.progress_data === "string"
-                      ? JSON.parse(req.progress_data)
-                      : req.progress_data;
-
-                  progress.current = parsed.current || 0;
-                  progress.total = maxDays;
-                  progress.checked = parsed.checked || [];
-                } catch (e) {
-                  console.warn(
-                    "Error parsing progress for",
-                    req.queue_number,
-                    e
-                  );
-                }
+            // Calculate Duration
+            let maxDays = 3;
+            services.forEach((s) => {
+              let sName = s;
+              if (s.includes("[")) sName = s.split(" [")[0];
+              if (
+                typeof SERVICE_DURATIONS !== "undefined" &&
+                SERVICE_DURATIONS[sName] &&
+                SERVICE_DURATIONS[sName] > maxDays
+              ) {
+                maxDays = SERVICE_DURATIONS[sName];
               }
+            });
 
-              const percent = Math.round((progress.current / maxDays) * 100);
-              const isComplete = percent >= 100;
+            // Parse Progress
+            let progress = { current: 0, total: maxDays, checked: [] };
+            if (req.progress_data) {
+              try {
+                const parsed =
+                  typeof req.progress_data === "string"
+                    ? JSON.parse(req.progress_data)
+                    : req.progress_data;
+                progress.current = parsed.current || 0;
+                progress.total = maxDays;
+                progress.checked = parsed.checked || [];
+              } catch (e) {
+                console.warn("Error parsing progress", e);
+              }
+            }
 
-              return `
-                <div class="card border-0 shadow-sm animate__animated animate__fadeIn mb-4">
-                    <div class="card-body p-4" style="border-left: 8px solid ${borderColor};">
+            const percent =
+              maxDays > 0 ? Math.round((progress.current / maxDays) * 100) : 0;
+            const isComplete = percent >= 100;
+
+            // Generate Card HTML
+            const cardHtml = `
+                <div class="card border-0 shadow-sm animate__animated animate__fadeIn mb-3">
+                    <div class="card-body p-4" style="border-left: 8px solid ${
+                      isComplete ? "#198754" : borderColor
+                    };">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
-                                <h3 class="fw-bold mb-1">${this.escapeHtml(
-                                  req.user_name
-                                )}</h3>
+                                <div class="d-flex align-items-center mb-1">
+                                    <h3 class="fw-bold mb-0 me-2">${this.escapeHtml(
+                                      req.user_name
+                                    )}</h3>
+                                    ${
+                                      isComplete
+                                        ? `<span class="badge bg-success bg-opacity-10 text-success border border-success ms-2"><i class="bi bi-broadcast me-1"></i> Live on TV</span>`
+                                        : `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary ms-2"><i class="bi bi-eye-slash me-1"></i> Hidden on TV</span>`
+                                    }
+                                </div>
                                 <p class="text-muted mb-0 fs-6">Student ID: <strong>${this.escapeHtml(
                                   req.student_id
                                 )}</strong></p>
                             </div>
                             <div class="text-end">
                                 <span class="badge ${badgeClass} fs-5 px-3 py-2 rounded-pill shadow-sm">${this.escapeHtml(
-                req.queue_number
-              )}</span>
+              req.queue_number
+            )}</span>
                             </div>
                         </div>
 
@@ -2419,17 +2450,25 @@
                                         <span>Progress (${
                                           progress.current
                                         }/${maxDays} Days)</span>
-                                        <span class="fw-bold text-success">${percent}%</span>
+                                        <span class="fw-bold ${
+                                          isComplete
+                                            ? "text-success"
+                                            : "text-primary"
+                                        }">${percent}%</span>
                                     </div>
                                     <div class="progress" style="height: 10px;">
-                                        <div class="progress-bar bg-success" role="progressbar" style="width: ${percent}%"></div>
+                                        <div class="progress-bar ${
+                                          isComplete
+                                            ? "bg-success"
+                                            : "bg-primary"
+                                        }" role="progressbar" style="width: ${percent}%"></div>
                                     </div>
                                 </div>
                                 <button class="btn btn-outline-primary btn-sm" onclick="queueManager.openProgressModal('${
                                   req.queue_id
                                 }', ${maxDays}, '${encodeURIComponent(
-                JSON.stringify(progress.checked)
-              )}')">
+              JSON.stringify(progress.checked)
+            )}')">
                                     <i class="bi bi-pencil-square"></i> Update
                                 </button>
                             </div>
@@ -2441,11 +2480,7 @@
                                   req.started_at
                                 ).toLocaleTimeString()}
                             </div>
-                            <div class="d-inline-block" tabindex="0" ${
-                              !isComplete
-                                ? 'data-bs-toggle="tooltip" title="Progress must be 100% to complete"'
-                                : ""
-                            }>
+                            <div class="d-inline-block">
                                 <button class="btn ${
                                   isComplete ? "btn-success" : "btn-secondary"
                                 } px-4 fw-bold shadow-sm"
@@ -2463,15 +2498,53 @@
                         </div>
                     </div>
                 </div>`;
-            })
-            .join("");
 
-          container.innerHTML = `
-              <h3 class="section-title fs-5 text-primary fw-bold mb-3">
-                  <i class="bi bi-person-check-fill me-2"></i> Now Serving (${myRequests.length})
-              </h3>
-              ${cardsHtml}
-          `;
+            // Sort into Lists
+            if (isComplete) {
+              listOnQueue.push(cardHtml);
+            } else {
+              listProcessing.push(cardHtml);
+            }
+          });
+
+          // 6. RENDER "PROCESSING" (0-99%)
+          if (listProcessing.length > 0) {
+            containerProcessing.innerHTML = `
+                  <h3 class="section-title fs-5 text-primary fw-bold mb-3">
+                      <i class="bi bi-person-workspace me-2"></i> Processing (${
+                        listProcessing.length
+                      })
+                  </h3>
+                  ${listProcessing.join("")}
+              `;
+          } else {
+            containerProcessing.innerHTML = `
+                  <h3 class="section-title fs-5 text-secondary fw-bold mb-3">
+                      <i class="bi bi-person-workspace me-2"></i> Processing (0)
+                  </h3>
+                  <div class="text-center py-4 bg-white rounded shadow-sm border mb-3">
+                      <p class="text-muted mb-0">No active requests in progress.</p>
+                  </div>`;
+          }
+
+          // 7. RENDER "ON QUEUE" (100% - Ready to Complete)
+          if (listOnQueue.length > 0) {
+            containerOnQueue.innerHTML = `
+                  <div class="alert alert-success border-0 shadow-sm mb-3 d-flex align-items-center">
+                      <i class="bi bi-broadcast me-3 fs-3"></i>
+                      <div>
+                          <h4 class="alert-heading fw-bold mb-0">On Queue / Live on TV</h4>
+                          <p class="mb-0 small">These requests are at 100% progress and are visible on the TV screen. Click "Mark as Done" when the student approaches.</p>
+                      </div>
+                  </div>
+                  ${listOnQueue.join("")}
+              `;
+            containerOnQueue.style.display = "block";
+          } else {
+            // Hide the container if empty to keep UI clean
+            containerOnQueue.innerHTML = "";
+            containerOnQueue.style.display = "none";
+          }
         }
 
         // 🟢 FIXED: Shows both 'Ready' and 'Picked Up' in History 🟢
@@ -3263,7 +3336,7 @@
                 actionButton = `<button class="btn btn-sm btn-primary" onclick="queueManager.lockAndReview('${request.queue_id}')"><i class="bi bi-search me-1"></i> Review Request</button>`;
               }
 
-              // 🟢 CHANGE IS HERE: Added id="req-${request.queue_id}"
+              // ... inside renderNewRequests ...
               return `
     <div id="req-${request.queue_id}" class="request-card ${
                 isPriority ? "priority-card" : ""
@@ -3280,15 +3353,23 @@
                     : ""
                 }
             </span>
-            <span class="text-secondary small me-2">
-                ${services.join(", ").substring(0, 30)}...
+            
+            <div class="text-muted fw-bold" style="font-size: 0.75rem; margin-top: 2px;">
+                <i class="bi bi-mortarboard-fill me-1 text-primary"></i> 
+                ${this.escapeHtml(request.course || "N/A")}
+            </div>
+
+            <span class="text-secondary small me-2 mt-1 d-block">
+                ${services.join(", ").substring(0, 40)}${
+                services.join(", ").length > 40 ? "..." : ""
+              }
             </span>
         </div>
         <div class="card-actions">
             ${actionButton}
         </div>
     </div>
-    `;
+`;
             })
             .join("");
         }
@@ -3331,7 +3412,7 @@
                           <div class="now-serving-header">
                               <span class="serving-status-badge">
                                   <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
-                                  Serving Now
+                                  Processing
                               </span>
                               <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
                                   ${this.escapeHtml(
@@ -4134,6 +4215,7 @@
         }
 
         // 🟢 OPEN PROGRESS MODAL 🟢
+        // 🟢 OPEN PROGRESS MODAL (With Auto-Check Logic) 🟢
         openProgressModal(queueId, totalDays, encodedChecked) {
           const checkedArr =
             encodedChecked && encodedChecked !== "undefined"
@@ -4163,11 +4245,34 @@
           // Update bar initially
           this.updateModalProgressBar(totalDays);
 
-          // Add listeners to update bar live
+          // 🟢 ADD SMART LISTENERS 🟢
           document.querySelectorAll(".progress-checkbox").forEach((box) => {
-            box.addEventListener("change", () =>
-              this.updateModalProgressBar(totalDays)
-            );
+            box.addEventListener("change", (e) => {
+              const currentId = e.target.id; // e.g., "dayCheck3"
+              const currentNum = parseInt(currentId.replace("dayCheck", ""));
+              const isChecked = e.target.checked;
+
+              if (isChecked) {
+                // RULE: If Day 3 is checked, Day 1 & 2 must be checked
+                for (let i = 1; i < currentNum; i++) {
+                  const prevBox = document.getElementById(`dayCheck${i}`);
+                  if (prevBox && !prevBox.checked) {
+                    prevBox.checked = true;
+                  }
+                }
+              } else {
+                // RULE: If Day 3 is unchecked, Day 4 & 5 must be unchecked
+                for (let i = currentNum + 1; i <= totalDays; i++) {
+                  const nextBox = document.getElementById(`dayCheck${i}`);
+                  if (nextBox && nextBox.checked) {
+                    nextBox.checked = false;
+                  }
+                }
+              }
+
+              // Update the visual bar after auto-checking/unchecking
+              this.updateModalProgressBar(totalDays);
+            });
           });
 
           toggleModal("progressModal");
@@ -4453,7 +4558,9 @@
               }
             }
 
-            // 🟢 5. POPULATE FILES WITH PREVIEW BUTTON 🟢
+            // ... inside openReviewModal(queueId) ...
+
+            // 🟢 5. POPULATE FILES (SHOW IMAGES AS THUMBNAILS) 🟢
             const files = data.requirements_paths || [];
 
             if (fileContainer) {
@@ -4462,29 +4569,51 @@
               } else {
                 fileContainer.innerHTML = files
                   .map((file) => {
-                    // Prepare URL and Name for the onclick function
+                    // Prepare URL and Name
                     const fileUrl = file.file.startsWith("data:")
                       ? file.file
                       : "/uploads/" + file.file;
                     const fileName = file.name || "Document";
 
-                    // Note: We use single quotes inside the HTML string, so we escape the function parameters carefully
-                    return `
-                    <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-2 border rounded">
-                        <div class="d-flex align-items-center overflow-hidden">
-                            <i class="bi bi-file-earmark-text-fill fs-4 text-danger me-3"></i>
-                            <div class="text-truncate" style="max-width: 280px;">
-                                <strong class="d-block text-dark small">${fileName}</strong>
-                                <span class="text-muted" style="font-size: 10px;">Click View to inspect</span>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-sm btn-primary fw-bold" 
-                            onclick="queueManager.showFilePreview('${fileUrl}', '${fileName}')">
-                            <i class="bi bi-eye"></i> View
-                        </button>
+                    // Check if it is an image
+                    const extension = file.file
+                      .split(".")
+                      .pop()
+                      .toLowerCase()
+                      .split("?")[0]; // Handle query params if any
+                    const isImage =
+                      ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(
+                        extension
+                      ) || file.file.startsWith("data:image");
+
+                    if (isImage) {
+                      // === IT IS AN IMAGE: SHOW THUMBNAIL ===
+                      return `
+                <div class="d-inline-block me-2 mb-2 text-center align-top border rounded p-2 bg-light">
+                    <div style="height: 120px; width: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #e9ecef; cursor: pointer;"
+                         onclick="document.getElementById('previewImageTarget').src='${fileUrl}'; new bootstrap.Modal(document.getElementById('imagePreviewModal')).show();">
+                        <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${fileName}">
                     </div>
-                    `;
+                    <div class="mt-1 text-truncate small fw-bold" style="max-width: 120px;" title="${fileName}">${fileName}</div>
+                    <div class="text-muted" style="font-size: 10px;">Click to expand</div>
+                </div>`;
+                    } else {
+                      // === NOT AN IMAGE (PDF/DOC): SHOW LIST ROW ===
+                      return `
+                <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-2 border rounded">
+                    <div class="d-flex align-items-center overflow-hidden">
+                        <i class="bi bi-file-earmark-text-fill fs-4 text-danger me-3"></i>
+                        <div class="text-truncate" style="max-width: 280px;">
+                            <strong class="d-block text-dark small">${fileName}</strong>
+                            <span class="text-muted" style="font-size: 10px;">${extension.toUpperCase()} File</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-primary fw-bold" 
+                        onclick="queueManager.showFilePreview('${fileUrl}', '${fileName}')">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </div>`;
+                    }
                   })
                   .join("");
               }
@@ -4503,7 +4632,7 @@
                      </div>
                    </div>`
               : `<div class="mt-3 p-2 bg-light border rounded text-center text-muted small">
-                     <i class="bi bi-exclamation-circle me-1"></i> Student did not verify requirements.
+                     <i class="bi bi-exclamation-circle me-1"></i> Student verified requirements.
                    </div>`;
 
             // Append it to the file container

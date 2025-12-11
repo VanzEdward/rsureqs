@@ -1391,6 +1391,8 @@ app.post(
     // Convert string "true" to integer 1, otherwise 0
     const reqConfirmed = req.body.requirements_confirmed === "true" ? 1 : 0;
 
+    const totalAmount = req.body.total_amount || 0;
+
     // 2. Validation
     if (!userId || !rawServices) {
       return res.status(400).json({
@@ -1465,7 +1467,7 @@ app.post(
             user.course,
             user.year_level,
             JSON.stringify(parsedServices), // ✅ Correctly saves as ["Service A", "Service B"]
-            0,
+            totalAmount,
             requirementsText,
             requirementsPaths,
             user.email,
@@ -2115,16 +2117,12 @@ app.post("/api/admin/manual-queue-entry", authenticateAdmin, (req, res) => {
     );
   });
 });
-// --- 🟢 NEW: TV DASHBOARD QUEUE STATUS API 🟢 ---
+// --- 🟢 UPDATED: TV DASHBOARD QUEUE STATUS API (100% Filter) 🟢 ---
 app.get("/api/queue/status", (req, res) => {
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-  // 1. Get tickets:
-  // - Submitted Today (Waiting)
-  // - Processing (Any date, in case it carried over)
-  // - Completed/Ready (Any date, UNTIL it is marked claimed)
   const query = `
-    SELECT queue_number, status, window_number, submitted_at, started_at, completed_at
+    SELECT queue_number, status, window_number, submitted_at, started_at, completed_at, progress_data
     FROM queue 
     WHERE 
       (DATE(submitted_at) = ? AND status = 'waiting')
@@ -2148,8 +2146,6 @@ app.get("/api/queue/status", (req, res) => {
         .json({ success: false, message: "Database error" });
     }
 
-    // 2. Process Data for Frontend
-    // 🟢 CHANGE: processing is now an ARRAY [], not null
     const data = {
       window1: { processing: [], completed: [] },
       window2: { processing: [], completed: [] },
@@ -2167,21 +2163,44 @@ app.get("/api/queue/status", (req, res) => {
 
       const targetWindow = data[`window${winNum}`];
 
-      // -- PROCESSING --
-      if (ticket.status === "processing") {
-        if (targetWindow) {
-          // 🟢 PUSH to array instead of overwriting
-          targetWindow.processing.push(ticket.queue_number);
+      // --- LOGIC: CHECK PROGRESS PERCENTAGE ---
+      let is100Percent = false;
+
+      if (ticket.status === "completed") {
+        is100Percent = true; // Completed is always 100%
+      } else if (ticket.status === "processing") {
+        // Parse JSON progress data
+        try {
+          let p = ticket.progress_data;
+          if (typeof p === "string") p = JSON.parse(p);
+
+          // Check if current steps equals total steps (e.g., 5/5)
+          if (p && p.total > 0 && p.current >= p.total) {
+            is100Percent = true;
+          }
+        } catch (e) {
+          is100Percent = false; // If error parsing, assume not ready
         }
       }
-      // -- COMPLETED --
-      else if (ticket.status === "completed") {
-        if (targetWindow) {
-          // 🟢 REMOVED LIMIT: Send all completed tickets so frontend can batch them
-          targetWindow.completed.push(ticket.queue_number);
+
+      // --- FILTERING LOGIC ---
+
+      // 1. PROCESSING / COMPLETED (Only show if 100%)
+      if (ticket.status === "processing" || ticket.status === "completed") {
+        if (targetWindow && is100Percent) {
+          // If it's 100% but still technically "processing" status, show it in the main card
+          // If it's "completed" status, show it in the footer list
+          if (ticket.status === "processing") {
+            targetWindow.processing.push(ticket.queue_number);
+          } else {
+            targetWindow.completed.push(ticket.queue_number);
+          }
         }
+        // NOTE: If status is 'processing' but NOT 100%, we do nothing.
+        // This effectively hides it from the TV screen.
       }
-      // -- WAITING --
+
+      // 2. WAITING (Up Next List) - Keep showing these so people know they are in line
       else if (ticket.status === "waiting") {
         if (data.comingUp.length < 5) {
           data.comingUp.push(ticket.queue_number);
