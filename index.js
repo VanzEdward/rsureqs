@@ -3184,7 +3184,7 @@ app.get("/api/student/updates", authenticateToken, (req, res) => {
 // 🟢 REPLACEMENT: Payment Route with Receipt Number Generation
 app.post("/api/payment/create-link", async (req, res) => {
   const { amount, description, requestId } = req.body;
-  const baseUrl = process.env.SITE_URL || "http://localhost:3000";
+  const baseUrl = "https://rsureqs.onrender.com";
 
   // 1. Generate a Receipt Number
   const receiptNumber = `OR-${Date.now().toString().slice(-6)}${Math.floor(

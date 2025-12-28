@@ -843,6 +843,27 @@
         </div>
       </div>
     </div>
+    <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center border-0 shadow-lg p-4">
+      <div class="modal-body">
+        <div class="mb-3">
+          <i class="bi bi-check-circle-fill text-success display-1"></i>
+        </div>
+        <h3 class="fw-bold text-success">Payment Successful!</h3>
+        <p class="text-muted">
+          Your payment has been verified and your request is now <strong>PAID</strong>.
+        </p>
+        <p class="small text-secondary">
+          The cashier has been notified. You can track your status in the "Updates" section.
+        </p>
+        <button type="button" class="btn btn-success rounded-pill px-4 mt-3" data-bs-dismiss="modal">
+          Okay, Got it
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
     <!-- 🟢 OPTIMIZED PROFILE MODAL (Dynamic Dropdowns) 🟢 -->
     <div
@@ -5195,6 +5216,25 @@ function updateRequestStats(requests) {
       document.addEventListener("DOMContentLoaded", () => {
         console.log("Dashboard initialized"); // Debug log
 
+        // 🟢 PASTE THIS BLOCK HERE (Start) 🟢
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('payment') === 'success') {
+            // 1. Try to find the modal
+            const successModalEl = document.getElementById('successModal');
+            
+            if (successModalEl) {
+                // If modal exists, show it
+                const successModal = new bootstrap.Modal(successModalEl);
+                successModal.show();
+            } else {
+                // Fallback: Simple alert if you haven't added the modal HTML yet
+                alert("✅ PAYMENT SUCCESSFUL!\n\nYour request has been verified. Please wait for processing.");
+            }
+
+            // 2. Clean the URL (Remove ?payment=success so it doesn't show again on refresh)
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         // Initialize services manager
         // window.servicesManager = new ServicesManager();
 
@@ -5214,6 +5254,7 @@ function updateRequestStats(requests) {
             document.querySelector(".sidebar").classList.toggle("active");
           });
         }
+        
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener("click", (e) => {
