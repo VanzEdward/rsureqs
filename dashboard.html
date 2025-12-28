@@ -827,18 +827,18 @@
           </div>
 
           <div class="modal-footer flex-column">
-            <div class="w-100 d-flex justify-content-between">
-              <span class="fw-bold"
-                >Total amount: <span id="totalAmount">₱0.00</span></span
-              >
+            <div class="w-100 d-flex justify-content-between mb-2">
+              <span class="fw-bold">Total Amount:</span>
+              <span class="fw-bold text-success fs-5" id="totalAmount">₱0.00</span>
             </div>
-            <button
-              id="joinQueueBtn"
-              class="btn btn-success w-100 mt-2"
-              disabled
-            >
-              Send Request Now
+            
+            <button id="payWithGcashBtn" class="btn btn-primary w-100 fw-bold" disabled style="background-color: #007bff;">
+                <i class="bi bi-wallet2 me-2"></i> Pay with GCash & Submit
             </button>
+            
+            <small class="text-muted mt-2 text-center" style="font-size: 0.8rem;">
+                <i class="bi bi-shield-lock-fill"></i> Secure payment powered by PayMongo
+            </small>
           </div>
         </div>
       </div>
@@ -1745,19 +1745,19 @@
                 <div
                   class="card h-100 service-category-card text-center p-4 shadow-sm"
                   style="cursor: pointer; transition: transform 0.2s"
-                  onclick="openCategoryModal('academic')"
+                  onclick="openCategoryModal('certification_cav')"
                   onmouseover="this.style.transform='scale(1.03)'"
                   onmouseout="this.style.transform='scale(1)'"
                 >
                   <div class="mb-3">
                     <i
-                      class="bi bi-journal-bookmark-fill text-primary"
+                      class="bi bi-patch-check-fill text-primary"
                       style="font-size: 3.5rem"
                     ></i>
                   </div>
-                  <h4 class="fw-bold">Academic Records & Grades</h4>
+                  <h4 class="fw-bold">Certification & CAV</h4>
                   <p class="text-muted small">
-                    Transcript of Records, Certificate of Grades, Units Earned
+                    Certifications, CAV, English Medium, Honors, and more.
                   </p>
                   <button class="btn btn-outline-primary btn-sm mt-3">
                     Select Documents
@@ -1769,19 +1769,19 @@
                 <div
                   class="card h-100 service-category-card text-center p-4 shadow-sm"
                   style="cursor: pointer; transition: transform 0.2s"
-                  onclick="openCategoryModal('certifications')"
+                  onclick="openCategoryModal('transcript_diploma')"
                   onmouseover="this.style.transform='scale(1.03)'"
                   onmouseout="this.style.transform='scale(1)'"
                 >
                   <div class="mb-3">
                     <i
-                      class="bi bi-patch-check-fill text-success"
+                      class="bi bi-mortarboard-fill text-success"
                       style="font-size: 3.5rem"
                     ></i>
                   </div>
-                  <h4 class="fw-bold">Certifications & Status</h4>
+                  <h4 class="fw-bold">Transcript & Diploma</h4>
                   <p class="text-muted small">
-                    Enrollment, Honors, Class Ranking, Medium of Instruction
+                    Official Transcript of Records and Diploma issuance.
                   </p>
                   <button class="btn btn-outline-success btn-sm mt-3">
                     Select Documents
@@ -1793,19 +1793,19 @@
                 <div
                   class="card h-100 service-category-card text-center p-4 shadow-sm"
                   style="cursor: pointer; transition: transform 0.2s"
-                  onclick="openCategoryModal('graduation')"
+                  onclick="openCategoryModal('transferee')"
                   onmouseover="this.style.transform='scale(1.03)'"
                   onmouseout="this.style.transform='scale(1)'"
                 >
                   <div class="mb-3">
                     <i
-                      class="bi bi-mortarboard-fill text-warning"
+                      class="bi bi-arrow-left-right text-warning"
                       style="font-size: 3.5rem"
                     ></i>
                   </div>
-                  <h4 class="fw-bold">Graduation & Credentials</h4>
+                  <h4 class="fw-bold">Transferee</h4>
                   <p class="text-muted small">
-                    Diploma, Graduation Cert, CAV, Transfer Credentials
+                    Honorable Dismissal, Course Description, Grades, & TOR.
                   </p>
                   <button class="btn btn-outline-warning btn-sm mt-3">
                     Select Documents
@@ -2338,6 +2338,36 @@
       </div>
     </div>
 
+    <div class="modal fade" id="receiptModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center border-0 shadow-lg">
+            <div class="modal-header bg-warning justify-content-center">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-receipt me-2"></i>SAVE YOUR RECEIPT</h5>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-3">Please save this number <strong>before</strong> paying.</p>
+                
+                <div class="bg-light border rounded p-3 mb-3">
+                    <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Official Receipt No.</small>
+                    <h2 class="text-primary fw-bold m-0" id="receiptNumberDisplay">...</h2>
+                </div>
+
+                <div class="alert alert-danger text-start small mb-0">
+                    <i class="bi bi-camera-fill me-1"></i> <strong>ACTION REQUIRED:</strong><br>
+                    Take a screenshot or write this down. You will need it to claim your documents.
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pb-4">
+                <button type="button" class="btn btn-success btn-lg px-4 rounded-pill w-100" id="btnProceedToPay">
+                    I have saved it. Pay Now <i class="bi bi-arrow-right-short"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+  
+
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- <script src="/assets/js/dashboard.js"></script> -->
@@ -2475,6 +2505,48 @@
           console.error("Error checking notifications:", error);
         }
       }
+      // Function to call the backend and show modal
+async function initiatePayment(requestId, amount, description) {
+    const btn = document.getElementById(`pay-btn-${requestId}`); // Adjust ID if needed
+    if(btn) btn.innerHTML = 'Processing...';
+
+    try {
+        const response = await fetch('/api/payment/create-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                requestId: requestId, 
+                amount: amount, 
+                description: description 
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // 1. Show Receipt in Modal
+            document.getElementById('receiptNumberDisplay').innerText = data.receiptNumber;
+            
+            // 2. Setup Proceed Button
+            const proceedBtn = document.getElementById('btnProceedToPay');
+            proceedBtn.onclick = function() {
+                proceedBtn.innerHTML = 'Redirecting...';
+                window.location.href = data.checkoutUrl;
+            };
+
+            // 3. Show Modal
+            const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+            modal.show();
+        } else {
+            alert('Payment Error: ' + data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('An error occurred. Please try again.');
+    } finally {
+        if(btn) btn.innerHTML = 'Pay Now';
+    }
+}
       // 🟢 UNIVERSITY DATA STRUCTURE 🟢
       const universityData = {
         "College of Arts and Sciences": {
@@ -3118,130 +3190,112 @@
         }
       }
 
-      // ===== SERVICES DATA AND FUNCTIONS =====
-
-// ===== SERVICES DATA AND FUNCTIONS =====
-
-// ===== SERVICES DATA AND FUNCTIONS =====
-
-      // Services data
+// ===== SERVICES DATA (UPDATED: Removed "Receipt of Payment") =====
       const servicesData = {
-        // --- Group 1: Academic Records ---
+        // --- Shared / Academic ---
         "Transcript of Records": {
-          category: "academic",
-          description:
-            "Official academic record showing all courses and grades.",
-          requirements: [
-            { name: "Clearance" },
-            // Removed: Documentary Stamp
-            { name: "Receipt of Payment" },
-          ],
+          category: ["transcript_diploma", "transferee"],
+          description: "Official academic record showing all courses and grades.",
+          requirements: [{ name: "Clearance" }], // 🟢 Removed Payment Receipt
           price: 40.0,
           time: "7 working days",
         },
-        "Certificate of Grades": {
-          category: "academic",
-          description:
-            "Official certification of grades for specific semesters.",
+        "Diploma (Duplicate Copy)": {
+          category: "transcript_diploma",
+          description: "Re-issuance of Diploma.",
           requirements: [
-            // Removed: Request Form
-            { name: "Receipt of Payment" },
+            { name: "Notarized Affidavit of Loss" } // 🟢 Removed Payment Receipt
           ],
+          price: 100.0,
+          time: "1 month",
+        },
+
+        // --- Transferee Specific ---
+        "Certificate of Honorable Dismissal": {
+          category: "transferee",
+          description: "Transfer Credentials / Honorable Dismissal for transferring students.",
+          requirements: [{ name: "Clearance" }], // 🟢 Removed Payment Receipt
+          price: 25.0,
+          time: "On Process",
+        },
+        "Certificate of Grades": {
+          category: "transferee",
+          description: "Official certification of grades for specific semesters.",
+          requirements: [], // 🟢 No requirements left (Payment is handled by button)
           price: 25.0,
           time: "7 working days",
         },
-        "Certificate of Units Earned": {
-          category: "academic",
-          description: "Certification of total units earned in the program.",
+        "Course Description": {
+          category: "transferee",
+          description: "Detailed description of courses taken (often for crediting).",
+          requirements: [{ name: "Request Form" }], // 🟢 Removed Payment Receipt
+          price: 25.0,
+          time: "7 working days",
+        },
+
+        // --- Certifications & CAV ---
+        "CAV (CHED/DFA)": {
+          category: "certification_cav",
+          description: "Certification, Authentication and Verification.",
           requirements: [
-             // Removed: Request Form
-            { name: "Receipt of Payment" },
+            { name: "Diploma & TOR Photocopies" } // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "5 working days",
         },
-
-        // --- Group 2: Certifications ---
+        "Certificate of Graduation": {
+          category: "certification_cav",
+          description: "Proof of graduation from the institution.",
+          requirements: [{ name: "Clearance" }], // 🟢 Removed Payment Receipt
+          price: 25.0,
+          time: "5 working days",
+        },
         "Certificate of Enrollment": {
-          category: "certifications",
+          category: "certification_cav",
           description: "Proof that the student is currently enrolled.",
           requirements: [
-            { name: "Study Load" },
-            { name: "Receipt of Payment" },
+            { name: "Study Load" } // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "5 working days",
         },
         "Certificate of Honors": {
-          category: "certifications",
+          category: "certification_cav",
           description: "Certification for Dean's Listers or Latin Honors.",
           requirements: [
-            { name: "Copy of Grades" },
-            { name: "Receipt of Payment" },
+            { name: "Copy of Grades" } // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "5 working days",
         },
         "Certificate of Upper 25": {
-          category: "certifications",
+          category: "certification_cav",
           description: "Certification of class ranking (Upper 25%).",
           requirements: [
-            { name: "Request Letter" },
-            { name: "Receipt of Payment" },
+            { name: "Request Letter" } // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "14 working days",
         },
+        "Certificate of Units Earned": {
+          category: "certification_cav",
+          description: "Certification of total units earned in the program.",
+          requirements: [], // 🟢 No requirements left
+          price: 25.0,
+          time: "5 working days",
+        },
         "Certificate of English as Medium": {
-          category: "certifications",
+          category: "certification_cav",
           description: "Certifies that English is the medium of instruction.",
-          requirements: [
-             // Removed: Request Form
-            { name: "Receipt of Payment" },
-          ],
+          requirements: [], // 🟢 No requirements left
           price: 25.0,
           time: "5 working days",
-        },
-
-        // --- Group 3: Graduation ---
-        "Certificate of Graduation": {
-          category: "graduation",
-          description: "Proof of graduation from the institution.",
-          requirements: [{ name: "Clearance" }, { name: "Receipt of Payment" }],
-          price: 25.0,
-          time: "5 working days",
-        },
-        "Diploma (Duplicate Copy)": {
-          category: "graduation",
-          description: "Re-issuance of Diploma.",
-          requirements: [
-            { name: "Notarized Affidavit of Loss" },
-            { name: "Receipt of Payment" },
-          ],
-          price: 100.0,
-          time: "1 month",
-        },
-        "CAV (CHED/DFA)": {
-          category: "graduation",
-          description: "Certification, Authentication and Verification.",
-          requirements: [
-            { name: "Diploma & TOR Photocopies" },
-            { name: "Receipt of Payment" },
-          ],
-          price: 25.0,
-          time: "5 working days",
-        },
-        "Transfer Credentials": {
-          category: "graduation",
-          description: "Honorable Dismissal / Transfer Credentials.",
-          requirements: [{ name: "Clearance" }, { name: "Receipt of Payment" }],
-          price: 25.0,
-          time: "On Process",
         },
       };
 
       // ===== ENHANCED DASHBOARD FUNCTIONALITY =====
       let selectedServicesList = [];
+      let serviceQuantities = {};
       let autoRefreshInterval;
       let userProfileComplete = false;
       let userHasExistingId = false;
@@ -3295,9 +3349,28 @@
           }
         }
       }
+      // 🟢 NEW HELPER: Just update the grand total text
+      function updateGrandTotal() {
+        let total = 0;
+        selectedServicesList.forEach((fullString) => {
+          let baseName = fullString;
+          if (fullString.includes(" [Note:")) {
+            baseName = fullString.split(" [Note:")[0];
+          }
+          const service = servicesData[baseName];
+          const qty = serviceQuantities[fullString] || 1;
+          if (service) {
+            total += (service.price || 0) * qty;
+          }
+        });
+        const totalAmountEl = document.getElementById("totalAmount");
+        if (totalAmountEl) {
+          totalAmountEl.textContent = `₱${total.toFixed(2)}`;
+        }
+      }
       // 🟢 UPDATED: Checks Files + Profile + Verification Checkbox 🟢
       function checkAllFilesUploaded() {
-        const joinQueueBtn = document.getElementById("joinQueueBtn");
+        const joinQueueBtn = document.getElementById("payWithGcashBtn");
         const requiredUploadInputs = document.querySelectorAll(
           ".requirement-upload[required]"
         );
@@ -3381,104 +3454,152 @@
         refreshModal();
       }
 
+// 🟢 UPDATED: Refresh Modal (Adds IDs for surgical updates)
       function refreshModal() {
-  const modalBodyLeft = document.getElementById("selectedServicesList");
-  const modalBodyRight = document.getElementById("requirementsList");
-  const totalAmountEl = document.getElementById("totalAmount");
-  const joinQueueBtn = document.getElementById("joinQueueBtn");
+        const modalBodyLeft = document.getElementById("selectedServicesList");
+        const modalBodyRight = document.getElementById("requirementsList");
+        const joinQueueBtn = document.getElementById("payWithGcashBtn");
 
-  if (selectedServicesList.length === 0) {
-    modalBodyLeft.innerHTML = "<p class='p-3 text-center'>No services selected yet.</p>";
-    modalBodyRight.innerHTML = "";
-    totalAmountEl.textContent = "₱0.00";
-    joinQueueBtn.disabled = true;
-  } else {
-    let total = 0;
-    let servicesHTML = "";
-    let requirementsHTML = "";
+        if (selectedServicesList.length === 0) {
+          modalBodyLeft.innerHTML = "<p class='p-3 text-center'>No services selected yet.</p>";
+          modalBodyRight.innerHTML = "";
+          updateGrandTotal(); // Use helper
+          if (joinQueueBtn) joinQueueBtn.disabled = true;
+        } else {
+          let servicesHTML = "";
+          let requirementsHTML = "";
 
-    selectedServicesList.forEach((fullString, serviceIndex) => {
-      // Logic to separate "Service Name" from "[Note: ...]"
-      let baseName = fullString;
-      let noteDisplay = "";
+          selectedServicesList.forEach((fullString, serviceIndex) => {
+            // Create a safe ID for DOM elements based on the service name
+            const safeId = fullString.replace(/[^a-zA-Z0-9]/g, '');
 
-      if (fullString.includes("[Note:")) {
-        const parts = fullString.split(" [Note:");
-        baseName = parts[0];
-        noteDisplay = parts[1].replace("]", ""); 
-      }
+            let baseName = fullString;
+            let noteDisplay = "";
 
-      // Lookup data using the base name
-      const service = servicesData[baseName];
+            if (fullString.includes(" [Note:")) {
+              const parts = fullString.split(" [Note:");
+              baseName = parts[0];
+              noteDisplay = parts[1].replace("]", "");
+            }
 
-      if (!service) {
-        console.error("Service data missing for:", baseName);
-        return;
-      }
+            const service = servicesData[baseName];
+            if (!service) return;
 
-      total += service.price || 0;
+            if (!serviceQuantities[fullString]) {
+              serviceQuantities[fullString] = 1;
+            }
+            const qty = serviceQuantities[fullString];
+            const itemPrice = (service.price || 0) * qty;
 
-      servicesHTML += `
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              <strong>${baseName}</strong>
-              ${noteDisplay ? `<br><small class="text-primary"><i class="bi bi-pencil-fill me-1"></i> ${noteDisplay}</small>` : ""}
-              <div class="small text-muted mt-1">Fee: ₱${service.price.toFixed(2)}</div>
-            </div>
-            <button class="btn btn-sm btn-outline-danger" onclick="removeService('${fullString}')">
-                <i class="bi bi-trash"></i>
-            </button>
-        </li>
-      `;
+            // Left Side: Services List with IDs on inputs/prices
+            servicesHTML += `
+              <li class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong>${baseName}</strong>
+                      ${noteDisplay ? `<br><small class="text-primary"><i class="bi bi-pencil-fill me-1"></i> ${noteDisplay}</small>` : ""}
+                      
+                      <div class="d-flex align-items-center mt-2">
+                        <small class="me-2 text-muted fw-bold">Copies:</small>
+                        <div class="input-group input-group-sm" style="width: 100px;">
+                          <button class="btn btn-outline-secondary" type="button" onclick="changeQuantity('${fullString}', -1)">-</button>
+                          <input type="text" id="qty-input-${safeId}" class="form-control text-center" value="${qty}" readonly>
+                          <button class="btn btn-outline-secondary" type="button" onclick="changeQuantity('${fullString}', 1)">+</button>
+                        </div>
+                      </div>
 
-      // Requirements Section
-      requirementsHTML += `<div class="mb-3 p-2 border rounded bg-white shadow-sm"><h6 class="fw-bold text-primary border-bottom pb-2 mb-3">${baseName}</h6>`;
+                      <div class="small text-muted mt-2">
+                        Unit Price: ₱${(service.price || 0).toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <div class="text-end">
+                      <div class="fw-bold text-success mb-2" id="item-total-${safeId}">₱${itemPrice.toFixed(2)}</div>
+                      <button class="btn btn-sm btn-outline-danger" onclick="removeService('${fullString}')">
+                          <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+              </li>
+            `;
 
-      if (service.requirements && service.requirements.length > 0) {
-        service.requirements.forEach((req, reqIndex) => {
-          const inputId = `file-${serviceIndex}-${reqIndex}`;
+            // Right Side: Requirements (Unchanged logic, but now won't be rebuilt on qty change)
+            requirementsHTML += `<div class="mb-3 p-2 border rounded bg-white shadow-sm"><h6 class="fw-bold text-primary border-bottom pb-2 mb-3">${baseName}</h6>`;
+            if (service.requirements && service.requirements.length > 0) {
+              service.requirements.forEach((req, reqIndex) => {
+                const inputId = `file-${serviceIndex}-${reqIndex}`;
+                requirementsHTML += `
+                  <div class="mb-3">
+                    <label for="${inputId}" class="form-label mb-1 small fw-bold">
+                      ${req.name} <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-sm">
+                        <input type="file" class="form-control requirement-upload"
+                          id="${inputId}"
+                          data-service-name="${fullString}" 
+                          data-requirement-name="${req.name}"
+                          accept=".pdf,.docx,.jpg,.jpeg,.png"
+                          required 
+                          onchange="updateRequirementIcon(this); checkAllFilesUploaded(); togglePreviewButton(this)" />
+                        <span class="input-group-text bg-danger bg-opacity-10" id="icon-${inputId}" style="min-width: 40px; justify-content: center;">
+                            <i class="bi bi-x-circle-fill text-danger" style="font-size: 1.2rem;"></i>
+                        </span>
+                        <button class="btn btn-outline-primary" type="button" id="preview-btn-${inputId}" disabled onclick="previewFile('${inputId}')">
+                            <i class="bi bi-eye"></i> Preview
+                        </button>
+                    </div>
+                    <div class="form-text small text-muted">Accepted formats: PDF, DOCX, JPG, PNG.</div>
+                  </div>
+                `;
+              });
+            } else {
+                requirementsHTML += `<div class="text-muted small fst-italic">No file requirements for this service.</div>`;
+            }
+            requirementsHTML += `</div>`;
+          });
+
+          modalBodyLeft.innerHTML = servicesHTML;
+          modalBodyRight.innerHTML = requirementsHTML;
+          updateGrandTotal(); // Use helper
           
-          // 🟢 NEW: Input Group Structure with Icon
-          requirementsHTML += `
-            <div class="mb-3">
-              <label for="${inputId}" class="form-label mb-1 small fw-bold">
-                ${req.name} <span class="text-danger">*</span>
-              </label>
-              <div class="input-group input-group-sm">
-                  <input type="file" class="form-control requirement-upload"
-                    id="${inputId}"
-                    data-service-name="${fullString}" 
-                    data-requirement-name="${req.name}"
-                    accept=".pdf,.docx,.jpg,.jpeg,.png"
-                    required 
-                    onchange="updateRequirementIcon(this); checkAllFilesUploaded(); togglePreviewButton(this)" />
-                  
-                  <span class="input-group-text bg-danger bg-opacity-10" id="icon-${inputId}" style="min-width: 40px; justify-content: center;">
-                      <i class="bi bi-x-circle-fill text-danger" style="font-size: 1.2rem;"></i>
-                  </span>
-                  
-                  <button class="btn btn-outline-primary" type="button" id="preview-btn-${inputId}" disabled onclick="previewFile('${inputId}')">
-                      <i class="bi bi-eye"></i> Preview
-                  </button>
-              </div>
-              <div class="form-text small text-muted">Accepted formats: PDF, DOCX, JPG, PNG.</div>
-            </div>
-          `;
-        });
-      } else {
-          requirementsHTML += `<div class="text-muted small fst-italic">No file requirements for this service.</div>`;
+          // Initialize button state
+          checkAllFilesUploaded();
+        }
       }
-      requirementsHTML += `</div>`;
-    });
+// 🟢 UPDATED: Surgical Quantity Change (Fixes disappearing files bug)
+      function changeQuantity(serviceFullString, change) {
+        // 1. Update State
+        if (!serviceQuantities[serviceFullString]) serviceQuantities[serviceFullString] = 1;
+        let newQty = serviceQuantities[serviceFullString] + change;
 
-    modalBodyLeft.innerHTML = servicesHTML;
-    modalBodyRight.innerHTML = requirementsHTML;
-    totalAmountEl.textContent = `₱${total.toFixed(2)}`;
-    
-    // Check initial state (sets button disabled state)
-    checkAllFilesUploaded();
-  }
-}
+        // Limits
+        if (newQty < 1) newQty = 1;
+        if (newQty > 10) newQty = 10;
+
+        serviceQuantities[serviceFullString] = newQty;
+
+        // 2. Calculate New Item Total
+        let baseName = serviceFullString;
+        if (serviceFullString.includes(" [Note:")) {
+            baseName = serviceFullString.split(" [Note:")[0];
+        }
+        const serviceData = servicesData[baseName];
+        const basePrice = serviceData ? serviceData.price : 0;
+        const newItemTotal = basePrice * newQty;
+
+        // 3. Find and Update Specific DOM Elements (Surgical Update)
+        const safeId = serviceFullString.replace(/[^a-zA-Z0-9]/g, '');
+        const qtyInput = document.getElementById(`qty-input-${safeId}`);
+        const itemTotalEl = document.getElementById(`item-total-${safeId}`);
+
+        if (qtyInput) qtyInput.value = newQty;
+        if (itemTotalEl) itemTotalEl.textContent = `₱${newItemTotal.toFixed(2)}`;
+
+        // 4. Update Grand Total only
+        updateGrandTotal();
+
+        // ⚠️ CRITICAL: Do NOT call refreshModal() here. That causes the bug.
+      }
       // Function to toggle Check/X icon based on file input
 function updateRequirementIcon(input) {
   // Find the icon container using the input's ID
@@ -3600,155 +3721,160 @@ function previewFile(inputId) {
         loadingText.style.display = 'none';
     }
 }
-// ================= END NEW FUNCTIONS =================
 
-      // Enhanced Join Queue Function with Loading & Toast
-      document
-        .getElementById("joinQueueBtn")
-        .addEventListener("click", async function () {
-          const joinBtn = this; // Capture button reference
-
-          // 🟢 1. START LOADING & PREVENT DOUBLE CLICK 🟢
-          // If already loading, stop immediately
-          if (!setButtonLoading(joinBtn, true)) return;
-
-          // --- CHECKS ---
-          if (!checkAuthentication() || !checkSession()) {
-            setButtonLoading(joinBtn, false, "Join Queue Now");
-            return;
-          }
-
-          if (selectedServicesList.length === 0) {
-            showToast("Please select at least one service.", "error");
-            setButtonLoading(joinBtn, false, "Join Queue Now");
-            return;
-          }
-
-          if (!userProfileComplete) {
-            showToast("Please complete your profile first.", "error");
-            setButtonLoading(joinBtn, false, "Join Queue Now");
-            return;
-          }
-
-          // --- VALIDATION ---
-          const fileInputs = document.querySelectorAll(
-            ".requirement-upload[required]"
-          );
-          let allFilesUploaded = true;
-
-          fileInputs.forEach((input) => {
-            if (input.files.length === 0) {
-              allFilesUploaded = false;
-              input.classList.add("is-invalid");
-            } else {
-              input.classList.remove("is-invalid");
-            }
-          });
-
-          if (!allFilesUploaded) {
-            showToast("Please upload all required files.", "error");
-            setButtonLoading(joinBtn, false, "Join Queue Now");
-            return;
-          }
-
-          // --- PREPARE DATA ---
-          showToast("Submitting your request...", "info");
-
-          const userId = localStorage.getItem("userId");
-          const formData = new FormData();
-          formData.append("userId", userId);
-
-          const confirmCheck = document.getElementById(
-            "confirmRequirementsCheck"
-          );
-          const isConfirmed = confirmCheck ? confirmCheck.checked : false;
-          formData.append("requirements_confirmed", isConfirmed);
-
-          // 🟢 FIX: Calculate and Append Total Amount 🟢
-          let calculatedTotal = 0;
-          selectedServicesList.forEach((serviceFull) => {
-            formData.append("services", serviceFull.trim());
+// 🟢 NEW: Pay with GCash Logic
+      const payBtn = document.getElementById("payWithGcashBtn");
+      
+      if (payBtn) {
+        payBtn.addEventListener("click", async function () {
+            const btn = this;
             
-            // Extract base name to look up price (remove [Note: ...])
-            let baseName = serviceFull;
-            if (serviceFull.includes(" [Note:")) {
-                baseName = serviceFull.split(" [Note:")[0];
+            // 1. Basic Validation
+            if (!checkAuthentication() || !checkSession()) return;
+            if (selectedServicesList.length === 0) {
+                showToast("Please select a service.", "error");
+                return;
             }
+            if (!userProfileComplete) {
+                showToast("Please complete your profile first.", "error");
+                return;
+            }
+
+            // 2. Loading State
+            if (!setButtonLoading(btn, true, '<i class="bi bi-wallet2 me-2"></i> Pay with GCash & Submit')) return;
+
+            // 3. Prepare Form Data
+            const userId = localStorage.getItem("userId");
+            const formData = new FormData();
+            formData.append("userId", userId);
             
-            const serviceData = servicesData[baseName];
-            if (serviceData && serviceData.price) {
-                calculatedTotal += serviceData.price;
-            }
-          });
-          
-          formData.append("total_amount", calculatedTotal);
-          // 🟢 END FIX 🟢
+            const confirmCheck = document.getElementById("confirmRequirementsCheck");
+            formData.append("requirements_confirmed", confirmCheck ? confirmCheck.checked : false);
 
-          fileInputs.forEach((input) => {
-            if (input.files.length > 0) {
-              formData.append("requirements_files", input.files[0]);
-              formData.append(
-                "requirement_names",
-                input.dataset.requirementName
-              );
-            }
-          });
+            let calculatedTotal = 0;
+            let descriptionList = [];
 
-          try {
-            // --- SUBMIT ---
-            const response = await fetch("/api/queue/submit-request", {
-              method: "POST",
-              body: formData,
+            selectedServicesList.forEach((serviceFull) => {
+                const qty = serviceQuantities[serviceFull] || 1;
+                const serviceNameWithQty = qty > 1 ? `${serviceFull} [Qty: ${qty}]` : serviceFull;
+                formData.append("services", serviceNameWithQty.trim());
+                
+                let baseName = serviceFull;
+                if (serviceFull.includes(" [Note:")) {
+                    baseName = serviceFull.split(" [Note:")[0];
+                }
+                const serviceData = servicesData[baseName];
+                if (serviceData && serviceData.price) {
+                    calculatedTotal += (serviceData.price * qty);
+                }
+                descriptionList.push(serviceNameWithQty);
+            });
+            
+            formData.append("total_amount", calculatedTotal);
+
+            // Add Files
+            const fileInputs = document.querySelectorAll(".requirement-upload[required]");
+            fileInputs.forEach((input) => {
+                if (input.files.length > 0) {
+                    formData.append("requirements_files", input.files[0]);
+                    formData.append("requirement_names", input.dataset.requirementName);
+                }
             });
 
-            const result = await response.json();
+            try {
+                // 4. STEP A: Submit Request to Database First
+                showToast("Saving request...", "info");
+                const submitResponse = await fetch("/api/queue/submit-request", {
+                    method: "POST",
+                    body: formData,
+                });
+                const submitResult = await submitResponse.json();
 
-            if (result.success) {
-              // Trigger Admin Update
-              const studentName = localStorage.getItem("fullname") || "Student";
-              localStorage.setItem(
-                "latestRequest",
-                JSON.stringify({
-                  name: studentName,
-                  timestamp: Date.now(),
-                })
-              );
+                if (!submitResult.success) {
+                    throw new Error(submitResult.message);
+                }
 
-              // Close Modal
-              const selectedModal = bootstrap.Modal.getInstance(
-                document.getElementById("selectedModal")
-              );
-              if (selectedModal) selectedModal.hide();
+                const requestId = submitResult.requestId;
 
-              showToast("Request submitted successfully!", "success");
-              showSubmissionSuccessModal(result.requestId);
+                // 5. STEP B: Create Payment Link
+                showToast("Generating GCash link...", "info");
+                
+                const paymentResponse = await fetch("/api/payment/create-link", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+                    },
+                    body: JSON.stringify({
+                        amount: calculatedTotal,
+                        description: "RSU Request: " + descriptionList.join(", "),
+                        requestId: requestId
+                    })
+                });
 
-              // Reset UI
-              selectedServicesList = [];
-              resetServiceSelectionUI();
-              updateSelectedCount();
+                const paymentResult = await paymentResponse.json();
 
-              // 🟢 FIX: Reset Checkbox and Disable Button for next time 🟢
-              const confirmCheck = document.getElementById("confirmRequirementsCheck");
-              if (confirmCheck) {
-                  confirmCheck.checked = false; // Uncheck the box
-              }
-              checkAllFilesUploaded(); // Run check to turn button Gray/Disabled
-              
-              await loadUserRequests();
-            } else {
-              showToast("Error: " + result.message, "error");
-            }
-          } catch (error) {
-            console.error("Error submitting service request:", error);
-            showToast("Network error. Please try again.", "error");
-          } finally {
-            // 🟢 2. STOP LOADING (Always runs, success or fail) 🟢
-            setTimeout(() => {
-              setButtonLoading(joinBtn, false, "Join Queue Now");
-            }, 500); // Small delay for visual smoothness
-          }
+                if (paymentResult.success) {
+                    // 🟢 1. Stop the loading spinner on the main button
+                    setButtonLoading(btn, false, '<i class="bi bi-wallet2 me-2"></i> Pay with GCash & Submit');
+
+                    // 🟢 2. Hide the "Selected Services" modal
+                    const selectedModal = bootstrap.Modal.getInstance(document.getElementById("selectedModal"));
+                    if (selectedModal) selectedModal.hide();
+
+                    // 🟢 3. SHOW RECEIPT MODAL
+                    // Populate the Receipt Number from the backend response
+                    document.getElementById('receiptNumberDisplay').innerText = paymentResult.receiptNumber || "PENDING";
+
+                    // Setup the "Proceed" button in the NEW modal
+                    const proceedBtn = document.getElementById('btnProceedToPay');
+                    
+                    // Remove old event listeners to prevent duplicates (Clone trick)
+                    const newProceedBtn = proceedBtn.cloneNode(true);
+                    proceedBtn.parentNode.replaceChild(newProceedBtn, proceedBtn);
+
+                    newProceedBtn.onclick = function() {
+                        // 1. Open PayMongo in new tab
+                        window.open(paymentResult.checkoutUrl, '_blank');
+                        
+                        // 2. Hide the Receipt Modal immediately
+                        const receiptModal = bootstrap.Modal.getInstance(document.getElementById('receiptModal'));
+                        if (receiptModal) receiptModal.hide();
+
+                        // 3. Show "Waiting" message instead of stuck "Redirecting"
+                        const payBtn = document.getElementById("payWithGcashBtn");
+                        if(payBtn) {
+                            payBtn.innerHTML = '<i class="bi bi-clock-history me-2"></i> Waiting for Payment...';
+                            payBtn.classList.remove('btn-primary');
+                            payBtn.classList.add('btn-warning');
+                        }
+
+                        // 4. Reload user requests in background to catch the update
+                        showSection('updates'); 
+                        loadUserRequests();     
+                        
+                        // Optional: Reload the page after 10 seconds to auto-refresh status
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 10000);
+                    };
+
+                    // Show the modal
+                    const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
+                    receiptModal.show();
+
+                } else {
+                    throw new Error("Payment link generation failed.");
+                }
+
+            } catch (error) {
+                console.error("Payment Process Error:", error);
+                showToast(error.message || "An error occurred during payment processing.", "error");
+                // Reset button on error
+                setButtonLoading(btn, false, '<i class="bi bi-wallet2 me-2"></i> Pay with GCash & Submit');
+            }     
         });
+      }
       // Enhanced service request submission
       async function submitServiceRequest() {
         const userId = localStorage.getItem("userId");
@@ -3942,19 +4068,19 @@ function previewFile(inputId) {
         }
       }
 
-      // 🟢 FINAL COMPLETE VERSION (Restores Feedback Button) 🟢
+// 🟢 UPDATED: Display Requests with Payment Status
       function displayUserRequests(requests) {
         const container = document.getElementById("requestsContainer");
         if (!container) return;
 
         if (requests.length === 0) {
           container.innerHTML = `
-      <div class="update-card text-center">
-          <i class="bi bi-inbox display-4 text-muted mb-3"></i>
-          <h4>No Service Requests</h4>
-          <p>You haven't submitted any service requests yet.</p>
-      </div>
-    `;
+            <div class="update-card text-center">
+                <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+                <h4>No Service Requests</h4>
+                <p>You haven't submitted any service requests yet.</p>
+            </div>
+          `;
           return;
         }
 
@@ -3966,95 +4092,80 @@ function previewFile(inputId) {
               request.queue_status
             );
 
-            // 2. Prepare Staff & Window Info (Use "Registrar Staff" if missing)
-            const staffName =
-              request.processed_by || request.declined_by || "Registrar Staff";
-            const windowName = request.window_number
-              ? `Window ${request.window_number}`
-              : "Registrar Office";
+            // 2. Prepare Staff & Window Info
+            const staffName = request.processed_by || request.declined_by || "Registrar Staff";
+            const windowName = request.window_number ? `Window ${request.window_number}` : "Registrar Office";
 
             // 3. Queue Badge
             const queueInfo = request.queue_number
-              ? `<div class="mt-2">
-             <strong>Queue Number:</strong> 
-             <span class="badge queue-status-badge bg-secondary">${request.queue_number}</span>
-           </div>`
+              ? `<div class="mt-2"><strong>Queue Number:</strong> <span class="badge queue-status-badge bg-secondary">${request.queue_number}</span></div>`
               : "";
+            
+            // 🟢 4. PAYMENT STATUS DISPLAY 🟢
+            let paymentDisplay = "";
+            const payStatus = request.payment_status || 'unpaid'; // Ensure backend sends this
+            const orNum = request.official_receipt_number;
 
-            // 4. PROCESSING BAR
+            if (payStatus === 'paid') {
+                if (orNum) {
+                    // Fully Verified with OR
+                    paymentDisplay = `<span class="badge bg-success border border-success text-white ms-2"><i class="bi bi-receipt"></i> OR# ${orNum}</span>`;
+                } else {
+                    // Paid Online, Waiting for OR
+                    paymentDisplay = `<span class="badge bg-success bg-opacity-75 text-white ms-2"><i class="bi bi-check-circle"></i> Paid (Verifying)</span>`;
+                }
+            } else if (payStatus === 'unpaid') {
+                 paymentDisplay = `<span class="badge bg-secondary bg-opacity-50 text-dark ms-2" style="font-size: 0.7rem;">Unpaid</span>`;
+            }
+
+            // 5. PROCESSING BAR
             let progressHtml = "";
             if (request.queue_status === "processing" && request.progress) {
               const p = request.progress;
-              const percent =
-                p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
+              const percent = p.total > 0 ? Math.round((p.current / p.total) * 100) : 0;
               progressHtml = `
-            <div class="mt-3 p-3 bg-light rounded border">
-              <div class="d-flex justify-content-between small fw-bold mb-1">
-                <span class="text-primary">Processing Status</span>
-                <span>${percent}%</span>
-              </div>
-              <div class="progress" style="height: 6px;">
-                <div class="progress-bar bg-primary" style="width: ${percent}%"></div>
-              </div>
-              <div class="text-muted small mt-1 text-end">
-                 Processed by: ${staffName} (${windowName})
-              </div>
-            </div>
-          `;
+                <div class="mt-3 p-3 bg-light rounded border">
+                  <div class="d-flex justify-content-between small fw-bold mb-1">
+                    <span class="text-primary">Processing Status</span>
+                    <span>${percent}%</span>
+                  </div>
+                  <div class="progress" style="height: 6px;">
+                    <div class="progress-bar bg-primary" style="width: ${percent}%"></div>
+                  </div>
+                  <div class="text-muted small mt-1 text-end">Processed by: ${staffName} (${windowName})</div>
+                </div>`;
             }
 
-            // 5. RED DECLINE BOX (Reason + Staff)
+            // 6. RED DECLINE BOX
             let declineHtml = "";
-            if (
-              request.status === "declined" ||
-              request.status === "cancelled"
-            ) {
+            if (request.status === "declined" || request.status === "cancelled") {
               declineHtml = `
-            <div class="alert alert-danger mt-3 border-0 shadow-sm">
-                <div class="d-flex">
-                    <div class="me-3"><i class="bi bi-x-circle-fill fs-1 text-danger"></i></div>
-                    <div>
-                        <h5 class="fw-bold text-danger mb-1">Request Declined</h5>
-                        <p class="mb-0 small"><strong>Reason:</strong> ${
-                          request.decline_reason || "Requirements not met."
-                        }</p>
-                        
-                        <div class="mt-2 pt-2 border-top border-danger border-opacity-25 small text-danger text-opacity-75">
-                            <i class="bi bi-person-badge-fill me-1"></i> Reviewed by: <strong>${staffName}</strong> 
-                            <span class="ms-1 opacity-75">(${windowName})</span>
+                <div class="alert alert-danger mt-3 border-0 shadow-sm">
+                    <div class="d-flex">
+                        <div class="me-3"><i class="bi bi-x-circle-fill fs-1 text-danger"></i></div>
+                        <div>
+                            <h5 class="fw-bold text-danger mb-1">Request Declined</h5>
+                            <p class="mb-0 small"><strong>Reason:</strong> ${request.decline_reason || "Requirements not met."}</p>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="text-end mt-2">
-                <button class="btn btn-warning btn-sm" onclick="resubmitRequest('${
-                  request.request_id
-                }')">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Resubmit Request
-                </button>
-            </div>
-          `;
+                <div class="text-end mt-2">
+                    <button class="btn btn-warning btn-sm" onclick="resubmitRequest('${request.request_id}')">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Resubmit Request
+                    </button>
+                </div>`;
             }
 
-            // 6. GREEN COMPLETED/CLAIMED BOX
+            // 7. GREEN COMPLETED/CLAIMED BOX
             let completedHtml = "";
-            // Check if finished (completed OR claimed)
-            const isFinished =
-              request.queue_status === "completed" ||
-              request.queue_status === "claimed";
+            const isFinished = request.queue_status === "completed" || request.queue_status === "claimed";
 
             if (isFinished) {
               const isClaimed = request.queue_status === "claimed";
-              const alertClass = isClaimed
-                ? "alert-secondary"
-                : "alert-success";
+              const alertClass = isClaimed ? "alert-secondary" : "alert-success";
               const icon = isClaimed ? "bi-check2-all" : "bi-check-circle-fill";
-              const title = isClaimed
-                ? "Documents Picked Up"
-                : "Ready to Claim!";
-              const desc = isClaimed
-                ? "Transaction complete. Documents received."
-                : "Your document is ready. Please proceed to the window.";
+              const title = isClaimed ? "Documents Picked Up" : "Ready to Claim!";
+              const desc = isClaimed ? "Transaction complete. Documents received." : "Your document is ready. Please proceed to the window.";
 
               completedHtml = `
               <div class="alert ${alertClass} mt-3 border-0 shadow-sm">
@@ -4063,63 +4174,50 @@ function previewFile(inputId) {
                       <div>
                           <h5 class="fw-bold mb-1">${title}</h5>
                           <p class="mb-0 small">${desc}</p>
-                          <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 small">
-                              <i class="bi bi-person-badge-fill me-1"></i> Processed by: <strong>${
-                                request.completed_by || staffName
-                              }</strong>
-                              <span class="ms-1">(${windowName})</span>
-                          </div>
                       </div>
                   </div>
-              </div>
-          `;
+              </div>`;
             }
 
-            // 🟢 7. FEEDBACK BUTTON (RESTORED HERE) 🟢
+            // 8. FEEDBACK BUTTON
             let feedbackBtn = "";
             if (isFinished) {
               if (!request.feedback_id) {
-                // Not rated yet -> Show Button
                 feedbackBtn = `
                 <div class="mt-3 text-end border-top pt-2">
                   <span class="small text-muted me-2">How was our service?</span>
                   <button class="btn btn-sm btn-outline-warning" onclick="openFeedbackModal('${request.request_id}')">
                     <i class="bi bi-star"></i> Rate Service
                   </button>
-                </div>
-              `;
+                </div>`;
               } else {
-                // Already rated -> Show Badge
                 feedbackBtn = `
                 <div class="mt-3 text-end border-top pt-2">
                   <span class="badge bg-light text-success border"><i class="bi bi-check-circle-fill me-1"></i> Rated</span>
-                </div>
-              `;
+                </div>`;
               }
             }
 
-            // 8. ASSEMBLE CARD (Now includes feedbackBtn)
+            // 9. ASSEMBLE CARD
             return `
-      <div class="update-card">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-              <h4 class="mb-0">${request.services.join(", ")}</h4>
-              <span class="queue-status-badge ${statusInfo.class}">${
-              statusInfo.text
-            }</span>
-          </div>
-          <p class="text-muted small mb-0">
-              <strong>ID:</strong> ${request.request_id} | 
-              <strong>Date:</strong> ${new Date(
-                request.submitted_at
-              ).toLocaleDateString()}
-          </p>
-          
-          ${queueInfo}
-          ${progressHtml}
-          ${declineHtml} 
-          ${completedHtml}
-          ${feedbackBtn}  </div>
-      `;
+              <div class="update-card">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div class="d-flex align-items-center flex-wrap gap-2">
+                          <h4 class="mb-0 text-break">${request.services.join(", ")}</h4>
+                          ${paymentDisplay} </div>
+                      <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
+                  </div>
+                  <p class="text-muted small mb-0">
+                      <strong>ID:</strong> ${request.request_id} | 
+                      <strong>Date:</strong> ${new Date(request.submitted_at).toLocaleDateString()}
+                  </p>
+                  
+                  ${queueInfo}
+                  ${progressHtml}
+                  ${declineHtml} 
+                  ${completedHtml}
+                  ${feedbackBtn}  
+              </div>`;
           })
           .join("");
       }
@@ -4853,7 +4951,7 @@ function updateRequestStats(requests) {
         });
       });
 
-      // 2. OPEN CATEGORY MODAL LOGIC
+// 🟢 UPDATED: OPEN CATEGORY MODAL (Supports Multi-Category Items)
       function openCategoryModal(category) {
         // Security checks
         if (!checkAuthentication() || !checkSession()) return;
@@ -4861,27 +4959,27 @@ function updateRequestStats(requests) {
         const container = document.getElementById("categoryItemsContainer");
         const title = document.getElementById("categoryModalTitle");
 
-        // Update Title
+        // Update Title based on new categories
         const titles = {
-          academic: "Academic Records & Grades",
-          certifications: "Certifications & Status",
-          graduation: "Graduation & Credentials",
+          certification_cav: "Certifications & CAV",
+          transcript_diploma: "Transcript & Diploma",
+          transferee: "Transferee Documents",
         };
         title.textContent = titles[category] || "Select Document";
 
-        // Filter Data
-        const items = Object.entries(servicesData).filter(
-          ([key, data]) => data.category === category
-        );
+        // 🟢 FIX: Logic to handle items that belong to multiple categories (Arrays)
+        const items = Object.entries(servicesData).filter(([key, data]) => {
+          if (Array.isArray(data.category)) {
+            return data.category.includes(category);
+          }
+          return data.category === category;
+        });
 
         // Generate Accordion HTML
         let html = "";
         items.forEach(([name, data], index) => {
           const uniqueId = `collapse${index}`;
-          // Check if item is already in the list (partial match for notes)
-          const isSelected = selectedServicesList.some((s) =>
-            s.startsWith(name)
-          );
+          const isSelected = selectedServicesList.some((s) => s.startsWith(name));
 
           html += `
       <div class="accordion-item mb-2 border rounded shadow-sm">
@@ -4899,9 +4997,7 @@ function updateRequestStats(requests) {
           <div class="accordion-body">
             <div class="row">
               <div class="col-md-7 border-end">
-                <p class="mb-2"><strong>Description:</strong> ${
-                  data.description
-                }</p>
+                <p class="mb-2"><strong>Description:</strong> ${data.description}</p>
                 <p class="mb-1 text-muted small"><strong>Requirements:</strong></p>
                 <ul class="small text-muted mb-2">
                   ${data.requirements.map((r) => `<li>${r.name}</li>`).join("")}
@@ -4926,7 +5022,7 @@ function updateRequestStats(requests) {
                   <button class="btn ${
                     isSelected ? "btn-secondary" : "btn-primary"
                   }" 
-                    onclick="addServiceFromModal('${name}', 'note-${index}')" 
+                    onclick="addServiceFromModal('${name}', 'note-${index}', this)" 
                     ${isSelected ? "disabled" : ""}>
                     ${
                       isSelected
@@ -4950,8 +5046,8 @@ function updateRequestStats(requests) {
         modal.show();
       }
 
-      // 3. ADD SERVICE WITH NOTE LOGIC
-      function addServiceFromModal(serviceName, noteInputId) {
+      // 3. ADD SERVICE WITH NOTE LOGIC (FIXED)
+      function addServiceFromModal(serviceName, noteInputId, btnElement) {
         const noteInput = document.getElementById(noteInputId);
         const note = noteInput ? noteInput.value.trim() : "";
 
@@ -4965,21 +5061,18 @@ function updateRequestStats(requests) {
           selectedServicesList.push(finalName);
           updateSelectedCount();
 
-          // UI Feedback
+          // UI Feedback: Show Toast
           showToast(`Added: ${finalName}`, "success");
 
-          // Refresh the modal content to disable the button
-          const currentCategory = servicesData[serviceName].category;
-
-          // Close current modal instance then reopen to refresh
-          // (Simple way to refresh state)
-          const modalEl = document.getElementById("categoryModal");
-          const modal = bootstrap.Modal.getInstance(modalEl);
-          modal.hide();
-
-          setTimeout(() => {
-            openCategoryModal(currentCategory);
-          }, 300);
+          // 🟢 INSTANT UI UPDATE (Fixes the disappearing bug) 🟢
+          // Instead of closing/reloading the modal, we just update the button you clicked.
+          if (btnElement) {
+            btnElement.className = "btn btn-secondary"; // Change color to gray
+            btnElement.innerHTML = "Already Added"; // Change text
+            btnElement.disabled = true; // Disable click
+          }
+        } else {
+           showToast("This service is already in your list.", "info");
         }
       }
       // 🟢 UPDATED: Force 'Declined' to match 'Completed' Layout
@@ -5139,6 +5232,7 @@ function updateRequestStats(requests) {
         // 🟢 OPTIONAL: Auto-refresh updates every 5 seconds
         setInterval(loadRecentUpdates, 5000);
       });
+      
     </script>
   </body>
 </html>

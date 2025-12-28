@@ -5,9 +5,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import multer from "multer"; // <--- KEEP THIS LINE
+import multer from "multer";
 import nodemailer from "nodemailer";
 import fs from "fs";
+import axios from "axios";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,10 @@ const authenticateToken = (req, res, next) => {
     }
   );
 };
+// 🟢 PAYMONGO CONFIGURATION (TEST MODE)
+// These are public test keys. For your thesis, you can use these or sign up at paymongo.com for your own.
+const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
+const PAYMONGO_API_URL = "https://api.paymongo.com/v1";
 // ------------------- THIS IS THE FIX -------------------
 // Secure file filter to only allow images
 const imageFileFilter = (req, file, cb) => {
@@ -141,7 +146,7 @@ const transporter = nodemailer.createTransport({
   secure: false,
   auth: {
     user: "9d82a0001@smtp-brevo.com",
-    pass: "bskH60jZVU65uZm",
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -494,6 +499,16 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "welcome.html"));
 });
 
+// Add this with your other HTML routes
+app.get("/cashier", (req, res) => {
+  res.sendFile(path.join(__dirname, "cashierdashb.html"));
+});
+
+// Route for Cashier Login Page
+app.get("/cashier-login", (req, res) => {
+  res.sendFile(path.join(__dirname, "cashierLogin.html"));
+});
+
 app.get("/privacy", (req, res) => {
   res.sendFile(path.join(__dirname, "privacy.html"));
 });
@@ -738,6 +753,35 @@ app.get("/api/admin/me", authenticateAdmin, (req, res) => {
       });
     }
   );
+});
+// 🟢 NEW: Handle Payment Success Redirect from PayMongo
+app.get("/payment-success", (req, res) => {
+  const requestId = req.query.id; // Get the ID we sent to PayMongo
+
+  if (!requestId) {
+    return res.redirect("/dashboard.html?error=missing_id");
+  }
+
+  // 1. Update the Database to 'paid'
+  const query =
+    "UPDATE service_requests SET payment_status = 'paid' WHERE request_id = ?";
+
+  db.query(query, [requestId], (err, result) => {
+    if (err) {
+      console.error("Payment Update Error:", err);
+      return res.redirect("/dashboard.html?error=db_error");
+    }
+
+    // 2. Redirect student back to Dashboard with a success flag
+    // The dashboard can read this flag to show a success message
+    res.redirect("/dashboard.html?payment=success");
+  });
+});
+
+// 🟢 NEW: Handle Payment Failed/Cancelled
+app.get("/payment-failed", (req, res) => {
+  // Just send them back to dashboard
+  res.redirect("/dashboard.html?payment=cancelled");
 });
 
 // Add this route for admin profile updates
@@ -1765,33 +1809,37 @@ app.post("/api/admin/add-to-queue", authenticateAdmin, (req, res) => {
 });
 
 app.get("/api/admin/queues", authenticateAdmin, (req, res) => {
+  // 🟢 UPDATED QUERY: Added 'payment_status' to the SELECT list
   const query = `
     SELECT 
-      queue_id, queue_number, user_name, student_id, course,
-      year_level, services, status, is_priority, 
-      submitted_at, started_at, completed_at, 
-      window_number,
-      completed_by,
-      progress_data
-    FROM queue
+      q.queue_id, q.queue_number, q.user_name, q.student_id, q.course,
+      q.year_level, q.services, q.status, q.is_priority, 
+      q.submitted_at, q.started_at, q.completed_at, 
+      q.window_number,
+      q.completed_by,
+      q.progress_data,
+      sr.payment_status,
+      sr.official_receipt_number  
+    FROM queue q
+    LEFT JOIN service_requests sr ON q.request_id = sr.request_id -- 🟢 JOIN TO GET PAYMENT INFO
     WHERE 
-      (DATE(submitted_at) = CURDATE()) 
+      (DATE(q.submitted_at) = CURDATE()) 
       OR 
-      (status IN ('waiting', 'reviewing', 'processing', 'ready', 'completed'))
+      (q.status IN ('waiting', 'reviewing', 'processing', 'ready', 'completed'))
       OR
-      (status = 'claimed' AND DATE(completed_at) = CURDATE())
+      (q.status = 'claimed' AND DATE(q.completed_at) = CURDATE())
     ORDER BY 
       CASE 
-        WHEN status = 'processing' THEN 1
-        WHEN status = 'waiting' THEN 2
+        WHEN q.status = 'processing' THEN 1
+        WHEN q.status = 'waiting' THEN 2
         ELSE 3
       END ASC,
       CASE 
-        WHEN status = 'processing' THEN started_at 
+        WHEN q.status = 'processing' THEN q.started_at 
         ELSE NULL 
       END DESC,
-      is_priority DESC,
-      submitted_at ASC
+      q.is_priority DESC,
+      q.submitted_at ASC
   `;
 
   db.query(query, (err, queues) => {
@@ -1888,7 +1936,8 @@ app.get("/api/user/service-requests", (req, res) => {
 
   // 🟢 FIX: Added 'COLLATE utf8mb4_general_ci' to the JOIN conditions
   const query = `
-    SELECT sr.*, 
+    SELECT sr.*,
+           sr.payment_url, 
            q.progress_data, 
            q.status AS live_queue_status,
            q.window_number,
@@ -2380,7 +2429,31 @@ app.post("/api/admin/mark-claimed", authenticateAdmin, (req, res) => {
     });
   });
 });
+// 🟢 NEW: Assign Official Receipt (OR) Number
+app.post("/api/admin/assign-or", authenticateAdmin, (req, res) => {
+  const { requestId, orNumber } = req.body;
 
+  if (!requestId || !orNumber) {
+    return res.status(400).json({ success: false, message: "Missing details" });
+  }
+
+  const query =
+    "UPDATE service_requests SET official_receipt_number = ? WHERE request_id = ?";
+
+  db.query(query, [orNumber, requestId], (err, result) => {
+    if (err) {
+      console.error("Database error assigning OR:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database error" });
+    }
+
+    // Also update queue if needed (optional, depends on if you want OR in queue table too)
+    // For now, updating service_requests is enough for the student to see it.
+
+    res.json({ success: true, message: "OR Number assigned successfully." });
+  });
+});
 // === API: FORGOT PASSWORD === OLD not working
 // app.post("/api/forgot-password", (req, res) => {
 //   const { email } = req.body;
@@ -3108,9 +3181,133 @@ app.get("/api/student/updates", authenticateToken, (req, res) => {
     res.json({ success: true, updates: results });
   });
 });
+// 🟢 REPLACEMENT: Payment Route with Receipt Number Generation
+app.post("/api/payment/create-link", async (req, res) => {
+  const { amount, description, requestId } = req.body;
+  const baseUrl = process.env.SITE_URL || "http://localhost:3000";
 
+  // 1. Generate a Receipt Number
+  const receiptNumber = `OR-${Date.now().toString().slice(-6)}${Math.floor(
+    1000 + Math.random() * 9000
+  )}`;
+
+  try {
+    // 2. Create PayMongo Link
+    const response = await axios.post(
+      `${PAYMONGO_API_URL}/links`,
+      {
+        data: {
+          attributes: {
+            amount: amount * 100,
+            description: description || "RSU Document Request",
+            remarks: `Ref: ${requestId} | Receipt: ${receiptNumber}`,
+            redirect: {
+              success: `${baseUrl}/payment-success?id=${requestId}`,
+              failed: `${baseUrl}/payment-failed?id=${requestId}`,
+            },
+          },
+        },
+      },
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            PAYMONGO_SECRET_KEY + ":"
+          ).toString("base64")}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const checkoutUrl = response.data.data.attributes.checkout_url;
+    const referenceId = response.data.data.id;
+
+    // 3. Save Receipt Number & Reference to Database
+    db.query(
+      "UPDATE service_requests SET payment_status = 'unpaid', payment_reference = ?, payment_url = ?, receipt_number = ? WHERE request_id = ?",
+      [referenceId, checkoutUrl, receiptNumber, requestId],
+      (err) => {
+        if (err) {
+          console.error("DB Error saving payment:", err);
+          return res
+            .status(500)
+            .json({ success: false, message: "Database error" });
+        }
+
+        // 4. Send URL AND Receipt Number to Frontend
+        res.json({
+          success: true,
+          checkoutUrl: checkoutUrl,
+          receiptNumber: receiptNumber, // <--- Sending to Client
+        });
+      }
+    );
+  } catch (error) {
+    console.error(
+      "PayMongo Error:",
+      error.response ? error.response.data : error.message
+    );
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to create payment link" });
+  }
+});
+// 🟢 FIXED: Handle Payment Success Return
+app.get("/payment-success", (req, res) => {
+  const requestId = req.query.id;
+
+  if (!requestId) return res.send("Invalid Request.");
+
+  // 1. Update Database to PAID
+  db.query(
+    "UPDATE service_requests SET payment_status = 'paid' WHERE request_id = ?",
+    [requestId],
+    (err, result) => {
+      if (err) {
+        console.error("Payment Update Error:", err);
+        return res.send(
+          "Error updating payment status. Please contact support."
+        );
+      }
+
+      // 2. AUTOMATICALLY REDIRECT back to the Student Dashboard
+      // This will close the loop and show the "Paid" status to the student.
+      res.redirect("/dashboard?payment=success");
+    }
+  );
+});
+
+// 🟢 NEW: Cashier Dashboard API
+app.get("/api/cashier/transactions", authenticateToken, (req, res) => {
+  // In a real app, check for 'cashier' or 'admin' role here
+  const query = `
+        SELECT 
+            request_id,
+            receipt_number,
+            payment_reference,
+            user_name,
+            student_id,
+            services,
+            total_amount,
+            payment_status,
+            submitted_at
+        FROM service_requests
+        WHERE payment_status = 'paid'
+        ORDER BY submitted_at DESC
+    `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Cashier Fetch Error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database Error" });
+    }
+    res.json({ success: true, transactions: results });
+  });
+});
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
+
 const PORT = process.env.PORT || 3000;
 
 // Listen on 0.0.0.0 (Required for Render to route traffic)

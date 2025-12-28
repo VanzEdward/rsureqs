@@ -3281,7 +3281,6 @@
             `</div>`;
         }
 
-        // 🟢 FIXED: Added ID to card for cleaner DOM updates 🟢
         renderNewRequests() {
           const container = document.getElementById("requests-list");
           const noRequestsMsg = document.getElementById("no-requests-msg");
@@ -3336,7 +3335,37 @@
                 actionButton = `<button class="btn btn-sm btn-primary" onclick="queueManager.lockAndReview('${request.queue_id}')"><i class="bi bi-search me-1"></i> Review Request</button>`;
               }
 
-              // ... inside renderNewRequests ...
+              // 🟢 PAYMENT STATUS & OR BUTTON LOGIC 🟢
+              const paymentStatus = request.payment_status || "unpaid";
+              const orNumber = request.official_receipt_number;
+              let paymentBadge = "";
+              let orButton = "";
+
+              if (paymentStatus === "paid") {
+                if (orNumber) {
+                  // Case A: Paid AND has OR -> Show Badge with Number
+                  paymentBadge = `<span class="badge bg-success border border-success text-white ms-1" style="font-size: 0.7rem;">
+                                        <i class="bi bi-cash-coin"></i> PAID (OR# ${this.escapeHtml(
+                                          orNumber
+                                        )})
+                                      </span>`;
+                } else {
+                  // Case B: Paid but NO OR -> Show Badge + "Add OR" Button
+                  paymentBadge = `<span class="badge bg-success border border-success text-white ms-1" style="font-size: 0.7rem;">
+                                        <i class="bi bi-cash-coin"></i> PAID
+                                      </span>`;
+                  // The button calls assignOR with the request ID
+                  orButton = `<button class="btn btn-sm btn-outline-dark ms-1 py-0 px-2 shadow-sm" style="font-size: 0.7rem; border-radius: 10px;" 
+                                    onclick="event.stopPropagation(); queueManager.assignOR('${request.request_id}')" title="Enter Official Receipt Number">
+                                    <i class="bi bi-pencil-square"></i> OR#
+                                  </button>`;
+                }
+              } else {
+                // Case C: Unpaid
+                paymentBadge =
+                  '<span class="badge bg-light text-muted border ms-1" style="font-size: 0.7rem;">UNPAID</span>';
+              }
+
               return `
     <div id="req-${request.queue_id}" class="request-card ${
                 isPriority ? "priority-card" : ""
@@ -3352,7 +3381,8 @@
                     ? '<span class="badge bg-danger ms-2">Priority</span>'
                     : ""
                 }
-            </span>
+                ${paymentBadge} 
+                ${orButton} </span>
             
             <div class="text-muted fw-bold" style="font-size: 0.75rem; margin-top: 2px;">
                 <i class="bi bi-mortarboard-fill me-1 text-primary"></i> 
@@ -4773,6 +4803,35 @@
               link.download = fileName;
               link.click();
             }
+          }
+        }
+        // 🟢 NEW: Function to manually input OR Number
+        async assignOR(requestId) {
+          const orNumber = prompt(
+            "Please enter the Official Receipt (OR) Number from the receipt:"
+          );
+
+          if (!orNumber) return; // Cancelled
+
+          try {
+            const response = await makeAuthenticatedRequest(
+              "/api/admin/assign-or",
+              {
+                method: "POST",
+                body: JSON.stringify({ requestId, orNumber }),
+              }
+            );
+
+            const result = await response.json();
+            if (result.success) {
+              showNotification("OR Number saved!", "success");
+              this.loadQueues(); // Refresh UI
+            } else {
+              alert("Error: " + result.message);
+            }
+          } catch (error) {
+            console.error("Error assigning OR:", error);
+            alert("Failed to save OR Number.");
           }
         }
       }
