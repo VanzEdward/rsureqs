@@ -52,11 +52,20 @@
         <i class="bi bi-bar-chart menu-icon"></i>
         <span>Reports</span>
       </div>
+      <div
+        class="menu-item"
+        data-page="account-reviews"
+        onclick="loadPendingUsers()"
+      >
+        <i class="bi bi-person-check-fill menu-icon"></i>
+        <span>Account Reviews</span>
+      </div>
 
       <div class="menu-item" data-page="settings">
         <i class="bi bi-gear menu-icon"></i>
         <span>Settings</span>
       </div>
+
       <div
         class="menu-item"
         data-page="staff-management"
@@ -294,6 +303,31 @@
             style="text-align: center; color: #999; padding: 20px 0"
           >
             No reports found.
+          </div>
+        </div>
+      </div>
+
+      <div id="account-reviews-page" class="page">
+        <div class="header mb-4">
+          <h1>New Account Requests</h1>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                  <tr>
+                    <th class="ps-4">Student Name</th>
+                    <th>Student ID</th>
+                    <th>Course/Year</th>
+                    <th>Date Registered</th>
+                    <th class="text-end pe-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingUsersTable"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -606,6 +640,117 @@
           <button class="btn btn-primary" onclick="changePassword()">
             Change Password
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="accountReviews-section" class="content-section d-none">
+      <h2 class="mb-4">New Account Requests</h2>
+
+      <div class="card shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-4">Student Name</th>
+                  <th>Student ID</th>
+                  <th>Course/Year</th>
+                  <th>Date Registered</th>
+                  <th class="text-end pe-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pendingUsersTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="reviewUserModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold">Review Account Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-7">
+                <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                  Personal Information
+                </h6>
+                <table class="table table-sm table-borderless">
+                  <tr>
+                    <td class="text-muted w-25">Full Name:</td>
+                    <td class="fw-bold" id="revName"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Student ID:</td>
+                    <td class="fw-bold" id="revID"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Course/Year:</td>
+                    <td class="fw-bold" id="revCourse"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Email:</td>
+                    <td id="revEmail"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Phone:</td>
+                    <td id="revPhone"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Address:</td>
+                    <td id="revAddress"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Nationality:</td>
+                    <td id="revNation"></td>
+                  </tr>
+                  <tr>
+                    <td class="text-muted">Birthdate:</td>
+                    <td id="revDOB"></td>
+                  </tr>
+                </table>
+              </div>
+              <div class="col-md-5 text-center">
+                <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                  School ID Proof
+                </h6>
+                <div class="border rounded p-2 bg-light">
+                  <img
+                    id="revImage"
+                    src=""
+                    alt="School ID"
+                    class="img-fluid rounded"
+                    style="max-height: 250px"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-outline-danger"
+              onclick="processUser('rejected')"
+            >
+              Reject
+            </button>
+            <button
+              type="button"
+              class="btn btn-success fw-bold px-4"
+              onclick="processUser('verified')"
+            >
+              <i class="bi bi-check-lg me-1"></i> Confirm Account
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1421,6 +1566,54 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
     <script>
+      // (function () {
+      //   // 1. Try to find the token (Check both names)
+      //   const token =
+      //     localStorage.getItem("token") || localStorage.getItem("adminToken");
+
+      //   // 2. Try to find the user info (Check both names)
+      //   let userStr = localStorage.getItem("user");
+      //   if (!userStr) {
+      //     userStr = localStorage.getItem("admin"); // Fallback to 'admin' key
+      //   }
+
+      //   // 3. Security Check: Is the token missing?
+      //   if (!token) {
+      //     alert("Unauthorized access. Please log in.");
+      //     window.location.href = "/login"; // Or /adminLogin.html
+      //     return;
+      //   }
+
+      //   // 4. Parse User Data
+      //   let user = null;
+      //   try {
+      //     user = userStr ? JSON.parse(userStr) : null;
+      //   } catch (e) {
+      //     console.error("Corrupted user data", e);
+      //   }
+
+      //   // 5. Role Check
+      //   // Your data says "staff" (lowercase), so we allow that.
+      //   if (user) {
+      //     const role = (user.role || "").toLowerCase(); // Normalize to lowercase
+      //     if (role !== "admin" && role !== "staff") {
+      //       alert("Access Denied: Your role is '" + user.role + "'.");
+      //       window.location.href = "/login";
+      //       return;
+      //     }
+
+      //     // 🟢 CRITICAL FIX FOR MODAL:
+      //     // Ensure the rest of your page can find the user, even if it was saved as 'admin'
+      //     if (!localStorage.getItem("user")) {
+      //       localStorage.setItem("user", JSON.stringify(user));
+      //     }
+      //     if (!localStorage.getItem("token")) {
+      //       localStorage.setItem("token", token);
+      //     }
+      //   }
+
+      //   console.log("✅ Access Granted. Role:", user ? user.role : "Unknown");
+      // })();
       // -------------------------- BOOTSTRAP OFFCANVAS SIDEBAR FOR MOBILE USING OFFCANVAS COMPONENT--------------------------------------
 
       // Initialize Bootstrap Offcanvas for sidebar on mobile
@@ -3336,8 +3529,8 @@
               }
 
               // 🟢 PAYMENT STATUS & OR BUTTON LOGIC 🟢
-              const paymentStatus = request.payment_status || "unpaid";
-              const orNumber = request.official_receipt_number;
+              const paymentStatus = "";
+              const orNumber = "";
               let paymentBadge = "";
               let orButton = "";
 
@@ -5157,6 +5350,171 @@
           if (sw) sw.checked = true;
         }
       });
+
+      // 🟢 NEW: Account Review Logic
+      let selectedReviewUserId = null;
+
+      // 🟢 Function to Load Pending Users
+      async function loadPendingUsers() {
+        const token = localStorage.getItem("token");
+        const tableBody = document.getElementById("pendingUsersTable");
+
+        // Clear current list
+        tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+
+        try {
+          const response = await fetch("/api/admin/pending-users", {
+            headers: { Authorization: "Bearer " + token },
+          });
+
+          const users = await response.json();
+
+          tableBody.innerHTML = ""; // Clear loading message
+
+          if (users.length === 0) {
+            tableBody.innerHTML =
+              '<tr><td colspan="5">No pending accounts found.</td></tr>';
+            return;
+          }
+
+          // Loop through users and create table rows
+          users.forEach((user) => {
+            const row = document.createElement("tr");
+
+            // Construct the row HTML
+            row.innerHTML = `
+                <td>${user.fullname || "N/A"}</td>
+                <td>${user.email}</td>
+                <td>${user.student_id || "N/A"}</td>
+                <td>
+                    ${
+                      user.school_id_picture
+                        ? `<a href="/uploads/${user.school_id_picture}" target="_blank">View ID</a>`
+                        : "No Image"
+                    }
+                </td>
+                <td>
+                    <button class="btn btn-success btn-sm" onclick="approveUser(${
+                      user.id
+                    })">
+                        Approve
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+          });
+        } catch (error) {
+          console.error("Error loading users:", error);
+          tableBody.innerHTML =
+            '<tr><td colspan="5" class="text-danger">Error loading data.</td></tr>';
+        }
+      }
+
+      // 🟢 Function to Approve User
+      async function approveUser(userId) {
+        if (!confirm("Are you sure you want to approve this account?")) return;
+
+        const token = localStorage.getItem("token");
+
+        try {
+          const response = await fetch("/api/admin/approve-user", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ userId: userId }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert("User approved!");
+            loadPendingUsers(); // Refresh the list
+          } else {
+            alert("Failed: " + data.message);
+          }
+        } catch (error) {
+          console.error("Error approving:", error);
+          alert("Server error.");
+        }
+      }
+
+      // 🟢 Add Event Listener to the Sidebar Menu
+      // Replace 'menu-account-reviews' with the ACTUAL ID of your sidebar link
+      document
+        .getElementById("menu-account-reviews")
+        .addEventListener("click", function () {
+          // Hide other sections...
+          // Show account reviews section...
+          document.getElementById("account-reviews-section").style.display =
+            "block";
+
+          // Load the data!
+          loadPendingUsers();
+        });
+
+      // 2. Open Modal & Populate Data
+      function openReviewModal(user) {
+        selectedReviewUserId = user.id;
+
+        // Fill Text Fields
+        document.getElementById("revName").innerText = user.fullname;
+        document.getElementById("revID").innerText = user.student_id;
+        document.getElementById(
+          "revCourse"
+        ).innerText = `${user.course} (${user.year_level})`;
+        document.getElementById("revEmail").innerText = user.email;
+        document.getElementById("revPhone").innerText = user.phone;
+        document.getElementById("revAddress").innerText = user.home_address;
+        document.getElementById("revNation").innerText = user.nationality;
+        document.getElementById("revDOB").innerText = new Date(
+          user.dob
+        ).toLocaleDateString();
+
+        // Fill Image (Handle if image is missing)
+        const imgEl = document.getElementById("revImage");
+        if (user.school_id_picture) {
+          imgEl.src = `/uploads/${user.school_id_picture}`;
+        } else {
+          imgEl.src = "https://via.placeholder.com/300x200?text=No+ID+Uploaded";
+        }
+
+        new bootstrap.Modal(document.getElementById("reviewUserModal")).show();
+      }
+
+      // 3. Process (Verify/Reject)
+      async function processUser(action) {
+        if (!confirm(`Are you sure you want to ${action} this account?`))
+          return;
+
+        try {
+          const response = await fetch("/api/admin/verify-user", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + localStorage.getItem("token"),
+            },
+            body: JSON.stringify({
+              userId: selectedReviewUserId,
+              action: action,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            alert(data.message);
+            bootstrap.Modal.getInstance(
+              document.getElementById("reviewUserModal")
+            ).hide();
+            loadPendingUsers(); // Refresh list
+          } else {
+            alert("Error: " + data.message);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
       // ==========================================
       // WINDOW ASSIGNMENT LOGIC (PERSISTENCE)
       // ==========================================

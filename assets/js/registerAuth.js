@@ -116,7 +116,7 @@ if (registerForm) {
     if (!nameRegex.test(middleName)) {
       alertBox.className = "alert alert-danger";
       alertBox.textContent =
-        "Last, First, and Middle Name must be letters only.";
+        "Middle Name must be 2-50 letters and spaces only.";
       alertBox.classList.remove("d-none");
       return;
     }

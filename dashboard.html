@@ -832,9 +832,9 @@
               <span class="fw-bold text-success fs-5" id="totalAmount">₱0.00</span>
             </div>
             
-            <button id="payWithGcashBtn" class="btn btn-primary w-100 fw-bold" disabled style="background-color: #007bff;">
-                <i class="bi bi-wallet2 me-2"></i> Pay with GCash & Submit
-            </button>
+            <button id="submitRequestBtn" type="button" class="btn btn-primary w-100 fw-bold" onclick="submitServiceRequest()">
+    <i class="bi bi-send-fill me-2"></i> Submit Request
+</button>
             
             <small class="text-muted mt-2 text-center" style="font-size: 0.8rem;">
                 <i class="bi bi-shield-lock-fill"></i> Secure payment powered by PayMongo
@@ -843,27 +843,6 @@
         </div>
       </div>
     </div>
-    <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content text-center border-0 shadow-lg p-4">
-      <div class="modal-body">
-        <div class="mb-3">
-          <i class="bi bi-check-circle-fill text-success display-1"></i>
-        </div>
-        <h3 class="fw-bold text-success">Payment Successful!</h3>
-        <p class="text-muted">
-          Your payment has been verified and your request is now <strong>PAID</strong>.
-        </p>
-        <p class="small text-secondary">
-          The cashier has been notified. You can track your status in the "Updates" section.
-        </p>
-        <button type="button" class="btn btn-success rounded-pill px-4 mt-3" data-bs-dismiss="modal">
-          Okay, Got it
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
     <!-- 🟢 OPTIMIZED PROFILE MODAL (Dynamic Dropdowns) 🟢 -->
     <div
@@ -2358,37 +2337,38 @@
         </div>
       </div>
     </div>
-
-    <div class="modal fade" id="receiptModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content text-center border-0 shadow-lg">
-            <div class="modal-header bg-warning justify-content-center">
-                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-receipt me-2"></i>SAVE YOUR RECEIPT</h5>
-            </div>
-            <div class="modal-body p-4">
-                <p class="text-muted mb-3">Please save this number <strong>before</strong> paying.</p>
+        <div class="modal-content text-center p-4">
+            <div class="modal-body">
+                <div class="mb-3">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                </div>
+                <h4 class="fw-bold">Request Submitted!</h4>
+                <p class="text-muted">Your request has been successfully submitted to the registrar.</p>
                 
-                <div class="bg-light border rounded p-3 mb-3">
-                    <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Official Receipt No.</small>
-                    <h2 class="text-primary fw-bold m-0" id="receiptNumberDisplay">...</h2>
+                <div class="alert alert-warning text-start" role="alert">
+                    <div class="d-flex">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div>
+                            <strong>Please Note:</strong>
+                            <p class="mb-0 small">Wait for the staff to review your request. Frequently visit the website to monitor your request progress and check your queue number.</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="alert alert-danger text-start small mb-0">
-                    <i class="bi bi-camera-fill me-1"></i> <strong>ACTION REQUIRED:</strong><br>
-                    Take a screenshot or write this down. You will need it to claim your documents.
+                <div class="mt-4">
+                    <p class="text-muted small mb-1">Request Reference ID</p>
+                    <h2 class="fw-bold text-primary" id="successRequestId">#---</h2>
                 </div>
-            </div>
-            <div class="modal-footer justify-content-center border-0 pb-4">
-                <button type="button" class="btn btn-success btn-lg px-4 rounded-pill w-100" id="btnProceedToPay">
-                    I have saved it. Pay Now <i class="bi bi-arrow-right-short"></i>
+
+                <button type="button" class="btn btn-primary w-100 mt-3" onclick="closeSuccessModal()">
+                    Okay, I understand
                 </button>
             </div>
         </div>
     </div>
 </div>
-
-  
-
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- <script src="/assets/js/dashboard.js"></script> -->
@@ -3389,46 +3369,32 @@ async function initiatePayment(requestId, amount, description) {
           totalAmountEl.textContent = `₱${total.toFixed(2)}`;
         }
       }
-      // 🟢 UPDATED: Checks Files + Profile + Verification Checkbox 🟢
-      function checkAllFilesUploaded() {
-        const joinQueueBtn = document.getElementById("payWithGcashBtn");
-        const requiredUploadInputs = document.querySelectorAll(
-          ".requirement-upload[required]"
-        );
-        // Get the new checkbox
-        const confirmCheck = document.getElementById(
-          "confirmRequirementsCheck"
-        );
+  // 🟢 UPDATE: Update this function to target 'submitRequestBtn' instead of 'payWithGcashBtn'
+function checkAllFilesUploaded() {
+    const fileInputs = document.querySelectorAll('#requirementsList input[type="file"]');
+    const check = document.getElementById("confirmRequirementsCheck");
+    let allUploaded = true;
 
-        // If no services selected, button disabled
-        if (selectedServicesList.length === 0) {
-          joinQueueBtn.disabled = true;
-          return;
-        }
+    // Check if all required files are present
+    fileInputs.forEach(input => {
+        if (input.files.length === 0) allUploaded = false;
+    });
 
-        let allFilesProvided = true;
-        requiredUploadInputs.forEach((input) => {
-          if (input.files.length === 0) {
-            allFilesProvided = false;
-          }
-        });
-
-        // 🟢 LOGIC UPDATE: Files OK? AND Profile OK? AND Checkbox Checked?
-        const isCheckboxChecked = confirmCheck ? confirmCheck.checked : false;
-
-        joinQueueBtn.disabled =
-          !allFilesProvided || !userProfileComplete || !isCheckboxChecked;
-
-        // Styling update
-        if (joinQueueBtn.disabled) {
-          joinQueueBtn.classList.remove("btn-success");
-          joinQueueBtn.classList.add("btn-secondary");
+    const btn = document.getElementById("submitRequestBtn");
+    if (btn) {
+        // Enable only if files are uploaded AND checkbox is checked
+        btn.disabled = !(allUploaded && check.checked);
+        
+        // Update button style for visual feedback
+        if (!btn.disabled) {
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
         } else {
-          joinQueueBtn.classList.remove("btn-secondary");
-          joinQueueBtn.classList.add("btn-success");
+            btn.classList.add('btn-secondary');
+            btn.classList.remove('btn-primary');
         }
-      }
-      // --- END NEW FUNCTION ---
+    }
+}
 
       // Enhanced view services function
       function viewSelectedServices() {
@@ -3896,76 +3862,116 @@ function previewFile(inputId) {
             }     
         });
       }
-      // Enhanced service request submission
-      async function submitServiceRequest() {
+
+// 🟢 JS: Submit Function (Triggers the Success Modal)
+async function submitServiceRequest() {
+    const btn = document.getElementById("submitRequestBtn");
+    const originalText = btn.innerHTML;
+    
+    // Loading State
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
         const userId = localStorage.getItem("userId");
 
-        try {
-          // Show loading state
-          const joinBtn = document.getElementById("joinQueueBtn");
-          const originalText = joinBtn.innerHTML;
-          joinBtn.innerHTML =
-            '<i class="bi bi-hourglass-split me-1"></i> Submitting...';
-          joinBtn.disabled = true;
+        // 1. Basic Info
+        formData.append("userId", userId);
+        formData.append("total_amount", document.getElementById("totalAmount").innerText.replace('₱', '').trim());
+        formData.append("requirements_confirmed", document.getElementById("confirmRequirementsCheck").checked ? "true" : "false");
 
-          // Calculate total amount and prepare requirements
-          let totalAmount = 0;
-          const requirements = [];
+        // 2. Append Selected Services
+        selectedServicesList.forEach(service => {
+            formData.append("services[]", service);
+        });
 
-          selectedServicesList.forEach((serviceName) => {
-            const service = servicesData[serviceName];
-            totalAmount += service.price || 0;
-            requirements.push({
-              service: serviceName,
-              requirements: service.requirements,
-            });
-          });
+        // 3. Append Requirements (Files & Names)
+        const inputs = document.querySelectorAll('#requirementsList input[type="file"]');
+        inputs.forEach(input => {
+            if (input.files[0]) {
+                formData.append("requirements_files", input.files[0]);
+                
+                let reqName = input.getAttribute("data-name");
+                if (!reqName) {
+                    const label = input.closest('.mb-3')?.querySelector('label');
+                    reqName = label ? label.innerText.replace('*', '').trim() : "Requirement";
+                }
+                formData.append("requirement_names[]", reqName);
+            }
+        });
 
-          // Submit to backend
-          const response = await fetch("/api/queue/submit-request", {
+        // 4. Send to Backend
+        const response = await fetch("/api/queue/submit-request", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: userId,
-              services: selectedServicesList,
-              totalAmount: totalAmount,
-              requirements: requirements,
-            }),
-          });
+            body: formData
+        });
 
-          const result = await response.json();
+        const data = await response.json();
 
-          if (result.success) {
-            // Close the modal
-            const selectedModal = bootstrap.Modal.getInstance(
-              document.getElementById("selectedModal")
-            );
-            if (selectedModal) selectedModal.hide();
+        if (data.success) {
+            // A. Close the "Selection" Modal
+            const selectModalEl = document.getElementById("selectedModal");
+            const selectModal = bootstrap.Modal.getInstance(selectModalEl);
+            if (selectModal) selectModal.hide();
 
-            // Show success message with request ID
-            showSubmissionSuccessModal(result.requestId);
+            // B. Populate and Show "Success" Modal
+            // Use the Request ID from the backend response
+            const refNum = "#" + String(data.request_id || "PENDING").padStart(4, '0');
+            document.getElementById("successRequestId").innerText = refNum;
 
-            // Clear selected services and reset UI
+            const successModal = new bootstrap.Modal(document.getElementById("successModal"));
+            successModal.show();
+
+            // C. Reset Data
             selectedServicesList = [];
-            resetServiceSelectionUI();
             updateSelectedCount();
-
-            // Reload user requests
-            await loadUserRequests();
-          } else {
-            showAlert("Error submitting request: " + result.message, "error");
-          }
-        } catch (error) {
-          console.error("Error submitting service request:", error);
-          showAlert("Error submitting request. Please try again.", "error");
-        } finally {
-          // Reset button state
-          const joinBtn = document.getElementById("joinQueueBtn");
-          // --- THIS LINE IS CORRECTED ---
-          joinBtn.innerHTML = "Join Queue Now";
-          joinBtn.disabled = false;
+            
+        } else {
+            alert("Error: " + data.message);
         }
-      }
+
+    } catch (error) {
+        console.error("Submission error:", error);
+        alert("An error occurred. Please try again.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false; 
+    }
+}
+
+// 🟢 JS: Close Modal Helper
+function closeSuccessModal() {
+    const modalEl = document.getElementById("successModal");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+
+    // Redirect to Updates tab
+    showSection("updates");
+    loadRecentUpdates();
+}
+
+// 🟢 JS: Close Modal Helper
+function closeSuccessModal() {
+    const modalEl = document.getElementById("successModal");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+
+    // Redirect to Updates tab
+    showSection("updates");
+    loadRecentUpdates();
+}
+
+// 🟢 NEW: Function to handle the "Okay" button
+function closeSuccessModal() {
+    const modalEl = document.getElementById("successModal");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+
+    // Redirect user to the "Updates" tab so they can see their new request
+    showSection("updates");
+    loadRecentUpdates(); // Refresh the list
+}
 
       // Reset service selection UI
       function resetServiceSelectionUI() {
@@ -4122,22 +4128,9 @@ function previewFile(inputId) {
               ? `<div class="mt-2"><strong>Queue Number:</strong> <span class="badge queue-status-badge bg-secondary">${request.queue_number}</span></div>`
               : "";
             
-            // 🟢 4. PAYMENT STATUS DISPLAY 🟢
+            // 🟢 4. PAYMENT STATUS DISPLAY (REMOVED) 🟢
+            // We set this to empty so NO badges (Paid/Unpaid) ever show up.
             let paymentDisplay = "";
-            const payStatus = request.payment_status || 'unpaid'; // Ensure backend sends this
-            const orNum = request.official_receipt_number;
-
-            if (payStatus === 'paid') {
-                if (orNum) {
-                    // Fully Verified with OR
-                    paymentDisplay = `<span class="badge bg-success border border-success text-white ms-2"><i class="bi bi-receipt"></i> OR# ${orNum}</span>`;
-                } else {
-                    // Paid Online, Waiting for OR
-                    paymentDisplay = `<span class="badge bg-success bg-opacity-75 text-white ms-2"><i class="bi bi-check-circle"></i> Paid (Verifying)</span>`;
-                }
-            } else if (payStatus === 'unpaid') {
-                 paymentDisplay = `<span class="badge bg-secondary bg-opacity-50 text-dark ms-2" style="font-size: 0.7rem;">Unpaid</span>`;
-            }
 
             // 5. PROCESSING BAR
             let progressHtml = "";
@@ -5096,122 +5089,106 @@ function updateRequestStats(requests) {
            showToast("This service is already in your list.", "info");
         }
       }
-      // 🟢 UPDATED: Force 'Declined' to match 'Completed' Layout
-      // 🟢 UPDATED: Force Footer Display (Fixes Missing Info)
-      async function loadRecentUpdates() {
-        const container = document.getElementById("recentUpdatesList");
-        if (!container) return;
+// 🟢 FINAL: loadRecentUpdates (With Staff Name Display)
+async function loadRecentUpdates() {
+    try {
+        const response = await fetch("/api/student/updates");
+        const data = await response.json();
+        
+        const updatesList = document.getElementById("updatesList");
+        if (!updatesList) return;
 
-        try {
-          const token = localStorage.getItem("token");
-          if (!token) return;
+        if (data.success && data.updates.length > 0) {
+            updatesList.innerHTML = data.updates.map(request => {
+                // 1. STATUS BADGE
+                let statusBadge = '';
+                let statusColor = 'secondary';
+                let icon = 'bi-hourglass-split';
 
-          const response = await fetch("/api/student/updates", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const result = await response.json();
-
-          if (result.success && result.updates && result.updates.length > 0) {
-            container.innerHTML = result.updates
-              .map((update) => {
-                let statusIcon = "";
-                let statusTitle = "";
-                let statusDesc = "";
-
-                // 🟢 FIX: Use Fallbacks so it NEVER hides
-                const staffName = update.processed_by || "Registrar Staff";
-                const windowName = update.window_number
-                  ? `Window ${update.window_number}`
-                  : "Registrar Office";
-
-                // 🟢 THE FOOTER HTML (Always Visible for certain statuses)
-                const footerHtml = `
-                    <div class="mt-2 small text-muted border-top pt-2 d-flex align-items-center">
-                         <i class="bi bi-person-badge-fill me-2"></i> 
-                         <span class="fw-bold me-2">${staffName}</span> 
-                         <span class="badge bg-light text-dark border">${windowName}</span>
-                    </div>`;
-
-                switch (update.status) {
-                  case "waiting":
-                  case "pending":
-                    statusIcon =
-                      '<div class="update-icon bg-secondary text-white"><i class="bi bi-clock"></i></div>';
-                    statusTitle = "Request Pending";
-                    statusDesc = "Your request is waiting for admin review.";
-                    break;
-                  case "reviewing":
-                    statusIcon =
-                      '<div class="update-icon bg-warning text-dark"><i class="bi bi-search"></i></div>';
-                    statusTitle = "Under Review";
-                    statusDesc =
-                      "The admin is currently reviewing your submitted requirements.";
-                    break;
-                  case "processing":
-                    statusIcon =
-                      '<div class="update-icon bg-primary text-white"><i class="bi bi-gear-fill"></i></div>';
-                    statusTitle = "Processing";
-                    statusDesc =
-                      "Your request has been approved and is now being processed.";
-                    break;
-                  case "completed":
-                  case "claimed":
-                    statusIcon =
-                      '<div class="update-icon bg-success text-white"><i class="bi bi-check-circle-fill"></i></div>';
-                    statusTitle = "Completed";
-                    statusDesc =
-                      "Transaction finished. Document has been claimed.";
-                    break;
-                  case "cancelled":
-                  case "declined":
-                    statusIcon =
-                      '<div class="update-icon bg-danger text-white"><i class="bi bi-x-circle-fill"></i></div>';
-                    statusTitle = "Request Declined";
-                    statusDesc = update.decline_reason
-                      ? `<span class="text-danger fw-bold">Reason:</span> ${update.decline_reason}`
-                      : "Your request was cancelled by the admin.";
-                    break;
-                  default:
-                    statusIcon =
-                      '<div class="update-icon bg-light text-muted"><i class="bi bi-question-circle"></i></div>';
-                    statusTitle = "Status Updated";
-                    statusDesc = `Current status: ${update.status}`;
+                if (request.status === 'pending') {
+                    statusBadge = 'Pending';
+                    statusColor = 'warning';
+                    icon = 'bi-hourglass';
+                } else if (request.status === 'approved') {
+                    statusBadge = 'Waiting for Window';
+                    statusColor = 'info';
+                    icon = 'bi-people';
+                } else if (request.status === 'processing') {
+                    statusBadge = 'Processing';
+                    statusColor = 'primary';
+                    icon = 'bi-gear-wide-connected';
+                } else if (request.status === 'completed') {
+                    statusBadge = 'Ready for Pickup';
+                    statusColor = 'success';
+                    icon = 'bi-check-circle';
+                } else if (request.status === 'declined') {
+                    statusBadge = 'Declined';
+                    statusColor = 'danger';
+                    icon = 'bi-x-circle';
                 }
 
-                const timeString = new Date(
-                  update.submitted_at
-                ).toLocaleDateString();
-
-                // 🟢 Logic: Show footer for Processed, Completed, OR Declined
-                const showFooter = [
-                  "processing",
-                  "completed",
-                  "claimed",
-                  "cancelled",
-                  "declined",
-                ].includes(update.status);
-
-                return `
-                <div class="update-item animate__animated animate__fadeIn">
-                    ${statusIcon}
-                    <div class="update-content w-100">
-                        <div class="d-flex justify-content-between">
-                            <h4 class="update-title mb-1">${statusTitle}</h4>
-                            <small class="text-muted" style="font-size: 0.75rem;">${timeString}</small>
+                // 2. QUEUE TICKET
+                let queueTicketDisplay = '';
+                if (request.status === 'approved' || request.status === 'processing' || request.status === 'completed') {
+                    const ticket = request.queue_number || "WAITING";
+                    queueTicketDisplay = `
+                        <div class="mt-2 text-center border-top pt-2">
+                            <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Queue Ticket</small>
+                            <div class="fs-4 fw-bold text-dark">${ticket}</div>
                         </div>
-                        <div class="update-desc mb-1">${statusDesc}</div>
-                        ${showFooter ? footerHtml : ""}
+                    `;
+                }
+
+                // 🟢 3. STAFF NAME (Only shows if data exists)
+                let processedByDisplay = '';
+                if (request.processed_by && (request.status === 'processing' || request.status === 'completed')) {
+                    processedByDisplay = `
+                        <div class="mt-2 text-end">
+                             <small class="text-muted fst-italic" style="font-size: 0.75rem;">
+                                Processed by: <span class="fw-bold text-dark">${request.processed_by}</span>
+                             </small>
+                        </div>
+                    `;
+                }
+
+                // 4. RETURN CARD
+                return `
+                <div class="card mb-3 border-${statusColor} shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="card-title mb-1">
+                                    <i class="bi ${icon} text-${statusColor} me-2"></i>
+                                    Request #${request.request_id}
+                                </h5>
+                                <p class="card-text text-muted small mb-2">
+                                    Submitted on ${new Date(request.submitted_at).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <span class="badge bg-${statusColor} bg-opacity-75 text-white">
+                                ${statusBadge}
+                            </span>
+                        </div>
+                        
+                        ${queueTicketDisplay}
+                        ${processedByDisplay}
+                        
+                        ${request.decline_reason ? `
+                            <div class="alert alert-danger mt-2 py-1 px-2 small">
+                                <strong>Reason:</strong> ${request.decline_reason}
+                            </div>
+                        ` : ''}
                     </div>
-                </div>`;
-              })
-              .join("");
-          } else {
-            container.innerHTML = `<div class="text-center py-4 text-muted">No recent updates.</div>`;
-          }
-        } catch (error) {
-          console.error("Error loading updates:", error);
+                </div>
+                `;
+            }).join("");
+        } else {
+            updatesList.innerHTML = `<div class="text-center text-muted py-5"><p>No active requests found.</p></div>`;
         }
-      }
+    } catch (error) {
+        console.error("Error loading updates:", error);
+    }
+}
       // Initialize everything when DOM is ready
       document.addEventListener("DOMContentLoaded", () => {
         console.log("Dashboard initialized"); // Debug log

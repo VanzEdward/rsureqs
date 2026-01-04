@@ -33,34 +33,30 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + "-" + cleanName);
   },
 });
-// 🟢 MISSING MIDDLEWARE: Paste this near the top of index.js 🟢
+
+// 🟢 FIXED MIDDLEWARE: Uses the same secret as Login
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (token == null)
-    return res
-      .status(401)
-      .json({ success: false, message: "No token provided" });
+  if (token == null) return res.sendStatus(401);
 
-  // Use your JWT_SECRET (it might be 'your_secret_key' or process.env.JWT_SECRET)
-  jwt.verify(
-    token,
-    process.env.JWT_SECRET || "your_secret_key",
-    (err, user) => {
-      if (err)
-        return res
-          .status(403)
-          .json({ success: false, message: "Invalid token" });
-      req.user = user;
-      next();
+  // 👇 THIS MUST MATCH YOUR LOGIN ROUTE SECRET EXACTLY
+  const secret = process.env.JWT_SECRET || "your_jwt_secret";
+
+  jwt.verify(token, secret, (err, user) => {
+    if (err) {
+      console.error("Token Error:", err.message);
+      return res.sendStatus(403);
     }
-  );
+    req.user = user;
+    next();
+  });
 };
 // 🟢 PAYMONGO CONFIGURATION (TEST MODE)
 // These are public test keys. For your thesis, you can use these or sign up at paymongo.com for your own.
-const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
-const PAYMONGO_API_URL = "https://api.paymongo.com/v1";
+// const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
+// const PAYMONGO_API_URL = "https://api.paymongo.com/v1";
 // ------------------- THIS IS THE FIX -------------------
 // Secure file filter to only allow images
 const imageFileFilter = (req, file, cb) => {
@@ -472,6 +468,7 @@ const authenticateAdmin = (req, res, next) => {
 // Serve static files
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Service hours check middleware
 function checkServiceHoursHTML(req, res, next) {
@@ -777,13 +774,6 @@ app.get("/payment-success", (req, res) => {
     res.redirect("/dashboard.html?payment=success");
   });
 });
-
-// 🟢 NEW: Handle Payment Failed/Cancelled
-app.get("/payment-failed", (req, res) => {
-  // Just send them back to dashboard
-  res.redirect("/dashboard.html?payment=cancelled");
-});
-
 // Add this route for admin profile updates
 app.post("/api/admin/update-me", authenticateAdmin, async (req, res) => {
   // Get the admin's ID from the token, not the body
@@ -1035,7 +1025,6 @@ function addToQueueSystem(requestId) {
     );
   });
 }
-
 // EXISTING STUDENT ROUTES
 app.post("/api/login", (req, res) => {
   const { emailOrPhone, password } = req.body;
@@ -1506,6 +1495,14 @@ app.post(
 
         const user = userResults[0];
 
+        if (user.account_status !== "verified") {
+          return res.status(403).json({
+            success: false,
+            message:
+              "Your account is still under review. You cannot submit requests yet.",
+          });
+        }
+
         // 7. Insert into Database
         db.query(
           `INSERT INTO service_requests 
@@ -1553,8 +1550,8 @@ app.post(
 
             res.json({
               success: true,
-              requestId: requestId,
-              message: "Service request submitted successfully!",
+              message: "Request submitted successfully",
+              request_id: result.insertId,
             });
           }
         );
@@ -3153,19 +3150,20 @@ app.get("/api/student/requests", authenticateToken, (req, res) => {
     res.json({ success: true, requests: results });
   });
 });
-// 🟢 STEP 2 FIX: FETCH UPDATES WITH STAFF & WINDOW INFO
+// 🟢 FIXED: Fetch Updates (With Staff Name)
 app.get("/api/student/updates", authenticateToken, (req, res) => {
   const userId = req.user.id;
 
-  // We LEFT JOIN 'queue' to get processed_by (Staff Name) and window_number
   const query = `
         SELECT 
             sr.request_id, 
             sr.status, 
             sr.decline_reason, 
             sr.submitted_at,
-            q.processed_by, 
-            q.window_number
+            sr.payment_status,
+            q.queue_number, 
+            q.window_number,
+            q.processed_by 
         FROM service_requests sr
         LEFT JOIN queue q ON sr.request_id = q.request_id
         WHERE sr.user_id = ? 
@@ -3176,135 +3174,48 @@ app.get("/api/student/updates", authenticateToken, (req, res) => {
   db.query(query, [userId], (err, results) => {
     if (err) {
       console.error("Error fetching updates:", err);
-      return res.status(500).json({ success: false });
-    }
-    res.json({ success: true, updates: results });
-  });
-});
-// 🟢 REPLACEMENT: Payment Route with Receipt Number Generation
-app.post("/api/payment/create-link", async (req, res) => {
-  const { amount, description, requestId } = req.body;
-  const baseUrl = "https://rsureqs.onrender.com";
-
-  // 1. Generate a Receipt Number
-  const receiptNumber = `OR-${Date.now().toString().slice(-6)}${Math.floor(
-    1000 + Math.random() * 9000
-  )}`;
-
-  try {
-    // 2. Create PayMongo Link
-    const response = await axios.post(
-      `${PAYMONGO_API_URL}/links`,
-      {
-        data: {
-          attributes: {
-            amount: amount * 100,
-            description: description || "RSU Document Request",
-            remarks: `Ref: ${requestId} | Receipt: ${receiptNumber}`,
-            redirect: {
-              success: `${baseUrl}/payment-success?id=${requestId}`,
-              failed: `${baseUrl}/payment-failed?id=${requestId}`,
-            },
-          },
-        },
-      },
-      {
-        headers: {
-          Authorization: `Basic ${Buffer.from(
-            PAYMONGO_SECRET_KEY + ":"
-          ).toString("base64")}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const checkoutUrl = response.data.data.attributes.checkout_url;
-    const referenceId = response.data.data.id;
-
-    // 3. Save Receipt Number & Reference to Database
-    db.query(
-      "UPDATE service_requests SET payment_status = 'unpaid', payment_reference = ?, payment_url = ?, receipt_number = ? WHERE request_id = ?",
-      [referenceId, checkoutUrl, receiptNumber, requestId],
-      (err) => {
-        if (err) {
-          console.error("DB Error saving payment:", err);
-          return res
-            .status(500)
-            .json({ success: false, message: "Database error" });
-        }
-
-        // 4. Send URL AND Receipt Number to Frontend
-        res.json({
-          success: true,
-          checkoutUrl: checkoutUrl,
-          receiptNumber: receiptNumber, // <--- Sending to Client
-        });
-      }
-    );
-  } catch (error) {
-    console.error(
-      "PayMongo Error:",
-      error.response ? error.response.data : error.message
-    );
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to create payment link" });
-  }
-});
-// 🟢 FIXED: Handle Payment Success Return
-app.get("/payment-success", (req, res) => {
-  const requestId = req.query.id;
-
-  if (!requestId) return res.send("Invalid Request.");
-
-  // 1. Update Database to PAID
-  db.query(
-    "UPDATE service_requests SET payment_status = 'paid' WHERE request_id = ?",
-    [requestId],
-    (err, result) => {
-      if (err) {
-        console.error("Payment Update Error:", err);
-        return res.send(
-          "Error updating payment status. Please contact support."
-        );
-      }
-
-      // 2. AUTOMATICALLY REDIRECT back to the Student Dashboard
-      // This will close the loop and show the "Paid" status to the student.
-      res.redirect("/dashboard?payment=success");
-    }
-  );
-});
-
-// 🟢 NEW: Cashier Dashboard API
-app.get("/api/cashier/transactions", authenticateToken, (req, res) => {
-  // In a real app, check for 'cashier' or 'admin' role here
-  const query = `
-        SELECT 
-            request_id,
-            receipt_number,
-            payment_reference,
-            user_name,
-            student_id,
-            services,
-            total_amount,
-            payment_status,
-            submitted_at
-        FROM service_requests
-        WHERE payment_status = 'paid'
-        ORDER BY submitted_at DESC
-    `;
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Cashier Fetch Error:", err);
+      // If this still fails, check if the column is named 'processed_by' or something else
       return res
         .status(500)
         .json({ success: false, message: "Database Error" });
     }
-    res.json({ success: true, transactions: results });
+    res.json({ success: true, updates: results });
   });
 });
+
+// 🟢 FIX 1: Update Admin Query to find NULL statuses too
+app.get("/api/admin/pending-users", authenticateToken, (req, res) => {
+  const query = `
+        SELECT id, fullname, student_id, course, year_level, email, phone, 
+               campus, dob, pob, nationality, home_address, 
+               school_id_picture, created_at
+        FROM users 
+        WHERE account_status = 'pending' OR account_status IS NULL
+        ORDER BY created_at ASC
+    `;
+  // ... rest of the code stays the same
+  db.query(query, (err, results) => {
+    if (err)
+      return res.status(500).json({ success: false, message: "DB Error" });
+    res.json({ success: true, users: results });
+  });
+});
+
+// 🟢 ADMIN: Verify/Reject User
+app.post("/api/admin/verify-user", authenticateToken, (req, res) => {
+  const { userId, action } = req.body; // action should be 'verified' or 'rejected'
+
+  db.query(
+    "UPDATE users SET account_status = ? WHERE id = ?",
+    [action, userId],
+    (err, result) => {
+      if (err)
+        return res.status(500).json({ success: false, message: "DB Error" });
+      res.json({ success: true, message: `User ${action} successfully` });
+    }
+  );
+});
+
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
 
