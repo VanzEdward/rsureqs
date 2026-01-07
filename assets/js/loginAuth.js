@@ -55,6 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
           localStorage.setItem("email", data.email); // Fixed: was missing in some versions
           localStorage.setItem("phone", data.phone);
           localStorage.setItem("loginTime", new Date().getTime());
+          localStorage.setItem("token", data.token);
 
           showNotification("Login successful! Redirecting...", "success");
 

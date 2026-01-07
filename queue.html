@@ -155,10 +155,32 @@
       .win-header {
         padding: 15px;
         text-align: center;
+        /* Allow flex column to stack Window Title and Staff Name */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* 🟢 NEW STYLE FOR STAFF NAME */
+      .staff-name-display {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 5px;
+        opacity: 0.9;
+        text-transform: none; /* Keep name casing normal */
+        display: none; /* Hidden by default */
+        background: rgba(0, 0, 0, 0.1);
+        padding: 2px 12px;
+        border-radius: 12px;
+      }
+
+      .win-title-text {
         font-size: 1.8rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 1px;
+        line-height: 1;
       }
 
       .win-body {
@@ -269,27 +291,24 @@
           padding: 10px;
         }
 
-        /* Compact Header */
         .queue-header {
           flex-direction: column;
           text-align: center;
-          padding: 15px; /* Reduced padding */
-          gap: 10px; /* Reduced gap */
+          padding: 15px;
+          gap: 10px;
         }
 
-        /* Fix Logos: Keep them side-by-side */
         .header-logo {
-          flex-direction: row; /* Force row layout */
+          flex-direction: row;
           justify-content: center;
           align-items: center;
           gap: 15px;
         }
 
         .header-logo img {
-          height: 50px; /* Smaller logos for mobile */
+          height: 50px;
         }
 
-        /* Adjust Titles and Clock */
         .header-title h1 {
           font-size: 1.5rem;
         }
@@ -304,21 +323,27 @@
           font-size: 0.9rem;
         }
 
-        /* Stack Windows */
         .window-grid {
           display: flex;
           flex-direction: column;
         }
 
-        /* Compact Window Cards */
         .window-card {
           margin-bottom: 15px;
           min-height: 250px;
         }
+
+        /* Adjust header for mobile to fit staff name */
         .win-header {
-          font-size: 1.4rem;
           padding: 10px;
         }
+        .win-title-text {
+          font-size: 1.4rem;
+        }
+        .staff-name-display {
+          font-size: 0.9rem;
+        }
+
         .current-ticket {
           font-size: 4.5rem;
           margin: 5px 0;
@@ -353,7 +378,10 @@
 
       <div class="window-grid">
         <div class="window-card card-green">
-          <div class="win-header">Window 1</div>
+          <div class="win-header">
+            <div class="win-title-text">Window 1</div>
+            <div class="staff-name-display" id="w1-staff">Staff: Name</div>
+          </div>
           <div class="win-body">
             <div class="serving-label">Now Serving</div>
             <div class="current-ticket" id="w1-serving">---</div>
@@ -370,7 +398,10 @@
         </div>
 
         <div class="window-card card-yellow">
-          <div class="win-header">Window 2</div>
+          <div class="win-header">
+            <div class="win-title-text">Window 2</div>
+            <div class="staff-name-display" id="w2-staff">Staff: Name</div>
+          </div>
           <div class="win-body">
             <div class="serving-label">Now Serving</div>
             <div class="current-ticket" id="w2-serving">---</div>
@@ -387,7 +418,10 @@
         </div>
 
         <div class="window-card card-green">
-          <div class="win-header">Window 3</div>
+          <div class="win-header">
+            <div class="win-title-text">Window 3</div>
+            <div class="staff-name-display" id="w3-staff">Staff: Name</div>
+          </div>
           <div class="win-body">
             <div class="serving-label">Now Serving</div>
             <div class="current-ticket" id="w3-serving">---</div>
@@ -404,7 +438,10 @@
         </div>
 
         <div class="window-card card-yellow">
-          <div class="win-header">Window 4</div>
+          <div class="win-header">
+            <div class="win-title-text">Window 4</div>
+            <div class="staff-name-display" id="w4-staff">Staff: Name</div>
+          </div>
           <div class="win-body">
             <div class="serving-label">Now Serving</div>
             <div class="current-ticket" id="w4-serving">---</div>
@@ -443,14 +480,13 @@
       // --- STATE MANAGEMENT ---
       // Holds the raw data from backend
       let queueData = {
-        window1: { processing: [], completed: [] },
-        window2: { processing: [], completed: [] },
-        window3: { processing: [], completed: [] },
-        window4: { processing: [], completed: [] },
+        window1: { processing: [], completed: [], staffName: null },
+        window2: { processing: [], completed: [], staffName: null },
+        window3: { processing: [], completed: [], staffName: null },
+        window4: { processing: [], completed: [], staffName: null },
       };
 
       // Tracks current index for animation
-      // Format: { win1: { procIndex: 0, compPage: 0 }, ... }
       let displayState = {
         1: { procIndex: 0, compPage: 0 },
         2: { procIndex: 0, compPage: 0 },
@@ -458,84 +494,158 @@
         4: { procIndex: 0, compPage: 0 },
       };
 
-      // 2. DATA FETCH (Runs every 2 seconds to keep data fresh)
+      // 2. DATA FETCH (Runs every 2 seconds)
       async function fetchQueueData() {
         try {
-          const response = await fetch("/api/queue/status");
+          // 🟢 CRITICAL FIX: Use the NEW route that sends staffName
+          const response = await fetch("/api/queue/data");
           const res = await response.json();
-          if (res.success && res.data) {
-            // Update global data storage
-            queueData.window1 = res.data.window1;
-            queueData.window2 = res.data.window2;
-            queueData.window3 = res.data.window3;
-            queueData.window4 = res.data.window4;
+          if (res) {
+            // The new API returns the object directly, or inside success. Handle both.
+            const data = res.success ? res.data : res;
+
+            if (data) {
+              queueData.window1 = data.window1;
+              queueData.window2 = data.window2;
+              queueData.window3 = data.window3;
+              queueData.window4 = data.window4;
+            }
           }
         } catch (error) {
           console.error("Fetch error:", error);
         }
       }
+      // 🟢 NEW FUNCTION: Fetch and Display Staff Names
+      // async function updateStaffNames() {
+      //   try {
+      //     const response = await fetch("/api/public/window-staff");
+      //     const staffMap = await response.json();
+      //     // Format: { "1": "Vanz Mantes", "2": "Jane Doe" }
 
-      // 3. UI RENDERER (Handles Cycling Logic)
-      // This runs logic to decide WHICH ticket to show from the array
+      //     // Loop through Windows 1 to 4
+      //     for (let i = 1; i <= 4; i++) {
+      //       // Find the Header element for this window (adjust selector to match your HTML)
+      //       // Assuming your window headers look like: <div id="window1-header"> or <h2 class="card-title">Window 1</h2>
+
+      //       // We need to target the card header or a specific name container.
+      //       // Let's assume you have a container. If not, we create/select it.
+      //       const windowCard = document.querySelector(`.window-${i}-card`); // OR however you select the card
+      //       if (!windowCard) continue;
+
+      //       let nameElement = document.getElementById(`staff-name-w${i}`);
+
+      //       // If the element doesn't exist yet, let's create it dynamically under the "Window X" text
+      //       if (!nameElement) {
+      //         const titleArea =
+      //           windowCard.querySelector(".card-header") ||
+      //           windowCard.querySelector(".card-title");
+      //         if (titleArea) {
+      //           nameElement = document.createElement("div");
+      //           nameElement.id = `staff-name-w${i}`;
+      //           nameElement.style.fontSize = "0.7em"; // Smaller than Window text
+      //           nameElement.style.color = "#ffc107"; // Gold color
+      //           nameElement.style.fontWeight = "normal";
+      //           nameElement.style.marginTop = "5px";
+      //           titleArea.appendChild(nameElement);
+      //         }
+      //       }
+
+      //       // Update Text
+      //       if (staffMap[i]) {
+      //         // Staff has turned ON "Show Name"
+      //         nameElement.textContent = "Staff: " + staffMap[i];
+      //         nameElement.style.display = "block";
+      //       } else {
+      //         // Staff has turned OFF "Show Name" or no staff
+      //         nameElement.textContent = "";
+      //         nameElement.style.display = "none";
+      //       }
+      //     }
+      //   } catch (error) {
+      //     console.error("Error updating staff names:", error);
+      //   }
+      // }
+
+      // 🟢 ADD TO YOUR LOOP
+      // Call this function inside your existing setInterval
+      // or set a separate interval (every 10 seconds is enough)
+      // setInterval(updateStaffNames, 10000);
+
+      // Run immediately on load
+      // updateStaffNames();
+
+      // 3. UI RENDERER (Handles Cycling & Names)
       function renderWindow(winNum) {
         const data = queueData[`window${winNum}`];
         const state = displayState[winNum];
 
-        // --- A. PROCESSING CYCLE ---
+        // --- A. STAFF NAME DISPLAY ---
+        const staffEl = document.getElementById(`w${winNum}-staff`);
+        if (data && data.staffName) {
+          staffEl.textContent = "Staff: " + data.staffName;
+          staffEl.style.display = "block"; // Show if name exists
+        } else {
+          staffEl.style.display = "none"; // Hide if null/off
+        }
+
+        // --- B. PROCESSING CYCLE ---
         const servingEl = document.getElementById(`w${winNum}-serving`);
-        const procList = data.processing || []; // Array of tickets
+        // The new API sends an array of OBJECTS, we need the queue_number
+        const procList = data.processing || [];
 
         if (procList.length === 0) {
           servingEl.textContent = "---";
           servingEl.classList.remove("text-success");
         } else {
-          // Determine which ticket to show based on state index
-          if (state.procIndex >= procList.length) state.procIndex = 0; // Reset if out of bounds
+          if (state.procIndex >= procList.length) state.procIndex = 0;
 
-          const ticketToShow = procList[state.procIndex];
+          // Handle if API sends objects (rows) or just strings
+          const item = procList[state.procIndex];
+          const ticketToShow =
+            typeof item === "object" && item.queue_number
+              ? item.queue_number
+              : item;
 
-          // Only animate if text changes
           if (servingEl.textContent !== ticketToShow) {
             animateTextChange(servingEl, ticketToShow);
           }
         }
 
-        // --- B. COMPLETED BATCH CYCLE ---
+        // --- C. COMPLETED BATCH CYCLE ---
         const readyContainer = document.getElementById(
           `w${winNum}-ready-container`
         );
         const batchIndicator = document.getElementById(`w${winNum}-batch`);
         const compList = data.completed || [];
-        const itemsPerPage = 6; // How many to show at once
+        const itemsPerPage = 6;
         const totalPages = Math.ceil(compList.length / itemsPerPage);
 
         if (compList.length === 0) {
           readyContainer.innerHTML = `<span style="font-size:0.85rem; color:#999; font-style:italic; padding-left:10px;">None yet</span>`;
           batchIndicator.textContent = "";
         } else {
-          if (state.compPage >= totalPages) state.compPage = 0; // Reset
+          if (state.compPage >= totalPages) state.compPage = 0;
 
           const start = state.compPage * itemsPerPage;
           const end = start + itemsPerPage;
           const currentBatch = compList.slice(start, end);
 
-          // Build HTML
           const html =
             `<div class="ready-list fade-in">` +
             currentBatch
-              .map((t) => `<span class="ready-item">${t}</span>`)
+              .map((item) => {
+                // Handle Object vs String
+                const t =
+                  typeof item === "object" && item.queue_number
+                    ? item.queue_number
+                    : item;
+                return `<span class="ready-item">${t}</span>`;
+              })
               .join("") +
             `</div>`;
 
-          // Only update DOM if content is different (simple check)
-          // For batches, we rely on the cycle timer to force update visually
-          // But to prevent flicker on data fetch, we check state.
-
-          // Actually, we should just update innerHTML.
-          // The visual transition happens because we swap the whole inner div.
           readyContainer.innerHTML = html;
 
-          // Show Page Info if multiple pages
           if (totalPages > 1) {
             batchIndicator.textContent = `Page ${
               state.compPage + 1
@@ -553,26 +663,22 @@
           element.textContent = newText;
           element.classList.remove("fade-out");
           element.classList.add("fade-in");
-          // Remove fade-in class after animation so it can be re-triggered
           setTimeout(() => element.classList.remove("fade-in"), 500);
-        }, 500); // Wait 500ms (match css transition)
+        }, 500);
       }
 
       // --- 4. CYCLE LOOPS ---
-
-      // Cycle Processing Tickets (Every 10 seconds)
       setInterval(() => {
         [1, 2, 3, 4].forEach((winNum) => {
           const list = queueData[`window${winNum}`].processing || [];
           if (list.length > 1) {
             displayState[winNum].procIndex =
               (displayState[winNum].procIndex + 1) % list.length;
-            renderWindow(winNum); // Force re-render with new index
+            renderWindow(winNum);
           }
         });
       }, 10000);
 
-      // Cycle Completed Batches (Every 10 seconds, offset by 5s for visual variety)
       setTimeout(() => {
         setInterval(() => {
           [1, 2, 3, 4].forEach((winNum) => {
@@ -590,15 +696,11 @@
       }, 5000);
 
       // --- INITIALIZATION ---
-      // Fetch data frequently
       setInterval(async () => {
         await fetchQueueData();
-        // After fetching new data, re-render current state immediately
-        // (to show new tickets added to the current batch/processing slot)
         [1, 2, 3, 4].forEach(renderWindow);
       }, 2000);
 
-      // Initial Call
       fetchQueueData().then(() => {
         [1, 2, 3, 4].forEach(renderWindow);
       });

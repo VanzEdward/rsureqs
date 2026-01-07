@@ -678,6 +678,29 @@
           animation: slideDownMobile 0.3s ease-in forwards !important;
         }
       }
+
+/* 🟢 LOCKED SERVICE CARD STYLE (Fixed to include Categories) */
+.service-card.locked, 
+.service-category-card.locked {  /* <--- ADDED THIS SELECTOR */
+  filter: grayscale(100%);     
+  opacity: 0.7;                
+  cursor: not-allowed;         
+  position: relative;
+}
+
+/* Add a Lock Icon overlay */
+.service-card.locked::after,
+.service-category-card.locked::after { /* <--- ADDED THIS SELECTOR */
+  content: "🔒";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
+  opacity: 0.8;
+  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+  pointer-events: none; /* Ensures the icon doesn't block the click event listener */
+}
     </style>
   </head>
 
@@ -835,10 +858,6 @@
             <button id="submitRequestBtn" type="button" class="btn btn-primary w-100 fw-bold" onclick="submitServiceRequest()">
     <i class="bi bi-send-fill me-2"></i> Submit Request
 </button>
-            
-            <small class="text-muted mt-2 text-center" style="font-size: 0.8rem;">
-                <i class="bi bi-shield-lock-fill"></i> Secure payment powered by PayMongo
-            </small>
           </div>
         </div>
       </div>
@@ -2375,6 +2394,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
     <script>
+
+      // 🟢 1. DEFINE TOKEN GLOBALLY (Must be at the top)
+  // We check for 'token' (new code) OR 'userToken' (old code compatibility)
+  const token = localStorage.getItem('token') || localStorage.getItem('userToken');
+
+  // If no token is found, force logout/redirect
+  if (!token) {
+    console.warn("No token found. Redirecting to login...");
+    // Optional: window.location.href = "/login.html"; 
+  }
+
+  // 🟢 2. ADD THE MISSING NAVIGATION FUNCTION
+  function setupNavigation() {
+    const navLinks = document.querySelectorAll(".nav-link");
+    const sections = document.querySelectorAll(".section");
+
+    navLinks.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+
+        // Remove active class from all links and sections
+        navLinks.forEach((nav) => nav.classList.remove("active"));
+        sections.forEach((sec) => sec.classList.remove("active"));
+
+        // Add active class to clicked link
+        link.classList.add("active");
+
+        // Show target section
+        const targetId = link.getAttribute("data-target");
+        const targetSection = document.getElementById(targetId);
+        if (targetSection) {
+          targetSection.classList.add("active");
+        }
+        
+        // Handle mobile menu collapse
+        const navbarCollapse = document.querySelector(".navbar-collapse");
+        if (navbarCollapse.classList.contains("show")) {
+            new bootstrap.Collapse(navbarCollapse).hide();
+        }
+      });
+    });
+  }
       // ===== AUTHENTICATION CHECK =====
       function checkAuthentication() {
         const userId = localStorage.getItem("userId");
@@ -5092,7 +5153,13 @@ function updateRequestStats(requests) {
 // 🟢 FINAL: loadRecentUpdates (With Staff Name Display)
 async function loadRecentUpdates() {
     try {
-        const response = await fetch("/api/student/updates");
+        const response = await fetch("/api/student/updates", {
+    method: "GET",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token // <--- This allows access
+    }
+});
         const data = await response.json();
         
         const updatesList = document.getElementById("updatesList");
@@ -5189,9 +5256,122 @@ async function loadRecentUpdates() {
         console.error("Error loading updates:", error);
     }
 }
+
+
+// 🟢 1. DEFINE GLOBAL STATUS (At the very top of your script)
+window.currentUserStatus = "pending"; // We use 'window.' to make it truly global
+
+// 🟢 2. FIXED FETCH FUNCTION (Updates the Global Variable)
+async function fetchUserProfile() {
+  try {
+    const response = await fetch("/api/queue/user-profile", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      const user = data.user;
+      
+      // Update Name
+      const welcomeMsg = document.getElementById("userWelcome");
+      if(welcomeMsg) welcomeMsg.textContent = "Welcome, " + user.fullname;
+      
+      // 🟢 CRITICAL FIX: Direct update to GLOBAL variable
+      // We look for 'account_status' from the server
+      window.currentUserStatus = (user.account_status || "pending").toLowerCase();
+      
+      console.log("✅ DATA RECEIVED FROM SERVER:", user);
+      console.log("🔄 GLOBAL STATUS UPDATED TO:", window.currentUserStatus);
+
+      // 🟢 RE-RUN LOCKS immediately after update
+      applyServiceLocks();
+      
+    } else {
+      console.error("Failed to load profile data");
+    }
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+  }
+}
+
+// 🟢 3. FIXED LOCK FUNCTION (Reads the Global Variable)
+function applyServiceLocks() {
+  const cards = document.querySelectorAll('.service-category-card'); 
+  
+  // 🟢 READ GLOBAL VARIABLE
+  const safeStatus = window.currentUserStatus;
+
+  console.log("🔒 LOCK SYSTEM RUNNING | Current Status:", safeStatus);
+
+  cards.forEach(card => {
+    // 1. Calculate if this card should be unlocked
+    const isUnlocked = (safeStatus === 'verified' || safeStatus === 'active');
+
+    // 2. Clone Trick (Removes old "Zombie" blockers)
+    const newCard = card.cloneNode(true);
+    
+    // 3. Apply Visuals & Logic
+    if (!isUnlocked) {
+        // LOCK IT
+        newCard.classList.add('locked'); 
+        
+        newCard.addEventListener('click', function(e) {
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            e.stopImmediatePropagation();
+            showLockedModal();
+        }, true);
+    } else {
+        // UNLOCK IT
+        newCard.classList.remove('locked');
+        // No blocker added = Clickable!
+    }
+
+    // 4. Replace
+    card.parentNode.replaceChild(newCard, card);
+  });
+}
+
+// 🟢 NEW FUNCTION: Show Error Modal
+function showLockedModal() {
+    // You can use a Bootstrap modal here, or a simple alert/custom div
+    // For a nice "Game Like" modal:
+    const errorHtml = `
+      <div class="modal fade" id="lockedModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-warning">
+              <h5 class="modal-title"><i class="bi bi-lock-fill"></i> Access Denied</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+              <h4>Account Under Review</h4>
+              <p class="text-muted">You cannot enter Services yet.</p>
+              <p>Please wait for a Registrar Staff to verify your student account.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Okay</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Remove old modal if exists
+    const oldModal = document.getElementById('lockedModal');
+    if(oldModal) oldModal.remove();
+
+    // Append new modal to body
+    document.body.insertAdjacentHTML('beforeend', errorHtml);
+    
+    // Show it
+    const modal = new bootstrap.Modal(document.getElementById('lockedModal'));
+    modal.show();
+}
       // Initialize everything when DOM is ready
       document.addEventListener("DOMContentLoaded", () => {
         console.log("Dashboard initialized"); // Debug log
+        applyServiceLocks();
 
         // 🟢 PASTE THIS BLOCK HERE (Start) 🟢
         const urlParams = new URLSearchParams(window.location.search);

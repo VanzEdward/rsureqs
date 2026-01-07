@@ -10,6 +10,48 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import axios from "axios";
 
+// ==========================================
+// 🟢 EMAIL CONFIGURATION (Nodemailer)
+// ==========================================
+
+/// ✅ SAFE VERSION
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+
+if (!SMTP_USER || !SMTP_PASS) {
+  console.warn(
+    "⚠️  Email credentials missing from .env file. Emails will not send."
+  );
+}
+
+const transporter = nodemailer.createTransport({
+  host: "smtp-relay.brevo.com", // Change to "smtp.gmail.com" if using Gmail
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  },
+});
+
+// Helper Function to Send Emails
+async function sendNotificationEmail(to, subject, htmlContent) {
+  try {
+    if (!to) return;
+
+    const info = await transporter.sendMail({
+      from: '"RSU Registrar" <vanzedwardmantes@gmail.com>', // Sender Name
+      to: to,
+      subject: subject,
+      html: htmlContent,
+    });
+
+    console.log(`📧 Email sent to ${to}: ${info.messageId}`);
+  } catch (error) {
+    console.error("❌ Error sending email:", error);
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -135,16 +177,16 @@ const JWT_RESET_SECRET =
 //   socketTimeout: 30000,
 // });
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  // CHANGE THIS: 587 often gets blocked on cloud servers. 2525 usually works.
-  port: 2525,
-  secure: false,
-  auth: {
-    user: "9d82a0001@smtp-brevo.com",
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// const transporter = nodemailer.createTransport({
+//   host: "smtp-relay.brevo.com",
+//   // CHANGE THIS: 587 often gets blocked on cloud servers. 2525 usually works.
+//   port: 2525,
+//   secure: false,
+//   auth: {
+//     user: "9d82a0001@smtp-brevo.com",
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
 
 const db = mysql.createPool({
   host: process.env.DB_HOST,
@@ -176,6 +218,15 @@ db.getConnection((err, connection) => {
 
     // 2. === FIX: ADD MISSING COLUMNS ===
     // This adds the columns so the "N/A" will be replaced by real data
+    addColumnIfNotExists(
+      "users",
+      "account_status",
+      "VARCHAR(20) DEFAULT 'pending'"
+    );
+    // ... existing addColumnIfNotExists calls ...
+    // Add this line with your other "addColumnIfNotExists" calls
+    addColumnIfNotExists("queue", "admin_notes", "TEXT DEFAULT NULL");
+    addColumnIfNotExists("admin_staff", "show_name", "BOOLEAN DEFAULT 0"); // 🟢 New Column
     addColumnIfNotExists("service_requests", "campus", "VARCHAR(255)");
     addColumnIfNotExists("service_requests", "dob", "DATE");
     addColumnIfNotExists("service_requests", "pob", "VARCHAR(255)");
@@ -1048,6 +1099,13 @@ app.post("/api/login", (req, res) => {
       if (isMatch) {
         console.log("User from DB:", user);
 
+        // 🟢 FIX: Generate a Token for the student
+        // This secret must match the one in 'authenticateToken' (line 46)
+        const secret = process.env.JWT_SECRET || "your_jwt_secret";
+        const token = jwt.sign({ id: user.id, email: user.email }, secret, {
+          expiresIn: "24h",
+        });
+
         return res.json({
           success: true,
           message: "Login successful",
@@ -1055,6 +1113,7 @@ app.post("/api/login", (req, res) => {
           fullname: user.fullname,
           phone: user.phone,
           email: user.email,
+          token: token, // <--- SEND THE TOKEN
         });
       } else {
         return res.json({ success: false, message: "Invalid credentials" });
@@ -1197,6 +1256,41 @@ app.get("/api/user/profile", (req, res) => {
       });
     }
   );
+});
+
+// 🟢 FIX: PROFILE ROUTE (Added account_status)
+app.get("/api/queue/user-profile", authenticateToken, (req, res) => {
+  const userId = req.user.id;
+
+  // 🟢 CRITICAL FIX: You must select 'account_status' here!
+  // Before, it was likely missing, so the dashboard received "undefined"
+  const query = `
+    SELECT id, fullname, student_id, email, phone, 
+           course, year_level, campus, account_status 
+    FROM users 
+    WHERE id = ?
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error("Profile fetch error:", err);
+      return res.status(500).json({ success: false });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ success: false });
+    }
+
+    const user = results[0];
+
+    // 🟢 DEBUG LOG: Check your terminal when you refresh the dashboard
+    console.log("--------------------------------------------------");
+    console.log("👤 USER PROFILE LOADED:");
+    console.log("👉 User:", user.fullname);
+    console.log("👉 Status sent to Dashboard:", user.account_status);
+    console.log("--------------------------------------------------");
+
+    res.json({ success: true, user: user });
+  });
 });
 
 // This REPLACES your old /api/user/update-profile route
@@ -1419,22 +1513,19 @@ app.get("/api/user/can-join-queue", (req, res) => {
   );
 });
 
-// --- 🟢 FIXED SUBMIT ROUTE 🟢 ---
+// --- 🟢 FIXED SUBMIT ROUTE (100% Working) 🟢 ---
 app.post(
   "/api/queue/submit-request",
   requirementsUpload.array("requirements_files", 10),
   (req, res) => {
-    // 1. Get Fields (Handle both 'services' and legacy 'services[]' just in case)
+    // 1. Get Fields
     const userId = req.body.userId;
     let rawServices = req.body.services || req.body["services[]"];
     let rawReqNames =
       req.body.requirement_names || req.body["requirement_names[]"];
 
     const files = req.files;
-    // 🟢 READ THE VALUE 🟢
-    // Convert string "true" to integer 1, otherwise 0
     const reqConfirmed = req.body.requirements_confirmed === "true" ? 1 : 0;
-
     const totalAmount = req.body.total_amount || 0;
 
     // 2. Validation
@@ -1461,12 +1552,12 @@ app.post(
       reqNamesArray = [rawReqNames];
     }
 
-    // 5. Structure Files (Map files to their names)
+    // 5. Structure Files
     const structuredRequirements = files
       ? files.map((file, index) => {
           return {
             name: reqNamesArray[index] || "Requirement",
-            file: file.filename, // Saves the filename
+            file: file.filename,
           };
         })
       : [];
@@ -1476,11 +1567,11 @@ app.post(
     const requestId =
       "REQ-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
 
-    // 6. Get User Info
+    // 6. Get User Info (🟢 FIX: ADDED account_status HERE)
     db.query(
       `SELECT fullname, student_id, course, year_level, email, phone,
         campus, dob, pob, nationality, home_address, previous_school,
-        primary_school, secondary_school, school_id_picture 
+        primary_school, secondary_school, school_id_picture, account_status 
        FROM users WHERE id = ?`,
       [userId],
       (err, userResults) => {
@@ -1495,13 +1586,32 @@ app.post(
 
         const user = userResults[0];
 
-        if (user.account_status !== "verified") {
+        // 🟢 DEBUG LOGS
+        console.log("--------------------------------------------------");
+        console.log("🔍 DEBUG CHECKING USER:");
+        console.log("👉 User ID:", userId);
+        console.log("👉 Raw DB Status:", "'" + user.account_status + "'");
+
+        // 🟢 THE FIX: Clean the status
+        const cleanStatus = String(user.account_status || "")
+          .trim()
+          .toLowerCase();
+
+        console.log("👉 Cleaned Status:", "'" + cleanStatus + "'");
+
+        // 🟢 LOGIC: Allow 'verified' OR 'active'
+        if (cleanStatus !== "verified" && cleanStatus !== "active") {
+          console.log("❌ BLOCKED. Reason: Status is not verified or active.");
+          console.log("--------------------------------------------------");
+
           return res.status(403).json({
             success: false,
-            message:
-              "Your account is still under review. You cannot submit requests yet.",
+            message: `Your account status is '${user.account_status}'. It must be 'Active' or 'Verified' to proceed.`,
           });
         }
+
+        console.log("✅ ALLOWED. Proceeding with request...");
+        console.log("--------------------------------------------------");
 
         // 7. Insert into Database
         db.query(
@@ -1509,8 +1619,8 @@ app.post(
           (request_id, user_id, user_name, student_id, course, year_level, 
           services, total_amount, requirements, requirements_paths, status, queue_status, submitted_at, contact_email, contact_phone,
           campus, dob, pob, nationality, home_address, previous_school, 
-          primary_school, secondary_school, school_id_picture) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', 'in_queue', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          primary_school, secondary_school, school_id_picture, requirements_confirmed) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting', 'in_queue', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             requestId,
             userId,
@@ -1518,7 +1628,7 @@ app.post(
             user.student_id,
             user.course,
             user.year_level,
-            JSON.stringify(parsedServices), // ✅ Correctly saves as ["Service A", "Service B"]
+            JSON.stringify(parsedServices),
             totalAmount,
             requirementsText,
             requirementsPaths,
@@ -1533,7 +1643,7 @@ app.post(
             user.primary_school,
             user.secondary_school,
             user.school_id_picture,
-            reqConfirmed, // 🟢 Added this variable at the end
+            reqConfirmed,
           ],
           (err, result) => {
             if (err) {
@@ -1543,7 +1653,7 @@ app.post(
                 .json({ success: false, message: "DB Error: " + err.message });
             }
 
-            // 8. Add to Queue Logic (Fire and forget)
+            // 8. Add to Queue Logic
             if (typeof addToQueueSystem === "function") {
               addToQueueSystem(requestId);
             }
@@ -1551,7 +1661,7 @@ app.post(
             res.json({
               success: true,
               message: "Request submitted successfully",
-              request_id: result.insertId,
+              request_id: result.insertId, // Note: This might need to be requestId string depending on your table
             });
           }
         );
@@ -2174,6 +2284,97 @@ app.post("/api/admin/manual-queue-entry", authenticateAdmin, (req, res) => {
     );
   });
 });
+
+// 🟢 MISSING ROUTE: Public Queue Data (Used by queue.html TV Screen)
+app.get("/api/queue/data", (req, res) => {
+  const today = new Date().toISOString().split("T")[0]; // Current Date (YYYY-MM-DD)
+
+  // 1. Fetch Queue Data (Processing, Completed, or Waiting)
+  // We prioritize Processing items first
+  const queueQuery = `
+    SELECT * FROM queue 
+    WHERE (status IN ('processing', 'completed', 'claimed') AND DATE(completed_at) = CURDATE())
+       OR (status = 'processing')
+       OR (status = 'waiting' AND DATE(submitted_at) = CURDATE())
+  `;
+
+  // 2. Fetch Active Staff Logic (Who is at which window?)
+  // We get the name ONLY if assigned_window is set
+  const staffQuery = `
+    SELECT assigned_window, full_name, show_name 
+    FROM admin_staff 
+    WHERE assigned_window IS NOT NULL
+  `;
+
+  db.query(queueQuery, (err, queueResults) => {
+    if (err) {
+      console.error("Queue data error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    db.query(staffQuery, (err, staffResults) => {
+      if (err) {
+        console.error("Staff data error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      // Build the structure required by queue.html
+      const data = {
+        window1: { processing: [], completed: [], staffName: null },
+        window2: { processing: [], completed: [], staffName: null },
+        window3: { processing: [], completed: [], staffName: null },
+        window4: { processing: [], completed: [], staffName: null },
+      };
+
+      // A. Map Staff Names to Windows
+      if (staffResults) {
+        staffResults.forEach((staff) => {
+          let winNum = staff.assigned_window.replace(/[^0-9]/g, "");
+          const winKey = `window${winNum}`;
+
+          if (data[winKey]) {
+            // 🟢 FIX: Use '==' (loose equality) to allow both 1 and true
+            // This handles MySQL returning either a Number(1) or Boolean(true)
+            const isVisible = staff.show_name == 1;
+
+            data[winKey].staffName = isVisible ? staff.full_name : null;
+          }
+        });
+      }
+
+      // B. Map Queue Tickets
+      if (queueResults) {
+        queueResults.forEach((row) => {
+          // Determine Window Number
+          let winNum = "0";
+          if (row.window_number) {
+            winNum = row.window_number.replace(/[^0-9]/g, "");
+          }
+          const winKey = `window${winNum}`;
+
+          if (data[winKey]) {
+            if (row.status === "processing") {
+              // Check progress if available
+              let isReady = true;
+              if (row.progress_data) {
+                try {
+                  const p = JSON.parse(row.progress_data);
+                  if (p.total > 0 && p.current < p.total) isReady = false;
+                } catch (e) {}
+              }
+
+              if (isReady) data[winKey].processing.push(row);
+            } else if (row.status === "completed" || row.status === "claimed") {
+              data[winKey].completed.push(row);
+            }
+          }
+        });
+      }
+
+      res.json(data);
+    });
+  });
+});
 // --- 🟢 UPDATED: TV DASHBOARD QUEUE STATUS API (100% Filter) 🟢 ---
 app.get("/api/queue/status", (req, res) => {
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
@@ -2268,56 +2469,6 @@ app.get("/api/queue/status", (req, res) => {
     res.json({ success: true, data });
   });
 });
-// 🟢 FIXED: FETCH HISTORY (Gets Major from User Profile) 🟢
-// 🟢 FIXED: FETCH HISTORY (With Staff Name) 🟢
-app.get("/api/admin/history", authenticateAdmin, (req, res) => {
-  const query = `
-    SELECT 
-      q.queue_number,
-      q.user_name AS client_name,
-      q.student_id,
-      q.course,
-      q.year_level,
-      sr.campus AS department,
-      u.major, 
-      q.services,
-      q.status,
-      q.completed_at,
-      q.completed_by,  -- 🟢 FETCH WHO FINISHED IT
-      q.processed_by   -- 🟢 FETCH WHO STARTED IT (Fallback)
-    FROM queue q
-    LEFT JOIN service_requests sr ON q.request_id = sr.request_id
-    LEFT JOIN users u ON q.user_id = u.id 
-    WHERE q.status IN ('completed', 'claimed')
-    ORDER BY q.completed_at DESC
-  `;
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Error fetching history:", err);
-      return res.status(500).json({ success: false, message: "DB Error" });
-    }
-
-    const parseServices = (servicesData) => {
-      try {
-        if (typeof servicesData === "string") return JSON.parse(servicesData);
-        if (Array.isArray(servicesData)) return servicesData;
-        return [];
-      } catch (e) {
-        return [String(servicesData)];
-      }
-    };
-
-    const history = results.map((row) => ({
-      ...row,
-      services: parseServices(row.services),
-      completed_at: row.completed_at || new Date(),
-    }));
-
-    res.json({ success: true, history });
-  });
-});
-
 // Helper to safely parse services
 function parseServices(servicesData) {
   try {
@@ -2329,68 +2480,98 @@ function parseServices(servicesData) {
   }
 }
 
-// === API: MARK AS DONE (Complete) ===
+// ==========================================
+// 🟢 DEBUG VERSION: Mark Done + Email (FIXED COLUMN NAMES)
+// ==========================================
 app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
-  const { queueId, claimDetails } = req.body; // <--- Now accepts claimDetails
+  const { queueId, claimDetails } = req.body;
+  const adminName = req.admin.full_name || "Staff";
+
+  console.log(`\n--- 🟢 DEBUG: MARK DONE CLICKED ---`);
+  console.log(`Queue ID: ${queueId}`);
+
   if (!queueId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Queue ID is required" });
+    return res.json({ success: false, message: "Missing Queue ID" });
   }
 
-  const completedBy = req.admin.full_name;
-  const completedById = req.admin.adminId;
-
-  // 1. Update Queue Table
-  const updateQueueQuery = `
-    UPDATE queue
-    SET status = 'completed', 
-        completed_at = NOW(), 
-        completed_by = ?, 
-        completed_by_id = ?,
-        claim_details = ? 
-    WHERE queue_id = ?
+  // 🟢 FIX: Fetch 'first_name' and 'last_name' instead of 'full_name'
+  const fetchQuery = `
+    SELECT q.user_id, u.email, u.first_name, u.last_name, q.queue_number 
+    FROM queue q
+    LEFT JOIN users u ON q.user_id = u.id
+    WHERE q.queue_id = ?
   `;
 
-  db.query(
-    updateQueueQuery,
-    [completedBy, completedById, claimDetails || null, queueId],
-    (err, result) => {
-      if (err) {
-        console.error("Database error marking done:", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error" });
-      }
-
-      if (result.affectedRows === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Queue not found." });
-      }
-
-      // 2. Sync to Service Requests Table (So record stays even if queue is cleared)
-      // We also need to get the request_id first to update the correct row
-      db.query(
-        "SELECT request_id FROM queue WHERE queue_id = ?",
-        [queueId],
-        (qErr, qRows) => {
-          if (!qErr && qRows.length > 0) {
-            const reqId = qRows[0].request_id;
-            const updateReqQuery = `
-                UPDATE service_requests 
-                SET queue_status = 'completed', 
-                    claim_details = ? 
-                WHERE request_id = ?
-            `;
-            db.query(updateReqQuery, [claimDetails || null, reqId]);
-          }
-        }
-      );
-
-      res.json({ success: true, message: "Request marked as completed." });
+  db.query(fetchQuery, [queueId], (err, results) => {
+    if (err) {
+      console.error("❌ DB Fetch Error:", err);
+      return res.status(500).json({ success: false });
     }
-  );
+
+    if (results.length === 0) {
+      console.error("❌ Error: Queue ID not found.");
+      return res.json({ success: true });
+    }
+
+    const row = results[0];
+
+    // 🟢 FIX: Combine names here
+    const userEmail = row.email;
+    const userName =
+      row.first_name && row.last_name
+        ? `${row.first_name} ${row.last_name}`
+        : "Student";
+
+    const queueNum = row.queue_number;
+
+    console.log(`✅ User Found: ${userName} (${userEmail})`);
+
+    // 2. Update Status
+    const updateQuery = `
+      UPDATE queue 
+      SET status = 'completed', 
+          completed_at = NOW(),
+          completed_by = ?,
+          admin_notes = ? 
+      WHERE queue_id = ?
+    `;
+
+    db.query(
+      updateQuery,
+      [adminName, claimDetails || "", queueId],
+      (updateErr, result) => {
+        if (updateErr) {
+          console.error("❌ DB Update Error:", updateErr);
+          return res.status(500).json({ success: false });
+        }
+
+        console.log("✅ Database Updated. Sending Email...");
+
+        // 3. Send Email
+        if (userEmail) {
+          const subject = "📄 Documents Ready for Pickup - RSU Registrar";
+          const html = `
+          <h3>Hello ${userName},</h3>
+          <p>Good news! Your request (Queue #: <b>${queueNum}</b>) is now <b>READY TO CLAIM</b>.</p>
+          <div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00;">
+            <strong>Note from Staff:</strong><br>
+            ${
+              claimDetails ||
+              "Please proceed to the Registrar's window to claim your documents."
+            }
+          </div>
+          <br>
+          <p>Thank you,<br>RSU Registrar</p>
+        `;
+          sendNotificationEmail(userEmail, subject, html);
+        } else {
+          console.warn("⚠️ No email found for this user. Skipping email.");
+        }
+
+        res.json({ success: true });
+      }
+    );
+  });
 });
 
 // === API: MARK AS CLAIMED (Removes from TV) ===
@@ -3183,39 +3364,208 @@ app.get("/api/student/updates", authenticateToken, (req, res) => {
   });
 });
 
-// 🟢 FIX 1: Update Admin Query to find NULL statuses too
-app.get("/api/admin/pending-users", authenticateToken, (req, res) => {
+// 🟢 ADMIN: Get Pending Account Requests
+// 🟢 Use authenticateAdmin so BOTH Staff and Super Admin can view this
+app.get("/api/admin/pending-users", authenticateAdmin, (req, res) => {
   const query = `
-        SELECT id, fullname, student_id, course, year_level, email, phone, 
-               campus, dob, pob, nationality, home_address, 
-               school_id_picture, created_at
-        FROM users 
-        WHERE account_status = 'pending' OR account_status IS NULL
-        ORDER BY created_at ASC
-    `;
-  // ... rest of the code stays the same
+    SELECT id, fullname, email, student_id, course, year_level, 
+           school_id_picture, home_address, phone, nationality, dob, created_at 
+    FROM users 
+    WHERE account_status = 'pending' 
+    ORDER BY created_at ASC
+  `;
+
   db.query(query, (err, results) => {
-    if (err)
+    if (err) {
+      console.error("❌ Error fetching pending users:", err);
       return res.status(500).json({ success: false, message: "DB Error" });
-    res.json({ success: true, users: results });
+    }
+    res.json(results); // Send array directly
   });
 });
 
-// 🟢 ADMIN: Verify/Reject User
-app.post("/api/admin/verify-user", authenticateToken, (req, res) => {
-  const { userId, action } = req.body; // action should be 'verified' or 'rejected'
+// 🟢 UPDATED: Verify User Route (With Email Notification)
+app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
+  const { userId, action } = req.body; // action: 'verified' or 'rejected'
 
+  if (!userId || !action) {
+    return res.status(400).json({ success: false, message: "Missing fields" });
+  }
+
+  // 1. Get the user's email first
   db.query(
-    "UPDATE users SET account_status = ? WHERE id = ?",
-    [action, userId],
-    (err, result) => {
-      if (err)
-        return res.status(500).json({ success: false, message: "DB Error" });
-      res.json({ success: true, message: `User ${action} successfully` });
+    "SELECT email, first_name, last_name FROM users WHERE id = ?",
+    [userId],
+    (err, results) => {
+      if (err || results.length === 0) {
+        return res
+          .status(500)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const userEmail = results[0].email;
+      const userName = `${results[0].first_name} ${results[0].last_name}`;
+
+      // 2. Perform the update
+      let query = "";
+      if (action === "verified") {
+        query =
+          "UPDATE users SET is_verified = 1, status = 'active' WHERE id = ?";
+      } else {
+        query = "UPDATE users SET status = 'rejected' WHERE id = ?";
+      }
+
+      db.query(query, [userId], (updateErr, updateResult) => {
+        if (updateErr) {
+          return res
+            .status(500)
+            .json({ success: false, message: "Database update failed" });
+        }
+
+        // 🟢 3. SEND EMAIL
+        if (action === "verified") {
+          const subject = "🎉 Account Verified - RSU Registrar";
+          const html = `
+          <h3>Hello ${userName},</h3>
+          <p>Your account for the <b>Romblon State University Registrar System</b> has been <b>ACCEPTED</b>.</p>
+          <p>You may now log in to request documents.</p>
+          <br>
+          <p>Regards,<br>RSU Registrar</p>
+        `;
+          sendNotificationEmail(userEmail, subject, html);
+        } else {
+          const subject = "Account Application Update";
+          const html = `
+          <p>Hello ${userName},</p>
+          <p>We regret to inform you that your account application was declined.</p>
+        `;
+          sendNotificationEmail(userEmail, subject, html);
+        }
+
+        res.json({ success: true, message: `User ${action} successfully.` });
+      });
     }
   );
 });
 
+// 🟢 FINAL FIXED HISTORY ROUTE (Paste this into index.js)
+app.get("/api/admin/history", authenticateAdmin, (req, res) => {
+  const query = `
+    SELECT 
+      q.queue_id,                  -- ✅ MATCHES SCHEMA (was q.id)
+      q.queue_number, 
+      q.user_name AS client_name, 
+      q.student_id, 
+      q.services, 
+      q.status, 
+      q.window_number,
+      q.completed_at,              -- ✅ MATCHES SCHEMA (was q.created_at)
+      u.course,
+      u.year_level
+    FROM queue q 
+    LEFT JOIN users u ON q.user_id = u.id  -- ✅ Uses proper Foreign Key link
+    WHERE q.status IN ('completed', 'claimed')
+    ORDER BY q.queue_id DESC       -- ✅ Sorts by your actual primary key
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("❌ HISTORY DB ERROR:", err.message);
+      return res.status(500).json({
+        success: false,
+        message: "Database Error: " + err.message,
+      });
+    }
+
+    res.json({ success: true, history: results });
+  });
+});
+
+// ==========================================
+// 🟢 NEW FEATURE: SHOW NAME TOGGLE
+// ==========================================
+
+// ==========================================
+// 🟢 NEW FEATURE: SHOW NAME TOGGLE (FIXED)
+// ==========================================
+
+// ==========================================
+// 🟢 NEW FEATURE: SHOW NAME TOGGLE (FINAL FIX)
+// ==========================================
+
+// We must use 'authenticateAdmin' because you are logged in as Staff/Admin
+app.post("/api/admin/toggle-name", authenticateAdmin, (req, res) => {
+  const { show } = req.body;
+
+  // 🟢 FIX: Use 'req.admin.adminId' provided by authenticateAdmin
+  const userId = req.admin.adminId;
+
+  if (!userId) {
+    console.error("❌ Toggle Error: Admin ID missing.");
+    return res.json({ success: false, message: "Admin ID missing" });
+  }
+
+  // Debug log to see it working in your terminal
+  console.log(`Checked Toggle: Admin ID ${userId} set to ${show}`);
+
+  const query = "UPDATE admin_staff SET show_name = ? WHERE id = ?";
+  db.query(query, [show ? 1 : 0, userId], (err, result) => {
+    if (err) {
+      console.error("Error updating show_name:", err);
+      return res.status(500).json({ success: false });
+    }
+
+    // Check if any row was actually touched
+    if (result.affectedRows === 0) {
+      console.warn(`⚠️ Warning: No staff found with ID ${userId}`);
+    }
+
+    res.json({ success: true });
+  });
+});
+
+// 2. API to Get Staff Names for Queue Screen
+// This fetches names ONLY for staff who have turned 'show_name' ON
+app.get("/api/public/window-staff", (req, res) => {
+  const query = `
+    SELECT assigned_window, full_name, role 
+    FROM admin_staff 
+    WHERE show_name = 1 
+    AND assigned_window IS NOT NULL 
+    AND assigned_window != ''
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching window staff:", err);
+      return res.status(500).json({});
+    }
+
+    // Convert array to object: { "1": "Vanz Mantes", "2": "John Doe" }
+    const staffMap = {};
+    results.forEach((row) => {
+      // Clean up window number (e.g., ensure it matches "1", "2")
+      const winNum = row.assigned_window.replace("Window ", "").trim();
+      staffMap[winNum] = row.full_name;
+    });
+
+    res.json(staffMap);
+  });
+});
+
+// 🟢 CORRECT CODE: Get Settings
+app.get("/api/admin/settings", authenticateAdmin, (req, res) => {
+  const userId = req.admin.adminId; // <--- Use Admin ID
+
+  db.query(
+    "SELECT show_name FROM admin_staff WHERE id = ?",
+    [userId],
+    (err, results) => {
+      if (err || results.length === 0) return res.json({ success: false });
+      res.json({ success: true, show_name: results[0].show_name });
+    }
+  );
+});
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
 

@@ -511,6 +511,51 @@
             </div>
           </div>
         </div>
+        <div
+          id="nameVisibilityContainer"
+          class="settings-item d-flex align-items-center justify-content-between"
+          style="display: none"
+        >
+          <div class="d-flex align-items-center">
+            <i class="bi bi-person-badge me-2"></i>
+            <div>
+              <div>Show Name on TV</div>
+              <small class="text-muted"
+                >Display my name under the Window Number</small
+              >
+            </div>
+          </div>
+          <div class="form-check form-switch">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="showNameToggle"
+            />
+            <label class="form-check-label" for="showNameToggle"></label>
+          </div>
+        </div>
+
+        <!-- <div
+          class="settings-item d-flex align-items-center justify-content-between"
+        >
+          <div class="d-flex align-items-center">
+            <i class="bi bi-person-badge me-2"></i>
+            <div>
+              <div>Show Name on Queue Screen</div>
+              <small class="text-muted"
+                >Display my name under the Window Number on TV</small
+              >
+            </div>
+          </div>
+          <div class="form-check form-switch">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="toggleShowName"
+            />
+            <label class="form-check-label" for="toggleShowName"></label>
+          </div>
+        </div> -->
       </div>
 
       <div id="staff-management-page" class="page">
@@ -1566,54 +1611,32 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
     <script>
-      // (function () {
-      //   // 1. Try to find the token (Check both names)
-      //   const token =
-      //     localStorage.getItem("token") || localStorage.getItem("adminToken");
+      (function () {
+        // 🟢 1. Try to find the token (Check both names)
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("adminToken");
 
-      //   // 2. Try to find the user info (Check both names)
-      //   let userStr = localStorage.getItem("user");
-      //   if (!userStr) {
-      //     userStr = localStorage.getItem("admin"); // Fallback to 'admin' key
-      //   }
+        // 🟢 2. Try to find the user info
+        let userStr = localStorage.getItem("user");
+        if (!userStr) {
+          userStr = localStorage.getItem("admin"); // Fallback to 'admin' key
+        }
 
-      //   // 3. Security Check: Is the token missing?
-      //   if (!token) {
-      //     alert("Unauthorized access. Please log in.");
-      //     window.location.href = "/login"; // Or /adminLogin.html
-      //     return;
-      //   }
+        // 3. Security Check: Is the token missing?
+        if (!token) {
+          // Don't alert here, just redirect cleanly
+          window.location.href = "/adminLogin";
+          return;
+        }
 
-      //   // 4. Parse User Data
-      //   let user = null;
-      //   try {
-      //     user = userStr ? JSON.parse(userStr) : null;
-      //   } catch (e) {
-      //     console.error("Corrupted user data", e);
-      //   }
+        // 4. Ensure Token is Consistent for the rest of the scripts
+        // This fixes the "Loop" by making sure 'token' always exists
+        if (!localStorage.getItem("token")) {
+          localStorage.setItem("token", token);
+        }
 
-      //   // 5. Role Check
-      //   // Your data says "staff" (lowercase), so we allow that.
-      //   if (user) {
-      //     const role = (user.role || "").toLowerCase(); // Normalize to lowercase
-      //     if (role !== "admin" && role !== "staff") {
-      //       alert("Access Denied: Your role is '" + user.role + "'.");
-      //       window.location.href = "/login";
-      //       return;
-      //     }
-
-      //     // 🟢 CRITICAL FIX FOR MODAL:
-      //     // Ensure the rest of your page can find the user, even if it was saved as 'admin'
-      //     if (!localStorage.getItem("user")) {
-      //       localStorage.setItem("user", JSON.stringify(user));
-      //     }
-      //     if (!localStorage.getItem("token")) {
-      //       localStorage.setItem("token", token);
-      //     }
-      //   }
-
-      //   console.log("✅ Access Granted. Role:", user ? user.role : "Unknown");
-      // })();
+        console.log("✅ Gatekeeper: Access Granted");
+      })();
       // -------------------------- BOOTSTRAP OFFCANVAS SIDEBAR FOR MOBILE USING OFFCANVAS COMPONENT--------------------------------------
 
       // Initialize Bootstrap Offcanvas for sidebar on mobile
@@ -1692,7 +1715,7 @@
 
             // 🟢 NEW: LOAD HISTORY MANAGER 🟢
             // This initializes the Month/Week/Day view you requested
-            if (typeof historyManager !== "undefined") {
+            if (historyManager) {
               historyManager.loadHistory();
             }
           } else if (page === "github") {
@@ -1717,10 +1740,393 @@
       // Initialize managers
       let serviceRequestManager;
       let queueManager;
+      let historyManager = null;
       let isQueuePaused = false;
+      let activeWindows = []; // Cache of windows currently in use
       let fcrChartInstance = null;
       let currentWindow = null;
       let windowSelectionModalObj = null;
+
+      class HistoryManager {
+        constructor() {
+          this.rawData = [];
+          this.currentView = "months";
+          this.selectedMonth = null;
+          this.selectedWeek = null;
+          this.selectedDay = null;
+        }
+
+        async loadHistory() {
+          // 1. Target the CORRECT container
+          const container = document.getElementById("historyContentArea");
+          if (!container) {
+            console.error("History container not found!");
+            return;
+          }
+
+          // 2. Show Loading Spinner
+          container.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2 text-muted">Loading history...</p>
+            </div>`;
+
+          try {
+            // 3. Fetch Data
+            const response = await makeAuthenticatedRequest(
+              "/api/admin/history"
+            );
+
+            // Handle HTTP Errors (like 500 or 404)
+            if (!response.ok) {
+              throw new Error(`Server Error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // 4. Validate Data
+            if (result.success) {
+              // Safety: Ensure history is an array, even if null
+              this.rawData = Array.isArray(result.history)
+                ? result.history
+                : [];
+
+              if (this.rawData.length === 0) {
+                container.innerHTML = `
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-calendar-x fs-1 opacity-25"></i>
+                            <h4 class="mt-3">No History Found</h4>
+                            <p>No completed or claimed requests found in the database.</p>
+                        </div>`;
+              } else {
+                this.renderMonths();
+              }
+            } else {
+              throw new Error(result.message || "Unknown error occurred");
+            }
+          } catch (error) {
+            console.error("Failed to load history:", error);
+            // 5. REMOVE SPINNER and show error
+            container.innerHTML = `
+                <div class="text-center py-5 text-danger">
+                    <i class="bi bi-exclamation-triangle fs-1"></i>
+                    <h4 class="mt-3">Unable to Load History</h4>
+                    <p>${error.message}</p>
+                    <button class="btn btn-outline-primary mt-2" onclick="historyManager.loadHistory()">Try Again</button>
+                </div>`;
+          }
+        }
+
+        // --- LEVEL 1: MONTHS ---
+        renderMonths() {
+          this.currentView = "months";
+          this.updateBreadcrumbs();
+
+          const groups = {};
+          this.rawData.forEach((item) => {
+            // Safety: Handle invalid dates
+            if (!item.completed_at) return;
+
+            const date = new Date(item.completed_at);
+            if (isNaN(date.getTime())) return; // Skip invalid dates
+
+            const key = date.toLocaleString("default", {
+              month: "long",
+              year: "numeric",
+            });
+            if (!groups[key]) groups[key] = 0;
+            groups[key]++;
+          });
+
+          let html = '<div class="row g-3">';
+          // If data exists but filtering resulted in 0 groups
+          if (Object.keys(groups).length === 0) {
+            html +=
+              '<div class="col-12 text-center text-muted">No valid dates found in history.</div>';
+          } else {
+            Object.entries(groups).forEach(([month, count]) => {
+              html += `
+                <div class="col-md-4 col-lg-3">
+                    <div class="card h-100 border-0 shadow-sm report-card" 
+                         onclick="historyManager.selectMonth('${month}')" 
+                         style="cursor: pointer; transition: transform 0.2s;">
+                        <div class="card-body text-center">
+                            <i class="bi bi-calendar-month fs-1 text-primary mb-2"></i>
+                            <h5 class="fw-bold mb-1">${month}</h5>
+                            <span class="badge bg-light text-dark border">${count} Requests</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+          }
+          html += "</div>";
+          document.getElementById("historyContentArea").innerHTML = html;
+        }
+
+        selectMonth(month) {
+          this.selectedMonth = month;
+          this.renderWeeks();
+        }
+
+        // --- LEVEL 2: WEEKS ---
+        renderWeeks() {
+          this.currentView = "weeks";
+          this.updateBreadcrumbs();
+
+          const monthlyData = this.rawData.filter((item) => {
+            if (!item.completed_at) return false;
+            const date = new Date(item.completed_at);
+            return (
+              date.toLocaleString("default", {
+                month: "long",
+                year: "numeric",
+              }) === this.selectedMonth
+            );
+          });
+
+          const groups = {};
+          monthlyData.forEach((item) => {
+            const date = new Date(item.completed_at);
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+            const weekNum = Math.ceil(
+              ((date - firstDay) / 86400000 + firstDay.getDay() + 1) / 7
+            );
+            const key = `Week ${weekNum}`;
+
+            if (!groups[key]) groups[key] = 0;
+            groups[key]++;
+          });
+
+          let html = '<div class="row g-3">';
+          Object.entries(groups)
+            .sort()
+            .forEach(([week, count]) => {
+              html += `
+            <div class="col-md-4 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm report-card" 
+                     onclick="historyManager.selectWeek('${week}')" 
+                     style="cursor: pointer;">
+                    <div class="card-body text-center">
+                        <i class="bi bi-calendar-week fs-1 text-success mb-2"></i>
+                        <h5 class="fw-bold mb-1">${week}</h5>
+                        <p class="text-muted small mb-2">of ${this.selectedMonth}</p>
+                        <span class="badge bg-success">${count} Requests</span>
+                    </div>
+                </div>
+            </div>`;
+            });
+          html += "</div>";
+          document.getElementById("historyContentArea").innerHTML = html;
+        }
+
+        selectWeek(week) {
+          this.selectedWeek = week;
+          this.renderDays();
+        }
+
+        // --- LEVEL 3: DAYS ---
+        renderDays() {
+          this.currentView = "days";
+          this.updateBreadcrumbs();
+
+          const dailyData = this.rawData.filter((item) => {
+            if (!item.completed_at) return false;
+            const date = new Date(item.completed_at);
+            const monthStr = date.toLocaleString("default", {
+              month: "long",
+              year: "numeric",
+            });
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+            const weekNum = Math.ceil(
+              ((date - firstDay) / 86400000 + firstDay.getDay() + 1) / 7
+            );
+            const weekStr = `Week ${weekNum}`;
+            return (
+              monthStr === this.selectedMonth && weekStr === this.selectedWeek
+            );
+          });
+
+          const groups = {};
+          dailyData.forEach((item) => {
+            const date = new Date(item.completed_at).toLocaleDateString(
+              "en-US",
+              {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }
+            );
+            if (!groups[date]) groups[date] = [];
+            groups[date].push(item);
+          });
+
+          let html = '<div class="list-group shadow-sm">';
+          Object.entries(groups)
+            .sort((a, b) => new Date(b[0]) - new Date(a[0])) // Sort newest first
+            .forEach(([date, items]) => {
+              html += `
+                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3"
+                        onclick="historyManager.selectDay('${date}')">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-light rounded p-2 me-3"><i class="bi bi-calendar-day fs-4 text-warning"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-0">${date}</h6>
+                            <small class="text-muted">Click to view details</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">${items.length} Items</span>
+                </button>`;
+            });
+          html += "</div>";
+          document.getElementById("historyContentArea").innerHTML = html;
+        }
+
+        selectDay(dateStr) {
+          this.selectedDay = dateStr;
+          this.renderDetails();
+        }
+
+        // --- LEVEL 4: DETAILS (The actual table) ---
+        renderDetails() {
+          this.currentView = "details";
+          this.updateBreadcrumbs();
+
+          const details = this.rawData.filter((item) => {
+            if (!item.completed_at) return false;
+            const date = new Date(item.completed_at).toLocaleDateString(
+              "en-US",
+              {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }
+            );
+            return date === this.selectedDay;
+          });
+
+          let html = `
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-outline-danger" onclick="historyManager.printReport()">
+                <i class="bi bi-file-earmark-pdf me-2"></i> Print / Save as PDF
+            </button>
+        </div>
+        <div class="table-responsive bg-white border rounded" id="printableArea">
+            <div class="d-none d-print-block text-center mb-4 pt-4">
+                <h3>Registrar Office - Daily Report</h3>
+                <p>${this.selectedDay}</p>
+                <hr>
+            </div>
+            
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3">Client Name</th>
+                        <th>Student ID</th>
+                        <th>Dept / Course</th>
+                        <th>Service Requested</th>
+                        <th>Staff In Charge</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+          if (details.length === 0) {
+            html += `<tr><td colspan="6" class="text-center py-4 text-muted">No records found.</td></tr>`;
+          } else {
+            details.forEach((row) => {
+              const statusBadge =
+                row.status === "claimed"
+                  ? '<span class="badge bg-secondary">Picked Up</span>'
+                  : '<span class="badge bg-success">Ready</span>';
+
+              const staffName =
+                row.completed_by || row.processed_by || "Registrar Staff";
+
+              // Clean up services string
+              let cleanServices = "General";
+              if (row.services) {
+                try {
+                  let parsed = JSON.parse(row.services);
+                  if (Array.isArray(parsed)) {
+                    cleanServices = parsed
+                      .map((s) => s.split(" [Note:")[0])
+                      .join(", ");
+                  } else {
+                    cleanServices = String(row.services);
+                  }
+                } catch (e) {
+                  cleanServices = String(row.services).split(" [Note:")[0];
+                }
+              }
+
+              html += `
+                <tr>
+                    <td class="ps-3 fw-bold">${
+                      row.client_name || row.user_name || "Guest"
+                    }</td>
+                    <td>${row.student_id || "N/A"}</td>
+                    <td>
+                        <div class="small fw-bold">${
+                          row.department || "N/A"
+                        }</div>
+                        <div class="small text-muted">${row.course || ""} ${
+                row.year_level ? "- " + row.year_level : ""
+              }</div>
+                    </td>
+                    <td>${cleanServices}</td>
+                    <td><div class="small text-muted">${staffName}</div></td>
+                    <td>${statusBadge}</td>
+                </tr>`;
+            });
+          }
+
+          html += `</tbody></table></div>`;
+          document.getElementById("historyContentArea").innerHTML = html;
+        }
+
+        updateBreadcrumbs() {
+          const container = document.getElementById("historyBreadcrumbs");
+          if (!container) return;
+
+          let html = `<span class="breadcrumb-item"><a href="#" onclick="historyManager.renderMonths()">History</a></span>`;
+
+          if (["weeks", "days", "details"].includes(this.currentView)) {
+            html += ` <i class="bi bi-chevron-right mx-1"></i> <span class="breadcrumb-item"><a href="#" onclick="historyManager.renderWeeks()">${this.selectedMonth}</a></span>`;
+          }
+          if (["days", "details"].includes(this.currentView)) {
+            html += ` <i class="bi bi-chevron-right mx-1"></i> <span class="breadcrumb-item"><a href="#" onclick="historyManager.renderDays()">${this.selectedWeek}</a></span>`;
+          }
+          if (this.currentView === "details") {
+            html += ` <i class="bi bi-chevron-right mx-1"></i> <span class="fw-bold text-dark">Details</span>`;
+          }
+          container.innerHTML = html;
+        }
+
+        printReport() {
+          const printContent =
+            document.getElementById("printableArea").innerHTML;
+          const iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          document.body.appendChild(iframe);
+
+          const doc = iframe.contentWindow.document;
+          doc.write(`
+            <html><head><title>Print Report</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>body{padding:20px;} .d-none.d-print-block{display:block!important;}</style>
+            </head><body>${printContent}</body></html>
+        `);
+          doc.close();
+
+          iframe.contentWindow.focus();
+          setTimeout(() => {
+            iframe.contentWindow.print();
+            document.body.removeChild(iframe);
+          }, 500);
+        }
+      }
 
       // ---------------------------------------------------
       // 🟢 SERVICE DURATION MAPPING (in Days) 🟢
@@ -1741,7 +2147,8 @@
       };
 
       // Admin Dashboard Authentication Helper
-      const adminToken = localStorage.getItem("adminToken");
+      const adminToken =
+        localStorage.getItem("adminToken") || localStorage.getItem("token");
       console.log(
         "Admin token from localStorage:",
         adminToken ? "Present" : "Missing"
@@ -1907,31 +2314,58 @@
           });
       }
 
-      // Admin logout function
+      // 🟢 RESTORED LOGOUT FUNCTIONS (Paste at the bottom of your script)
+
+      // 1. Core Logout Helper
       function adminLogout() {
         localStorage.removeItem("admin");
         localStorage.removeItem("adminToken");
-        localStorage.removeItem("assignedWindow"); // Clear client-side cache
+        localStorage.removeItem("assignedWindow");
         window.location.href = "/adminLogin";
       }
 
-      // Global function to unassign the window
-      async function unassignWindowOnServer(windowToUnassign) {
-        // Use the passed argument, or fall back to the global variable
-        const targetWindow = windowToUnassign || currentWindow;
+      // 🟢 FIXED: Logout Handler
+      window.handleLogout = function () {
+        if (confirm("Are you sure you want to log out?")) {
+          showNotification("Logging out...");
 
-        if (targetWindow && adminToken) {
+          // Call unassign immediately
+          unassignWindowOnServer().finally(() => {
+            // Clear all local data
+            localStorage.removeItem("admin");
+            localStorage.removeItem("adminToken");
+            localStorage.removeItem("assignedWindow");
+
+            // Redirect
+            window.location.href = "/adminLogin";
+          });
+        }
+      };
+
+      // 🟢 FIXED: Unassign Window Logic
+      async function unassignWindowOnServer() {
+        // We DO NOT check for 'currentWindow' here.
+        // We allow the server to find the user by Token and clear whatever window they hold.
+
+        if (adminToken) {
           try {
-            console.log("Attempting to unassign:", targetWindow);
-            await makeAuthenticatedRequest("/api/admin/unassign-window", {
+            console.log("Requesting server to unassign window...");
+            // We use keepalive: true to ensure this request finishes even if the browser closes immediately
+            await fetch("/api/admin/unassign-window", {
               method: "POST",
-              body: JSON.stringify({ windowNumber: targetWindow }),
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + adminToken,
+              },
+              body: JSON.stringify({}), // Empty body, server uses Token ID
+              keepalive: true,
             });
-            console.log("Server unassign success");
+            console.log("Server unassign request sent.");
           } catch (e) {
             console.warn("Failed to unassign window on server.", e);
           }
         }
+
         // Clear client-side state
         currentWindow = null;
         localStorage.removeItem("assignedWindow");
@@ -1941,44 +2375,79 @@
       document.addEventListener("DOMContentLoaded", function () {
         console.log("Admin dashboard initialized");
 
-        // 🟢 FIX: REMOVED the line localStorage.removeItem("assignedWindow");
-        // This allows the browser to remember the window on refresh.
-
-        // Initialize managers
-        serviceRequestManager = new ServiceRequestManager();
-        queueManager = new QueueManager();
-        // Pre-load data in the background on page load
-        serviceRequestManager.loadServiceRequests();
-        queueManager.loadQueues();
-
-        // Set up navigation
+        // 🟢 1. SETUP NAVIGATION FIRST 🟢
+        // We do this immediately so the Sidebar and Tabs work
+        // even if the database/managers have an error later.
         setupNavigation();
-
-        // Show initial page
-        showPage("queue");
-
-        // Load preferences
         loadPreferences();
-
-        // Set up enhanced auto-refresh
         setupEnhancedAutoRefresh();
 
-        // 🟢 FIX: Ensure window check runs after everything else is ready 🟢
-        // This function will now check local storage first before showing the modal.
-        // checkWindowAssignment();
+        // 🟢 2. START MANAGERS SAFELY 🟢
+        try {
+          // Initialize Managers
+          serviceRequestManager = new ServiceRequestManager();
+          queueManager = new QueueManager();
+
+          // Fix: Check if HistoryManager exists before starting it
+          if (typeof HistoryManager !== "undefined") {
+            historyManager = new HistoryManager();
+            console.log("✅ History Manager Started Successfully");
+          } else {
+            console.error(
+              "❌ CRITICAL: HistoryManager class is missing from the file!"
+            );
+          }
+
+          // Load Data
+          if (serviceRequestManager)
+            serviceRequestManager.loadServiceRequests();
+          if (queueManager) queueManager.loadQueues();
+
+          // Check Window Assignment
+          // checkWindowAssignment();
+        } catch (error) {
+          console.error("Critical Error starting managers:", error);
+          // Even if this fails, your sidebar will still work now!
+        }
       });
 
-      // 🟢 FIXED: Loads History Manager when opening details 🟢
+      // 🟢 ROBUST REPORT LOADER (Replaces your existing showReportDetail function)
       function showReportDetail(reportId) {
         // 1. Navigate to the detail page
         showPage("report-detail");
 
-        // 2. Trigger the History Loader
-        if (typeof historyManager !== "undefined") {
+        // 2. 🟢 AUTO-START FIX: If historyManager is missing, create it now!
+        if (!historyManager) {
+          console.warn(
+            "HistoryManager was missing. Attempting to start it now..."
+          );
+
+          if (typeof HistoryManager !== "undefined") {
+            try {
+              historyManager = new HistoryManager();
+              console.log("✅ History Manager started via Lazy Load");
+            } catch (err) {
+              console.error("❌ Failed to start HistoryManager:", err);
+            }
+          } else {
+            console.error(
+              "❌ CRITICAL: 'class HistoryManager' is missing from the code!"
+            );
+            document.getElementById("historyContentArea").innerHTML = `
+                <div class="text-center py-5 text-danger">
+                    <i class="bi bi-code-slash fs-1"></i>
+                    <h4 class="mt-2">System Error</h4>
+                    <p>The History Manager code is missing or placed incorrectly.</p>
+                </div>`;
+            return;
+          }
+        }
+
+        // 3. Trigger the History Loader (Now that we are sure it exists)
+        if (historyManager) {
           historyManager.loadHistory();
         }
       }
-      // ⬆️ END OF REPLACEMENT ⬆️
 
       function toggleQueuePause() {
         isQueuePaused = !isQueuePaused;
@@ -2211,10 +2680,10 @@
         // 3. Handle empty state
         if (allRequests.length === 0) {
           listElement.innerHTML = `
-                <li class="request-list-item empty">
-                  No requests found for today.
-                </li>
-              `;
+                      <li class="request-list-item empty">
+                        No requests found for today.
+                      </li>
+                    `;
           return;
         }
 
@@ -2270,13 +2739,13 @@
             const clientName = escape(request.user_name);
             const serviceName = escape(cleanService);
             return `
-                <li class="request-list-item">
-                  <div class="client-name" title="${clientName}">
-                    ${clientName} ${statusBadge}
-                  </div>
-                  <div class="service-name" title="${serviceName}">${serviceName}</div>
-                </li>
-              `;
+                      <li class="request-list-item">
+                        <div class="client-name" title="${clientName}">
+                          ${clientName} ${statusBadge}
+                        </div>
+                        <div class="service-name" title="${serviceName}">${serviceName}</div>
+                      </li>
+                    `;
           })
           .join("");
       }
@@ -2419,17 +2888,17 @@
             ? "#f57c00"
             : "#2e7d32";
         notification.style.cssText = `
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: ${bgColor};
-                  color: white;
-                  padding: 15px 25px;
-                  border-radius: 8px;
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                  z-index: 10000;
-                  animation: slideInRight 0.3s ease-out;
-              `;
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: ${bgColor};
+                        color: white;
+                        padding: 15px 25px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                        z-index: 10000;
+                        animation: slideInRight 0.3s ease-out;
+                    `;
 
         document.body.appendChild(notification);
 
@@ -2603,94 +3072,96 @@
 
             // Generate Card HTML
             const cardHtml = `
-                <div class="card border-0 shadow-sm animate__animated animate__fadeIn mb-3">
-                    <div class="card-body p-4" style="border-left: 8px solid ${
-                      isComplete ? "#198754" : borderColor
-                    };">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <div class="d-flex align-items-center mb-1">
-                                    <h3 class="fw-bold mb-0 me-2">${this.escapeHtml(
-                                      req.user_name
-                                    )}</h3>
-                                    ${
-                                      isComplete
-                                        ? `<span class="badge bg-success bg-opacity-10 text-success border border-success ms-2"><i class="bi bi-broadcast me-1"></i> Live on TV</span>`
-                                        : `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary ms-2"><i class="bi bi-eye-slash me-1"></i> Hidden on TV</span>`
-                                    }
-                                </div>
-                                <p class="text-muted mb-0 fs-6">Student ID: <strong>${this.escapeHtml(
-                                  req.student_id
-                                )}</strong></p>
-                            </div>
-                            <div class="text-end">
-                                <span class="badge ${badgeClass} fs-5 px-3 py-2 rounded-pill shadow-sm">${this.escapeHtml(
+                      <div class="card border-0 shadow-sm animate__animated animate__fadeIn mb-3">
+                          <div class="card-body p-4" style="border-left: 8px solid ${
+                            isComplete ? "#198754" : borderColor
+                          };">
+                              <div class="d-flex justify-content-between align-items-start mb-3">
+                                  <div>
+                                      <div class="d-flex align-items-center mb-1">
+                                          <h3 class="fw-bold mb-0 me-2">${this.escapeHtml(
+                                            req.user_name
+                                          )}</h3>
+                                          ${
+                                            isComplete
+                                              ? `<span class="badge bg-success bg-opacity-10 text-success border border-success ms-2"><i class="bi bi-broadcast me-1"></i> Live on TV</span>`
+                                              : `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary ms-2"><i class="bi bi-eye-slash me-1"></i> Hidden on TV</span>`
+                                          }
+                                      </div>
+                                      <p class="text-muted mb-0 fs-6">Student ID: <strong>${this.escapeHtml(
+                                        req.student_id
+                                      )}</strong></p>
+                                  </div>
+                                  <div class="text-end">
+                                      <span class="badge ${badgeClass} fs-5 px-3 py-2 rounded-pill shadow-sm">${this.escapeHtml(
               req.queue_number
             )}</span>
-                            </div>
-                        </div>
+                                  </div>
+                              </div>
 
-                        <div class="bg-light p-3 rounded mb-3">
-                            <label class="text-secondary small fw-bold text-uppercase mb-1">Requested Services</label>
-                            <div class="fs-6 fw-semibold text-dark mb-2">
-                                <i class="bi bi-gear-wide-connected me-2 text-primary"></i>
-                                ${this.escapeHtml(services.join(", "))}
-                            </div>
+                              <div class="bg-light p-3 rounded mb-3">
+                                  <label class="text-secondary small fw-bold text-uppercase mb-1">Requested Services</label>
+                                  <div class="fs-6 fw-semibold text-dark mb-2">
+                                      <i class="bi bi-gear-wide-connected me-2 text-primary"></i>
+                                      ${this.escapeHtml(services.join(", "))}
+                                  </div>
 
-                            <div class="d-flex align-items-center mt-3">
-                                <div class="flex-grow-1 me-3">
-                                    <div class="d-flex justify-content-between small mb-1">
-                                        <span>Progress (${
-                                          progress.current
-                                        }/${maxDays} Days)</span>
-                                        <span class="fw-bold ${
-                                          isComplete
-                                            ? "text-success"
-                                            : "text-primary"
-                                        }">${percent}%</span>
-                                    </div>
-                                    <div class="progress" style="height: 10px;">
-                                        <div class="progress-bar ${
-                                          isComplete
-                                            ? "bg-success"
-                                            : "bg-primary"
-                                        }" role="progressbar" style="width: ${percent}%"></div>
-                                    </div>
-                                </div>
-                                <button class="btn btn-outline-primary btn-sm" onclick="queueManager.openProgressModal('${
-                                  req.queue_id
-                                }', ${maxDays}, '${encodeURIComponent(
+                                  <div class="d-flex align-items-center mt-3">
+                                      <div class="flex-grow-1 me-3">
+                                          <div class="d-flex justify-content-between small mb-1">
+                                              <span>Progress (${
+                                                progress.current
+                                              }/${maxDays} Days)</span>
+                                              <span class="fw-bold ${
+                                                isComplete
+                                                  ? "text-success"
+                                                  : "text-primary"
+                                              }">${percent}%</span>
+                                          </div>
+                                          <div class="progress" style="height: 10px;">
+                                              <div class="progress-bar ${
+                                                isComplete
+                                                  ? "bg-success"
+                                                  : "bg-primary"
+                                              }" role="progressbar" style="width: ${percent}%"></div>
+                                          </div>
+                                      </div>
+                                      <button class="btn btn-outline-primary btn-sm" onclick="queueManager.openProgressModal('${
+                                        req.queue_id
+                                      }', ${maxDays}, '${encodeURIComponent(
               JSON.stringify(progress.checked)
             )}')">
-                                    <i class="bi bi-pencil-square"></i> Update
-                                </button>
-                            </div>
-                        </div>
+                                          <i class="bi bi-pencil-square"></i> Update
+                                      </button>
+                                  </div>
+                              </div>
 
-                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <div class="text-muted small">
-                                <i class="bi bi-clock me-1"></i> Started: ${new Date(
-                                  req.started_at
-                                ).toLocaleTimeString()}
-                            </div>
-                            <div class="d-inline-block">
-                                <button class="btn ${
-                                  isComplete ? "btn-success" : "btn-secondary"
-                                } px-4 fw-bold shadow-sm"
-                                    onclick="queueManager.markAsDone('${
-                                      req.queue_id
-                                    }')"
-                                    ${
-                                      !isComplete
-                                        ? 'disabled style="cursor: not-allowed; opacity: 0.6;"'
-                                        : ""
-                                    }>
-                                    <i class="bi bi-check-circle-fill me-2"></i> Mark as Done
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
+                              <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                  <div class="text-muted small">
+                                      <i class="bi bi-clock me-1"></i> Started: ${new Date(
+                                        req.started_at
+                                      ).toLocaleTimeString()}
+                                  </div>
+                                  <div class="d-inline-block">
+                                      <button class="btn ${
+                                        isComplete
+                                          ? "btn-success"
+                                          : "btn-secondary"
+                                      } px-4 fw-bold shadow-sm"
+                                          onclick="queueManager.markAsDone('${
+                                            req.queue_id
+                                          }')"
+                                          ${
+                                            !isComplete
+                                              ? 'disabled style="cursor: not-allowed; opacity: 0.6;"'
+                                              : ""
+                                          }>
+                                          <i class="bi bi-check-circle-fill me-2"></i> Mark as Done
+                                      </button>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>`;
 
             // Sort into Lists
             if (isComplete) {
@@ -2703,35 +3174,35 @@
           // 6. RENDER "PROCESSING" (0-99%)
           if (listProcessing.length > 0) {
             containerProcessing.innerHTML = `
-                  <h3 class="section-title fs-5 text-primary fw-bold mb-3">
-                      <i class="bi bi-person-workspace me-2"></i> Processing (${
-                        listProcessing.length
-                      })
-                  </h3>
-                  ${listProcessing.join("")}
-              `;
+                        <h3 class="section-title fs-5 text-primary fw-bold mb-3">
+                            <i class="bi bi-person-workspace me-2"></i> Processing (${
+                              listProcessing.length
+                            })
+                        </h3>
+                        ${listProcessing.join("")}
+                    `;
           } else {
             containerProcessing.innerHTML = `
-                  <h3 class="section-title fs-5 text-secondary fw-bold mb-3">
-                      <i class="bi bi-person-workspace me-2"></i> Processing (0)
-                  </h3>
-                  <div class="text-center py-4 bg-white rounded shadow-sm border mb-3">
-                      <p class="text-muted mb-0">No active requests in progress.</p>
-                  </div>`;
+                        <h3 class="section-title fs-5 text-secondary fw-bold mb-3">
+                            <i class="bi bi-person-workspace me-2"></i> Processing (0)
+                        </h3>
+                        <div class="text-center py-4 bg-white rounded shadow-sm border mb-3">
+                            <p class="text-muted mb-0">No active requests in progress.</p>
+                        </div>`;
           }
 
           // 7. RENDER "ON QUEUE" (100% - Ready to Complete)
           if (listOnQueue.length > 0) {
             containerOnQueue.innerHTML = `
-                  <div class="alert alert-success border-0 shadow-sm mb-3 d-flex align-items-center">
-                      <i class="bi bi-broadcast me-3 fs-3"></i>
-                      <div>
-                          <h4 class="alert-heading fw-bold mb-0">On Queue / Live on TV</h4>
-                          <p class="mb-0 small">These requests are at 100% progress and are visible on the TV screen. Click "Mark as Done" when the student approaches.</p>
-                      </div>
-                  </div>
-                  ${listOnQueue.join("")}
-              `;
+                        <div class="alert alert-success border-0 shadow-sm mb-3 d-flex align-items-center">
+                            <i class="bi bi-broadcast me-3 fs-3"></i>
+                            <div>
+                                <h4 class="alert-heading fw-bold mb-0">On Queue / Live on TV</h4>
+                                <p class="mb-0 small">These requests are at 100% progress and are visible on the TV screen. Click "Mark as Done" when the student approaches.</p>
+                            </div>
+                        </div>
+                        ${listOnQueue.join("")}
+                    `;
             containerOnQueue.style.display = "block";
           } else {
             // Hide the container if empty to keep UI clean
@@ -2806,9 +3277,9 @@
 
                 borderClass = "border-secondary"; // Grey border
                 actionButton = `
-            <button class="btn btn-sm btn-outline-secondary disabled" disabled>
-                <i class="bi bi-check2-all me-1"></i> Picked Up
-            </button>`;
+                  <button class="btn btn-sm btn-outline-secondary disabled" disabled>
+                      <i class="bi bi-check2-all me-1"></i> Picked Up
+                  </button>`;
               } else {
                 // If just completed (Ready)
                 if (req.queue_number)
@@ -2816,35 +3287,35 @@
 
                 borderClass = "border-success"; // Green border
                 actionButton = `
-            <button class="btn btn-sm btn-outline-success"
-                onclick="queueManager.markAsClaimed('${req.queue_id}', this)"
-                title="Mark as Picked Up">
-                <i class="bi bi-box-seam me-1"></i> Picked Up
-            </button>`;
+                  <button class="btn btn-sm btn-outline-success"
+                      onclick="queueManager.markAsClaimed('${req.queue_id}', this)"
+                      title="Mark as Picked Up">
+                      <i class="bi bi-box-seam me-1"></i> Picked Up
+                  </button>`;
               }
 
               return `
-      <div class="card border-0 shadow-sm mb-2" style="border-left: 4px solid ${
-        req.status === "claimed" ? "#6c757d" : "#198754"
-      } !important;">
-        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-          <div>
-            <div class="d-flex align-items-center">
-              ${badgeHtml}
-              <strong class="text-dark">${this.escapeHtml(
-                req.user_name
-              )}</strong>
+            <div class="card border-0 shadow-sm mb-2" style="border-left: 4px solid ${
+              req.status === "claimed" ? "#6c757d" : "#198754"
+            } !important;">
+              <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="d-flex align-items-center">
+                    ${badgeHtml}
+                    <strong class="text-dark">${this.escapeHtml(
+                      req.user_name
+                    )}</strong>
+                  </div>
+                  <div class="small text-muted mt-1">
+                    <i class="bi bi-clock-history"></i> ${
+                      req.status === "claimed" ? "Picked up at" : "Ready since"
+                    } ${timeFinished}
+                  </div>
+                </div>
+                ${actionButton}
+              </div>
             </div>
-            <div class="small text-muted mt-1">
-              <i class="bi bi-clock-history"></i> ${
-                req.status === "claimed" ? "Picked up at" : "Ready since"
-              } ${timeFinished}
-            </div>
-          </div>
-          ${actionButton}
-        </div>
-      </div>
-    `;
+          `;
             })
             .join("");
         }
@@ -2895,8 +3366,8 @@
         }
       }
       /* --------------------------------------------------------------
-         SERVICE REQUEST SEARCH — BY REQUESTER NAME ONLY
-         -------------------------------------------------------------- */
+               SERVICE REQUEST SEARCH — BY REQUESTER NAME ONLY
+               -------------------------------------------------------------- */
       document.addEventListener("DOMContentLoaded", () => {
         const searchInput = document.getElementById(
           "serviceRequestSearchInput"
@@ -3040,38 +3511,40 @@
               }
 
               return `
-              <tr>
-                  <td class="p-3 ps-4">
-                      <div class="d-flex align-items-center">
-                          <div class="staff-avatar-small me-3 bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width:35px; height:35px; font-size:12px;">
-                              ${staff.full_name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                              <div class="fw-bold text-dark">${
-                                staff.full_name
-                              } ${isMe ? "(You)" : ""}</div>
-                              <div class="text-muted small">${staff.email}</div>
-                          </div>
-                      </div>
-                  </td>
-                  <td class="p-3"><span class="badge bg-secondary">${staff.role.replace(
-                    "_",
-                    " "
-                  )}</span></td>
-                  <td class="p-3">${staff.department || "N/A"}</td>
-                  <td class="p-3">
-                      ${statusBadge}
-                  </td>
-                  <td class="p-3 text-end pe-4">
-                      <button class="btn btn-sm btn-outline-primary" onclick='staffManager.openEditModal(${JSON.stringify(
-                        staff
-                      )})'>
-                          <i class="bi bi-pencil"></i> Edit
-                      </button>
-                      ${deleteButton}
-                  </td>
-              </tr>
-          `;
+                    <tr>
+                        <td class="p-3 ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="staff-avatar-small me-3 bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width:35px; height:35px; font-size:12px;">
+                                    ${staff.full_name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">${
+                                      staff.full_name
+                                    } ${isMe ? "(You)" : ""}</div>
+                                    <div class="text-muted small">${
+                                      staff.email
+                                    }</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-3"><span class="badge bg-secondary">${staff.role.replace(
+                          "_",
+                          " "
+                        )}</span></td>
+                        <td class="p-3">${staff.department || "N/A"}</td>
+                        <td class="p-3">
+                            ${statusBadge}
+                        </td>
+                        <td class="p-3 text-end pe-4">
+                            <button class="btn btn-sm btn-outline-primary" onclick='staffManager.openEditModal(${JSON.stringify(
+                              staff
+                            )})'>
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            ${deleteButton}
+                        </td>
+                    </tr>
+                `;
             })
             .join("");
         }
@@ -3329,12 +3802,12 @@
             if (requests.length === 0) {
               // Idle State
               modalList.innerHTML = `
-                              <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
-                                  <i class="bi bi-cup-hot display-1 text-secondary opacity-25"></i>
-                                  <h4 class="mt-3 fw-bold">Currently Idle</h4>
-                                  <p class="mb-0">This window is ready to serve.</p>
-                              </div>
-                          `;
+                                    <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
+                                        <i class="bi bi-cup-hot display-1 text-secondary opacity-25"></i>
+                                        <h4 class="mt-3 fw-bold">Currently Idle</h4>
+                                        <p class="mb-0">This window is ready to serve.</p>
+                                    </div>
+                                `;
             } else {
               // Active Processing State
               modalList.innerHTML = requests
@@ -3343,42 +3816,42 @@
                     ? req.services
                     : [];
                   return `
-                              <div class="card border-0 shadow-sm mb-3 animate__animated animate__fadeIn">
-                                  <div class="card-body border-start border-5 border-primary rounded-start">
-                                      <div class="d-flex justify-content-between align-items-start mb-2">
-                                          <div>
-                                              <h5 class="fw-bold mb-0 text-dark">${this.escapeHtml(
-                                                req.user_name
-                                              )}</h5>
-                                              <small class="text-muted">Student ID: ${this.escapeHtml(
-                                                req.student_id || "N/A"
-                                              )}</small>
-                                          </div>
-                                          <span class="badge bg-primary rounded-pill px-3 py-2 fs-6">${this.escapeHtml(
-                                            req.queue_number
-                                          )}</span>
-                                      </div>
+                                    <div class="card border-0 shadow-sm mb-3 animate__animated animate__fadeIn">
+                                        <div class="card-body border-start border-5 border-primary rounded-start">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h5 class="fw-bold mb-0 text-dark">${this.escapeHtml(
+                                                      req.user_name
+                                                    )}</h5>
+                                                    <small class="text-muted">Student ID: ${this.escapeHtml(
+                                                      req.student_id || "N/A"
+                                                    )}</small>
+                                                </div>
+                                                <span class="badge bg-primary rounded-pill px-3 py-2 fs-6">${this.escapeHtml(
+                                                  req.queue_number
+                                                )}</span>
+                                            </div>
 
-                                      <div class="p-2 bg-light rounded mt-3">
-                                          <div class="d-flex align-items-center text-secondary small mb-1">
-                                              <i class="bi bi-gear-wide-connected me-2"></i> Service:
-                                          </div>
-                                          <div class="fw-semibold text-dark">${services.join(
-                                            ", "
-                                          )}</div>
-                                      </div>
+                                            <div class="p-2 bg-light rounded mt-3">
+                                                <div class="d-flex align-items-center text-secondary small mb-1">
+                                                    <i class="bi bi-gear-wide-connected me-2"></i> Service:
+                                                </div>
+                                                <div class="fw-semibold text-dark">${services.join(
+                                                  ", "
+                                                )}</div>
+                                            </div>
 
-                                      <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-                                          <small class="text-muted">
-                                              <i class="bi bi-clock me-1"></i> Started: ${new Date(
-                                                req.started_at
-                                              ).toLocaleTimeString()}
-                                          </small>
-                                          <span class="badge bg-warning text-dark">In Progress</span>
-                                      </div>
-                                  </div>
-                              </div>
-                              `;
+                                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-clock me-1"></i> Started: ${new Date(
+                                                      req.started_at
+                                                    ).toLocaleTimeString()}
+                                                </small>
+                                                <span class="badge bg-warning text-dark">In Progress</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    `;
                 })
                 .join("");
             }
@@ -3446,29 +3919,31 @@
                 }
 
                 return `
-                      <div class="active-request-row ${winClass}">
-                          <div class="req-queue-num">${this.escapeHtml(
-                            request.queue_number
-                          )}</div>
+                            <div class="active-request-row ${winClass}">
+                                <div class="req-queue-num">${this.escapeHtml(
+                                  request.queue_number
+                                )}</div>
 
-                          <div class="req-info">
-                              <h6>${this.escapeHtml(request.user_name)}</h6>
-                              <p>${services.join(", ").substring(0, 35)}${
+                                <div class="req-info">
+                                    <h6>${this.escapeHtml(
+                                      request.user_name
+                                    )}</h6>
+                                    <p>${services.join(", ").substring(0, 35)}${
                   services.join(", ").length > 35 ? "..." : ""
                 }</p>
-                          </div>
+                                </div>
 
-                          <div>
-                              <span class="req-window-badge badge ${badgeClass}">${this.escapeHtml(
+                                <div>
+                                    <span class="req-window-badge badge ${badgeClass}">${this.escapeHtml(
                   request.window_number
                 )}</span>
-                          </div>
+                                </div>
 
-                          <div class="req-time">
-                              <i class="bi bi-stopwatch me-1"></i>${processingTime}
-                          </div>
-                      </div>
-                    `;
+                                <div class="req-time">
+                                    <i class="bi bi-stopwatch me-1"></i>${processingTime}
+                                </div>
+                            </div>
+                          `;
               })
               .join("") +
             `</div>`;
@@ -3538,20 +4013,20 @@
                 if (orNumber) {
                   // Case A: Paid AND has OR -> Show Badge with Number
                   paymentBadge = `<span class="badge bg-success border border-success text-white ms-1" style="font-size: 0.7rem;">
-                                        <i class="bi bi-cash-coin"></i> PAID (OR# ${this.escapeHtml(
-                                          orNumber
-                                        )})
-                                      </span>`;
+                                              <i class="bi bi-cash-coin"></i> PAID (OR# ${this.escapeHtml(
+                                                orNumber
+                                              )})
+                                            </span>`;
                 } else {
                   // Case B: Paid but NO OR -> Show Badge + "Add OR" Button
                   paymentBadge = `<span class="badge bg-success border border-success text-white ms-1" style="font-size: 0.7rem;">
-                                        <i class="bi bi-cash-coin"></i> PAID
-                                      </span>`;
+                                              <i class="bi bi-cash-coin"></i> PAID
+                                            </span>`;
                   // The button calls assignOR with the request ID
-                  orButton = `<button class="btn btn-sm btn-outline-dark ms-1 py-0 px-2 shadow-sm" style="font-size: 0.7rem; border-radius: 10px;" 
-                                    onclick="event.stopPropagation(); queueManager.assignOR('${request.request_id}')" title="Enter Official Receipt Number">
-                                    <i class="bi bi-pencil-square"></i> OR#
-                                  </button>`;
+                  orButton = `<button class="btn btn-sm btn-outline-dark ms-1 py-0 px-2 shadow-sm" style="font-size: 0.7rem; border-radius: 10px;"
+                                          onclick="event.stopPropagation(); queueManager.assignOR('${request.request_id}')" title="Enter Official Receipt Number">
+                                          <i class="bi bi-pencil-square"></i> OR#
+                                        </button>`;
                 }
               } else {
                 // Case C: Unpaid
@@ -3560,39 +4035,39 @@
               }
 
               return `
-    <div id="req-${request.queue_id}" class="request-card ${
+          <div id="req-${request.queue_id}" class="request-card ${
                 isPriority ? "priority-card" : ""
               }" style="${cardStyle}">
-        <div class="card-info">
-            <span class="student-name">
-                ${this.escapeHtml(request.user_name)}
-                <small class="text-muted ms-2">(${this.escapeHtml(
-                  request.queue_number
-                )})</small>
-                ${
-                  isPriority
-                    ? '<span class="badge bg-danger ms-2">Priority</span>'
-                    : ""
-                }
-                ${paymentBadge} 
-                ${orButton} </span>
-            
-            <div class="text-muted fw-bold" style="font-size: 0.75rem; margin-top: 2px;">
-                <i class="bi bi-mortarboard-fill me-1 text-primary"></i> 
-                ${this.escapeHtml(request.course || "N/A")}
-            </div>
+              <div class="card-info">
+                  <span class="student-name">
+                      ${this.escapeHtml(request.user_name)}
+                      <small class="text-muted ms-2">(${this.escapeHtml(
+                        request.queue_number
+                      )})</small>
+                      ${
+                        isPriority
+                          ? '<span class="badge bg-danger ms-2">Priority</span>'
+                          : ""
+                      }
+                      ${paymentBadge}
+                      ${orButton} </span>
 
-            <span class="text-secondary small me-2 mt-1 d-block">
-                ${services.join(", ").substring(0, 40)}${
+                  <div class="text-muted fw-bold" style="font-size: 0.75rem; margin-top: 2px;">
+                      <i class="bi bi-mortarboard-fill me-1 text-primary"></i>
+                      ${this.escapeHtml(request.course || "N/A")}
+                  </div>
+
+                  <span class="text-secondary small me-2 mt-1 d-block">
+                      ${services.join(", ").substring(0, 40)}${
                 services.join(", ").length > 40 ? "..." : ""
               }
-            </span>
-        </div>
-        <div class="card-actions">
-            ${actionButton}
-        </div>
-    </div>
-`;
+                  </span>
+              </div>
+              <div class="card-actions">
+                  ${actionButton}
+              </div>
+          </div>
+      `;
             })
             .join("");
         }
@@ -3616,14 +4091,14 @@
           if (!myProcessingTicket) {
             // Idle State
             container.innerHTML = `
-                      <div class="now-serving-card text-center py-4">
-                          <div class="text-muted opacity-50 mb-2">
-                              <i class="bi bi-cup-hot fs-1"></i>
-                          </div>
-                          <h4 class="text-secondary fw-bold">Window ${currentWindow} is Idle</h4>
-                          <p class="text-muted small mb-0">Waiting for next client...</p>
-                      </div>
-                   `;
+                            <div class="now-serving-card text-center py-4">
+                                <div class="text-muted opacity-50 mb-2">
+                                    <i class="bi bi-cup-hot fs-1"></i>
+                                </div>
+                                <h4 class="text-secondary fw-bold">Window ${currentWindow} is Idle</h4>
+                                <p class="text-muted small mb-0">Waiting for next client...</p>
+                            </div>
+                         `;
           } else {
             // Active State
             const services = Array.isArray(myProcessingTicket.services)
@@ -3631,39 +4106,41 @@
               : [];
 
             container.innerHTML = `
-                      <div class="now-serving-card animate__animated animate__fadeIn">
-                          <div class="now-serving-header">
-                              <span class="serving-status-badge">
-                                  <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
-                                  Processing
-                              </span>
-                              <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
-                                  ${this.escapeHtml(
-                                    myProcessingTicket.queue_number
-                                  )}
-                              </span>
-                          </div>
-                          <div class="serving-body">
-                              <div class="serving-client-name">${this.escapeHtml(
-                                myProcessingTicket.user_name
-                              )}</div>
-                              <div class="serving-meta">
-                                  <span><i class="bi bi-person-badge"></i> ${this.escapeHtml(
-                                    myProcessingTicket.student_id
-                                  )}</span>
-                                  <span><i class="bi bi-clock"></i> Started: ${new Date(
-                                    myProcessingTicket.started_at
-                                  ).toLocaleTimeString()}</span>
-                              </div>
-                              <div class="p-2 bg-light rounded border border-light">
-                                  <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Services</small>
-                                  <div class="text-dark fw-medium mt-1">
-                                      ${this.escapeHtml(services.join(", "))}
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                   `;
+                            <div class="now-serving-card animate__animated animate__fadeIn">
+                                <div class="now-serving-header">
+                                    <span class="serving-status-badge">
+                                        <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+                                        Processing
+                                    </span>
+                                    <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+                                        ${this.escapeHtml(
+                                          myProcessingTicket.queue_number
+                                        )}
+                                    </span>
+                                </div>
+                                <div class="serving-body">
+                                    <div class="serving-client-name">${this.escapeHtml(
+                                      myProcessingTicket.user_name
+                                    )}</div>
+                                    <div class="serving-meta">
+                                        <span><i class="bi bi-person-badge"></i> ${this.escapeHtml(
+                                          myProcessingTicket.student_id
+                                        )}</span>
+                                        <span><i class="bi bi-clock"></i> Started: ${new Date(
+                                          myProcessingTicket.started_at
+                                        ).toLocaleTimeString()}</span>
+                                    </div>
+                                    <div class="p-2 bg-light rounded border border-light">
+                                        <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">Services</small>
+                                        <div class="text-dark fw-medium mt-1">
+                                            ${this.escapeHtml(
+                                              services.join(", ")
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                         `;
           }
         }
 
@@ -3681,12 +4158,12 @@
 
           if (processingQueues.length === 0) {
             container.innerHTML = `
-                          <div class="empty-state">
-                              <div style="text-align: center; padding: 20px; color: #999;">
-                                  No requests currently processing
-                              </div>
-                          </div>
-                      `;
+                                <div class="empty-state">
+                                    <div style="text-align: center; padding: 20px; color: #999;">
+                                        No requests currently processing
+                                    </div>
+                                </div>
+                            `;
             return;
           }
 
@@ -3699,56 +4176,56 @@
               const isCurrent = index === 0;
 
               return `
-                          <div class="queue-item ${
-                            isCurrent ? "queue-item-processing" : ""
-                          }" style="padding: 15px; border-bottom: 1px solid #eee; ${
+                                <div class="queue-item ${
+                                  isCurrent ? "queue-item-processing" : ""
+                                }" style="padding: 15px; border-bottom: 1px solid #eee; ${
                 !isCurrent ? "opacity: 0.7;" : ""
               }">
-                              <div class="queue-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                  <div>
-                                      <strong>${this.escapeHtml(
-                                        queue.queue_number
-                                      )}</strong>
-                                      ${
-                                        queue.is_priority
-                                          ? '<span class="status-badge" style="background: #d32f2f; margin-left: 8px;">PRIORITY</span>'
-                                          : ""
-                                      }
-                                      ${
-                                        isCurrent
-                                          ? '<span class="status-badge status-processing">CURRENT</span>'
-                                          : '<span class="status-badge status-waiting">NEXT</span>'
-                                      }
-                                  </div>
-                                  <div style="text-align: right;">
-                                      <div style="font-size: 12px; color: #666;">${processingTime}</div>
-                                  </div>
-                              </div>
-                              <div style="font-size: 14px; margin-bottom: 5px;">${this.escapeHtml(
-                                queue.user_name
-                              )}</div>
-                              <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-                                  ${services.slice(0, 2).join(", ")}${
+                                    <div class="queue-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                        <div>
+                                            <strong>${this.escapeHtml(
+                                              queue.queue_number
+                                            )}</strong>
+                                            ${
+                                              queue.is_priority
+                                                ? '<span class="status-badge" style="background: #d32f2f; margin-left: 8px;">PRIORITY</span>'
+                                                : ""
+                                            }
+                                            ${
+                                              isCurrent
+                                                ? '<span class="status-badge status-processing">CURRENT</span>'
+                                                : '<span class="status-badge status-waiting">NEXT</span>'
+                                            }
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 12px; color: #666;">${processingTime}</div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 14px; margin-bottom: 5px;">${this.escapeHtml(
+                                      queue.user_name
+                                    )}</div>
+                                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                                        ${services.slice(0, 2).join(", ")}${
                 services.length > 2 ? ` +${services.length - 2} more` : ""
               }
-                              </div>
-                              <div class="action-buttons">
-                                  ${
-                                    !isCurrent
-                                      ? `
-                                      <button class="btn btn-sm btn-primary" onclick="queueManager.makeCurrent('${queue.queue_id}')">Make Current</button>
-                                  `
-                                      : ""
-                                  }
-                                  <button class="btn btn-sm btn-success" onclick="queueManager.markAsDone('${
-                                    queue.queue_id
-                                  }')">Complete</button>
-                                  <button class="btn btn-sm btn-warning" onclick="queueManager.notifyStudent('${
-                                    queue.queue_id
-                                  }')">Notify</button>
-                              </div>
-                          </div>
-                      `;
+                                    </div>
+                                    <div class="action-buttons">
+                                        ${
+                                          !isCurrent
+                                            ? `
+                                            <button class="btn btn-sm btn-primary" onclick="queueManager.makeCurrent('${queue.queue_id}')">Make Current</button>
+                                        `
+                                            : ""
+                                        }
+                                        <button class="btn btn-sm btn-success" onclick="queueManager.markAsDone('${
+                                          queue.queue_id
+                                        }')">Complete</button>
+                                        <button class="btn btn-sm btn-warning" onclick="queueManager.notifyStudent('${
+                                          queue.queue_id
+                                        }')">Notify</button>
+                                    </div>
+                                </div>
+                            `;
             })
             .join("");
         }
@@ -4082,21 +4559,21 @@
                 const fileName = file.name || `Document ${idx + 1}`;
                 const fileLink = file.file; // Base64 string
                 return `
-                    <div class="d-flex justify-content-between align-items-center p-2 mb-2 border rounded bg-white shadow-sm">
-                        <div class="d-flex align-items-center overflow-hidden">
-                            <div class="bg-light rounded p-2 me-3 text-primary">
-                                <i class="bi bi-file-earmark-text fs-5"></i>
-                            </div>
-                            <div class="text-truncate" style="max-width: 250px;">
-                                <span class="fw-bold small text-dark d-block text-truncate">${fileName}</span>
-                                <span class="text-muted" style="font-size: 10px;">Click to download</span>
-                            </div>
-                        </div>
-                        <a href="${fileLink}" download="${fileName}" class="btn btn-sm btn-primary px-3">
-                            <i class="bi bi-download me-1"></i> Download
-                        </a>
-                    </div>
-                  `;
+                          <div class="d-flex justify-content-between align-items-center p-2 mb-2 border rounded bg-white shadow-sm">
+                              <div class="d-flex align-items-center overflow-hidden">
+                                  <div class="bg-light rounded p-2 me-3 text-primary">
+                                      <i class="bi bi-file-earmark-text fs-5"></i>
+                                  </div>
+                                  <div class="text-truncate" style="max-width: 250px;">
+                                      <span class="fw-bold small text-dark d-block text-truncate">${fileName}</span>
+                                      <span class="text-muted" style="font-size: 10px;">Click to download</span>
+                                  </div>
+                              </div>
+                              <a href="${fileLink}" download="${fileName}" class="btn btn-sm btn-primary px-3">
+                                  <i class="bi bi-download me-1"></i> Download
+                              </a>
+                          </div>
+                        `;
               })
               .join("");
           }
@@ -4104,120 +4581,130 @@
           // 6. Generate Clean Modal UI
           const modalContent = document.getElementById("requestDetailsContent");
           modalContent.innerHTML = `
-                <div class="container-fluid p-0">
-                    <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-primary text-white rounded-3 d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 55px; height: 55px;">
-                                <h3 class="m-0 fw-bold">${
-                                  data.queueNo.includes("-")
-                                    ? data.queueNo.split("-")[1]
-                                    : data.queueNo
-                                }</h3>
-                            </div>
-                            <div>
-                                <h4 class="mb-0 fw-bold text-dark">${
-                                  data.name
-                                }</h4>
-                                <div class="d-flex gap-2 mt-1">
-                                    <span class="badge bg-secondary rounded-pill px-2">Queue: ${
-                                      data.queueNo
-                                    }</span>
-                                    <span class="badge ${
-                                      data.status === "PROCESSING"
-                                        ? "bg-warning text-dark"
-                                        : "bg-success"
-                                    } rounded-pill px-2">${data.status}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="text-end">
-                            <small class="text-muted d-block text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Student ID</small>
-                            <span class="fw-bold fs-5 font-monospace text-dark">${
-                              data.studentId
-                            }</span>
-                        </div>
-                    </div>
+                      <div class="container-fluid p-0">
+                          <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                              <div class="d-flex align-items-center">
+                                  <div class="bg-primary text-white rounded-3 d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 55px; height: 55px;">
+                                      <h3 class="m-0 fw-bold">${
+                                        data.queueNo.includes("-")
+                                          ? data.queueNo.split("-")[1]
+                                          : data.queueNo
+                                      }</h3>
+                                  </div>
+                                  <div>
+                                      <h4 class="mb-0 fw-bold text-dark">${
+                                        data.name
+                                      }</h4>
+                                      <div class="d-flex gap-2 mt-1">
+                                          <span class="badge bg-secondary rounded-pill px-2">Queue: ${
+                                            data.queueNo
+                                          }</span>
+                                          <span class="badge ${
+                                            data.status === "PROCESSING"
+                                              ? "bg-warning text-dark"
+                                              : "bg-success"
+                                          } rounded-pill px-2">${
+            data.status
+          }</span>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div class="text-end">
+                                  <small class="text-muted d-block text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Student ID</small>
+                                  <span class="fw-bold fs-5 font-monospace text-dark">${
+                                    data.studentId
+                                  }</span>
+                              </div>
+                          </div>
 
-                    <div class="row g-4">
-                        <div class="col-md-5">
-                            <div class="d-flex align-items-center mb-3 text-secondary">
-                                <i class="bi bi-person-badge me-2 fs-5"></i>
-                                <h6 class="text-uppercase fw-bold small mb-0">Student Profile</h6>
-                            </div>
+                          <div class="row g-4">
+                              <div class="col-md-5">
+                                  <div class="d-flex align-items-center mb-3 text-secondary">
+                                      <i class="bi bi-person-badge me-2 fs-5"></i>
+                                      <h6 class="text-uppercase fw-bold small mb-0">Student Profile</h6>
+                                  </div>
 
-                            <div class="bg-white p-3 rounded-3 border shadow-sm">
-                                <div class="mb-3 border-bottom pb-2">
-                                    <small class="text-secondary d-block fw-bold" style="font-size:11px">COURSE & YEAR</small>
-                                    <div class="text-dark">${data.course}</div>
-                                    <div class="text-muted small">${
-                                      data.year
-                                    }</div>
-                                </div>
-                                <div class="mb-3 border-bottom pb-2">
-                                    <small class="text-secondary d-block fw-bold" style="font-size:11px">CAMPUS</small>
-                                    <div class="text-dark">${data.campus}</div>
-                                </div>
-                                <div class="mb-3 border-bottom pb-2">
-                                    <small class="text-secondary d-block fw-bold" style="font-size:11px">CONTACT INFO</small>
-                                    <div class="text-dark"><i class="bi bi-telephone me-1 text-muted"></i> ${
-                                      data.phone
-                                    }</div>
-                                    <div class="text-dark text-break"><i class="bi bi-envelope me-1 text-muted"></i> ${
-                                      data.email
-                                    }</div>
-                                </div>
-                                <div>
-                                    <small class="text-secondary d-block fw-bold" style="font-size:11px">HOME ADDRESS</small>
-                                    <div class="text-dark small lh-sm">${
-                                      data.address
-                                    }</div>
-                                </div>
-                            </div>
-                        </div>
+                                  <div class="bg-white p-3 rounded-3 border shadow-sm">
+                                      <div class="mb-3 border-bottom pb-2">
+                                          <small class="text-secondary d-block fw-bold" style="font-size:11px">COURSE & YEAR</small>
+                                          <div class="text-dark">${
+                                            data.course
+                                          }</div>
+                                          <div class="text-muted small">${
+                                            data.year
+                                          }</div>
+                                      </div>
+                                      <div class="mb-3 border-bottom pb-2">
+                                          <small class="text-secondary d-block fw-bold" style="font-size:11px">CAMPUS</small>
+                                          <div class="text-dark">${
+                                            data.campus
+                                          }</div>
+                                      </div>
+                                      <div class="mb-3 border-bottom pb-2">
+                                          <small class="text-secondary d-block fw-bold" style="font-size:11px">CONTACT INFO</small>
+                                          <div class="text-dark"><i class="bi bi-telephone me-1 text-muted"></i> ${
+                                            data.phone
+                                          }</div>
+                                          <div class="text-dark text-break"><i class="bi bi-envelope me-1 text-muted"></i> ${
+                                            data.email
+                                          }</div>
+                                      </div>
+                                      <div>
+                                          <small class="text-secondary d-block fw-bold" style="font-size:11px">HOME ADDRESS</small>
+                                          <div class="text-dark small lh-sm">${
+                                            data.address
+                                          }</div>
+                                      </div>
+                                  </div>
+                              </div>
 
-                        <div class="col-md-7">
-                             <div class="mb-4">
-                                <div class="d-flex align-items-center mb-3 text-secondary">
-                                    <i class="bi bi-list-check me-2 fs-5"></i>
-                                    <h6 class="text-uppercase fw-bold small mb-0">Requested Services</h6>
-                                </div>
-                                <div class="list-group shadow-sm">
-                                    ${data.services
-                                      .map((s) => {
-                                        let sName = s;
-                                        let sNote = "";
-                                        if (s.includes("[Note:")) {
-                                          const parts = s.split(" [Note:");
-                                          sName = parts[0];
-                                          sNote = parts[1].replace("]", "");
-                                        }
-                                        return `
-                                        <div class="list-group-item border-start border-4 border-primary py-3">
-                                            <div class="fw-bold text-dark">${sName}</div>
-                                            ${
-                                              sNote
-                                                ? `<div class="mt-1"><span class="badge bg-light text-primary border border-primary"><i class="bi bi-pencil-fill me-1"></i> ${sNote}</span></div>`
-                                                : ""
-                                            }
-                                        </div>`;
-                                      })
-                                      .join("")}
-                                </div>
-                            </div>
+                              <div class="col-md-7">
+                                   <div class="mb-4">
+                                      <div class="d-flex align-items-center mb-3 text-secondary">
+                                          <i class="bi bi-list-check me-2 fs-5"></i>
+                                          <h6 class="text-uppercase fw-bold small mb-0">Requested Services</h6>
+                                      </div>
+                                      <div class="list-group shadow-sm">
+                                          ${data.services
+                                            .map((s) => {
+                                              let sName = s;
+                                              let sNote = "";
+                                              if (s.includes("[Note:")) {
+                                                const parts =
+                                                  s.split(" [Note:");
+                                                sName = parts[0];
+                                                sNote = parts[1].replace(
+                                                  "]",
+                                                  ""
+                                                );
+                                              }
+                                              return `
+                                              <div class="list-group-item border-start border-4 border-primary py-3">
+                                                  <div class="fw-bold text-dark">${sName}</div>
+                                                  ${
+                                                    sNote
+                                                      ? `<div class="mt-1"><span class="badge bg-light text-primary border border-primary"><i class="bi bi-pencil-fill me-1"></i> ${sNote}</span></div>`
+                                                      : ""
+                                                  }
+                                              </div>`;
+                                            })
+                                            .join("")}
+                                      </div>
+                                  </div>
 
-                            <div>
-                                <div class="d-flex align-items-center mb-3 text-secondary">
-                                    <i class="bi bi-paperclip me-2 fs-5"></i>
-                                    <h6 class="text-uppercase fw-bold small mb-0">Attachments</h6>
-                                </div>
-                                <div class="bg-light p-2 rounded-3 border" style="max-height: 250px; overflow-y: auto;">
-                                    ${filesHtml}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+                                  <div>
+                                      <div class="d-flex align-items-center mb-3 text-secondary">
+                                          <i class="bi bi-paperclip me-2 fs-5"></i>
+                                          <h6 class="text-uppercase fw-bold small mb-0">Attachments</h6>
+                                      </div>
+                                      <div class="bg-light p-2 rounded-3 border" style="max-height: 250px; overflow-y: auto;">
+                                          ${filesHtml}
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  `;
 
           // 7. Open Modal (Ensure it's visible if it wasn't already)
           const modal = document.getElementById("requestDetailsModal");
@@ -4456,13 +4943,13 @@
           for (let i = 1; i <= totalDays; i++) {
             const isChecked = checkedArr[i - 1] ? "checked" : "";
             container.innerHTML += `
-                    <div class="form-check p-2 border rounded bg-white">
-                        <input class="form-check-input ms-1 progress-checkbox" type="checkbox" id="dayCheck${i}" ${isChecked}>
-                        <label class="form-check-label ms-2 fw-bold" for="dayCheck${i}">
-                            Day ${i} Completed
-                        </label>
-                    </div>
-                `;
+                          <div class="form-check p-2 border rounded bg-white">
+                              <input class="form-check-input ms-1 progress-checkbox" type="checkbox" id="dayCheck${i}" ${isChecked}>
+                              <label class="form-check-label ms-2 fw-bold" for="dayCheck${i}">
+                                  Day ${i} Completed
+                              </label>
+                          </div>
+                      `;
           }
 
           // Update bar initially
@@ -4765,17 +5252,17 @@
                     }
 
                     return `
-                    <div class="d-flex align-items-center bg-white border rounded px-3 py-2 shadow-sm">
-                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                        <div>
-                            <div class="fw-bold text-dark">${displayService}</div>
-                            ${
-                              note
-                                ? `<small class="text-muted"><i class="bi bi-pencil-fill" style="font-size:10px;"></i> ${note}</small>`
-                                : ""
-                            }
-                        </div>
-                    </div>`;
+                          <div class="d-flex align-items-center bg-white border rounded px-3 py-2 shadow-sm">
+                              <i class="bi bi-check-circle-fill text-success me-2"></i>
+                              <div>
+                                  <div class="fw-bold text-dark">${displayService}</div>
+                                  ${
+                                    note
+                                      ? `<small class="text-muted"><i class="bi bi-pencil-fill" style="font-size:10px;"></i> ${note}</small>`
+                                      : ""
+                                  }
+                              </div>
+                          </div>`;
                   })
                   .join("");
               }
@@ -4812,30 +5299,30 @@
                     if (isImage) {
                       // === IT IS AN IMAGE: SHOW THUMBNAIL ===
                       return `
-                <div class="d-inline-block me-2 mb-2 text-center align-top border rounded p-2 bg-light">
-                    <div style="height: 120px; width: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #e9ecef; cursor: pointer;"
-                         onclick="document.getElementById('previewImageTarget').src='${fileUrl}'; new bootstrap.Modal(document.getElementById('imagePreviewModal')).show();">
-                        <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${fileName}">
-                    </div>
-                    <div class="mt-1 text-truncate small fw-bold" style="max-width: 120px;" title="${fileName}">${fileName}</div>
-                    <div class="text-muted" style="font-size: 10px;">Click to expand</div>
-                </div>`;
+                      <div class="d-inline-block me-2 mb-2 text-center align-top border rounded p-2 bg-light">
+                          <div style="height: 120px; width: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #e9ecef; cursor: pointer;"
+                               onclick="document.getElementById('previewImageTarget').src='${fileUrl}'; new bootstrap.Modal(document.getElementById('imagePreviewModal')).show();">
+                              <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${fileName}">
+                          </div>
+                          <div class="mt-1 text-truncate small fw-bold" style="max-width: 120px;" title="${fileName}">${fileName}</div>
+                          <div class="text-muted" style="font-size: 10px;">Click to expand</div>
+                      </div>`;
                     } else {
                       // === NOT AN IMAGE (PDF/DOC): SHOW LIST ROW ===
                       return `
-                <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-2 border rounded">
-                    <div class="d-flex align-items-center overflow-hidden">
-                        <i class="bi bi-file-earmark-text-fill fs-4 text-danger me-3"></i>
-                        <div class="text-truncate" style="max-width: 280px;">
-                            <strong class="d-block text-dark small">${fileName}</strong>
-                            <span class="text-muted" style="font-size: 10px;">${extension.toUpperCase()} File</span>
-                        </div>
-                    </div>
-                    <button class="btn btn-sm btn-primary fw-bold" 
-                        onclick="queueManager.showFilePreview('${fileUrl}', '${fileName}')">
-                        <i class="bi bi-eye"></i> View
-                    </button>
-                </div>`;
+                      <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-2 border rounded">
+                          <div class="d-flex align-items-center overflow-hidden">
+                              <i class="bi bi-file-earmark-text-fill fs-4 text-danger me-3"></i>
+                              <div class="text-truncate" style="max-width: 280px;">
+                                  <strong class="d-block text-dark small">${fileName}</strong>
+                                  <span class="text-muted" style="font-size: 10px;">${extension.toUpperCase()} File</span>
+                              </div>
+                          </div>
+                          <button class="btn btn-sm btn-primary fw-bold"
+                              onclick="queueManager.showFilePreview('${fileUrl}', '${fileName}')">
+                              <i class="bi bi-eye"></i> View
+                          </button>
+                      </div>`;
                     }
                   })
                   .join("");
@@ -4848,15 +5335,15 @@
 
             const verificationHTML = isVerified
               ? `<div class="mt-3 p-2 bg-success bg-opacity-10 border border-success rounded d-flex align-items-center">
-                     <i class="bi bi-check-circle-fill text-success me-3 fs-4"></i>
-                     <div>
-                       <div class="text-success fw-bold small">Verified by Student</div>
-                       <div class="small text-secondary lh-sm">I certify that the attached requirements are correct and complete.</div>
-                     </div>
-                   </div>`
+                           <i class="bi bi-check-circle-fill text-success me-3 fs-4"></i>
+                           <div>
+                             <div class="text-success fw-bold small">Verified by Student</div>
+                             <div class="small text-secondary lh-sm">I certify that the attached requirements are correct and complete.</div>
+                           </div>
+                         </div>`
               : `<div class="mt-3 p-2 bg-light border rounded text-center text-muted small">
-                     <i class="bi bi-exclamation-circle me-1"></i> Student verified requirements.
-                   </div>`;
+                           <i class="bi bi-exclamation-circle me-1"></i> Student verified requirements.
+                         </div>`;
 
             // Append it to the file container
             if (fileContainer) {
@@ -4974,14 +5461,14 @@
           if (["jpg", "jpeg", "png", "gif", "webp"].includes(extension)) {
             // IMAGE: Show in an img tag
             container.innerHTML = `
-            <img src="${fileUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview">
-        `;
+                  <img src="${fileUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Preview">
+              `;
             toggleModal("filePreviewModal");
           } else if (extension === "pdf") {
             // PDF: Show in an iframe
             container.innerHTML = `
-            <iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>
-        `;
+                  <iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>
+              `;
             toggleModal("filePreviewModal");
           } else {
             // WORD/EXCEL: Cannot be previewed in browser easily without 3rd party tools
@@ -5142,22 +5629,22 @@
 
         // Render clickable card ALWAYS
         container.innerHTML = `
-      <h2 class="history-title">Queue Report History</h2>
-      <div class="history-item" onclick="showReportDetail('history')" style="cursor: pointer; transition: background 0.2s;">
-        <div class="d-flex justify-content-between align-items-center w-100">
-            <div>
-                <span class="history-day text-primary fw-bold"><i class="bi bi-archive-fill me-2"></i>View Full History</span>
-                <span class="history-date text-muted">${dateStr}</span>
+            <h2 class="history-title">Queue Report History</h2>
+            <div class="history-item" onclick="showReportDetail('history')" style="cursor: pointer; transition: background 0.2s;">
+              <div class="d-flex justify-content-between align-items-center w-100">
+                  <div>
+                      <span class="history-day text-primary fw-bold"><i class="bi bi-archive-fill me-2"></i>View Full History</span>
+                      <span class="history-date text-muted">${dateStr}</span>
+                  </div>
+                  <div class="text-end">
+                      <span class="badge ${
+                        count > 0 ? "bg-success" : "bg-secondary"
+                      } rounded-pill mb-1">${count} Today</span>
+                      <div class="small text-muted"><i class="bi bi-chevron-right"></i></div>
+                  </div>
+              </div>
             </div>
-            <div class="text-end">
-                <span class="badge ${
-                  count > 0 ? "bg-success" : "bg-secondary"
-                } rounded-pill mb-1">${count} Today</span>
-                <div class="small text-muted"><i class="bi bi-chevron-right"></i></div>
-            </div>
-        </div>
-      </div>
-  `;
+        `;
       }
 
       /**
@@ -5246,11 +5733,11 @@
 
         serviceSummary.forEach((qty, serviceName) => {
           gridHtml += `
-                <div class="service-item">
-                  <span class="service-name">${serviceName}:</span>
-                  <span class="service-count">${qty}</span>
-                </div>
-              `;
+                      <div class="service-item">
+                        <span class="service-name">${serviceName}:</span>
+                        <span class="service-count">${qty}</span>
+                      </div>
+                    `;
           count++;
           // Split into two columns for layout balance
           if (count % 5 === 0 && count < serviceSummary.size) {
@@ -5272,15 +5759,15 @@
 
         requestsByService.forEach((requests, serviceName) => {
           tableHtml += `
-                <div class="table-section">
-                  <div class="table-header-title">${serviceName}</div>
-                  <div class="table-row header-row">
-                    <div class="table-cell header">Name</div>
-                    <div class="table-cell header">Year/Course</div>
-                    <div class="table-cell header">Student ID</div>
-                    <div class="table-cell header">Status</div>
-                  </div>
-              `;
+                      <div class="table-section">
+                        <div class="table-header-title">${serviceName}</div>
+                        <div class="table-row header-row">
+                          <div class="table-cell header">Name</div>
+                          <div class="table-cell header">Year/Course</div>
+                          <div class="table-cell header">Student ID</div>
+                          <div class="table-cell header">Status</div>
+                        </div>
+                    `;
 
           requests.forEach((req) => {
             // Show if it was picked up or just ready
@@ -5290,17 +5777,17 @@
                 : '<span class="badge bg-success">Ready</span>';
 
             tableHtml += `
-                  <div class="table-row">
-                    <div class="table-cell">${escape(req.user_name)}</div>
-                    <div class="table-cell">${escape(
-                      req.course || "N/A"
-                    )} - ${escape(req.year_level || "N/A")}</div>
-                    <div class="table-cell">${escape(
-                      req.student_id || "N/A"
-                    )}</div>
-                    <div class="table-cell">${statusBadge}</div>
-                  </div>
-                `;
+                        <div class="table-row">
+                          <div class="table-cell">${escape(req.user_name)}</div>
+                          <div class="table-cell">${escape(
+                            req.course || "N/A"
+                          )} - ${escape(req.year_level || "N/A")}</div>
+                          <div class="table-cell">${escape(
+                            req.student_id || "N/A"
+                          )}</div>
+                          <div class="table-cell">${statusBadge}</div>
+                        </div>
+                      `;
           });
 
           tableHtml += "</div>"; // End table-section
@@ -5311,10 +5798,10 @@
             requestsByService.size > 0
               ? tableHtml
               : `
-                <div style="text-align: center; color: #999; padding: 30px 0;">
-                  No details found.
-                </div>
-              `;
+                      <div style="text-align: center; color: #999; padding: 30px 0;">
+                        No details found.
+                      </div>
+                    `;
         }
       }
 
@@ -5354,90 +5841,87 @@
       // 🟢 NEW: Account Review Logic
       let selectedReviewUserId = null;
 
-      // 🟢 Function to Load Pending Users
+      // 🟢 FIXED: Load Pending Users (Uses correct token logic)
       async function loadPendingUsers() {
-        const token = localStorage.getItem("token");
+        // 1. Get the correct token (Checks both possible names)
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("adminToken");
         const tableBody = document.getElementById("pendingUsersTable");
 
-        // Clear current list
-        tableBody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+        // Safety check
+        if (!tableBody) return;
+
+        tableBody.innerHTML =
+          '<tr><td colspan="5" class="text-center">Loading requests...</td></tr>';
+
+        if (!token) {
+          console.error("❌ No token found. User might be logged out.");
+          tableBody.innerHTML =
+            '<tr><td colspan="5" class="text-danger text-center">Authentication Error: Please relogin.</td></tr>';
+          return;
+        }
 
         try {
           const response = await fetch("/api/admin/pending-users", {
             headers: { Authorization: "Bearer " + token },
           });
 
+          // 2. Handle Non-JSON Responses (The 403 Forbidden Fix)
+          if (!response.ok) {
+            if (response.status === 403)
+              throw new Error("Access Denied (403). Check permissions.");
+            if (response.status === 401)
+              throw new Error("Unauthorized (401). Token expired.");
+            throw new Error(`Server Error: ${response.status}`);
+          }
+
           const users = await response.json();
 
           tableBody.innerHTML = ""; // Clear loading message
 
-          if (users.length === 0) {
+          if (!Array.isArray(users) || users.length === 0) {
             tableBody.innerHTML =
-              '<tr><td colspan="5">No pending accounts found.</td></tr>';
+              '<tr><td colspan="5" class="text-center text-muted">No pending accounts found.</td></tr>';
             return;
           }
 
-          // Loop through users and create table rows
+          // 3. Render Rows
           users.forEach((user) => {
             const row = document.createElement("tr");
 
-            // Construct the row HTML
+            // Safe Handling for Images
+            const idImageLink = user.school_id_picture
+              ? `<a href="#" onclick="openReviewModal(${JSON.stringify(
+                  user
+                ).replace(/"/g, "&quot;")}); return false;">Review ID</a>`
+              : '<span class="text-muted">No ID</span>';
+
             row.innerHTML = `
-                <td>${user.fullname || "N/A"}</td>
-                <td>${user.email}</td>
-                <td>${user.student_id || "N/A"}</td>
-                <td>
-                    ${
-                      user.school_id_picture
-                        ? `<a href="/uploads/${user.school_id_picture}" target="_blank">View ID</a>`
-                        : "No Image"
-                    }
-                </td>
-                <td>
-                    <button class="btn btn-success btn-sm" onclick="approveUser(${
-                      user.id
-                    })">
-                        Approve
-                    </button>
-                </td>
-            `;
+          <td class="ps-4 fw-bold">${user.fullname || "N/A"}</td>
+          <td>${user.student_id || "N/A"}</td>
+          <td>${user.course || "N/A"} (${user.year_level || "-"})</td>
+          <td>${new Date(user.created_at).toLocaleDateString()}</td>
+          <td class="text-end pe-4">
+              <button class="btn btn-primary btn-sm" onclick='openReviewModal(${JSON.stringify(
+                user
+              )})'>
+                  <i class="bi bi-search me-1"></i> Review
+              </button>
+          </td>
+      `;
             tableBody.appendChild(row);
           });
         } catch (error) {
           console.error("Error loading users:", error);
-          tableBody.innerHTML =
-            '<tr><td colspan="5" class="text-danger">Error loading data.</td></tr>';
+          tableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Error: ${error.message}</td></tr>`;
         }
       }
 
-      // 🟢 Function to Approve User
+      // 🟢 Helper to approve directly (Optional, if you want a quick approve button)
       async function approveUser(userId) {
-        if (!confirm("Are you sure you want to approve this account?")) return;
-
-        const token = localStorage.getItem("token");
-
-        try {
-          const response = await fetch("/api/admin/approve-user", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + token,
-            },
-            body: JSON.stringify({ userId: userId }),
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
-            alert("User approved!");
-            loadPendingUsers(); // Refresh the list
-          } else {
-            alert("Failed: " + data.message);
-          }
-        } catch (error) {
-          console.error("Error approving:", error);
-          alert("Server error.");
-        }
+        // Redirects logic to the main process function
+        selectedReviewUserId = userId;
+        processUser("verified");
       }
 
       // 🟢 Add Event Listener to the Sidebar Menu
@@ -5518,7 +6002,9 @@
       // ==========================================
       // WINDOW ASSIGNMENT LOGIC (PERSISTENCE)
       // ==========================================
-      let activeWindows = []; // Cache of windows currently in use
+      // ==========================================
+      // WINDOW ASSIGNMENT LOGIC (PERSISTENCE)
+      // ==========================================
 
       async function checkWindowAssignment() {
         const currentWindowDisplay = document.getElementById(
@@ -5532,46 +6018,42 @@
           savedWindow === "Supervisor"
         ) {
           console.log("Super Admin: Skipping window selection modal.");
-          // 🟢 FIX: Use the correct variable name 'currentWindowDisplay'
           if (currentWindowDisplay)
             currentWindowDisplay.textContent = "Supervisor";
           return;
         }
 
-        // 🟢 2. AUTO RE-LOCK (Handles Refresh Logic) 🟢
-        // If we have a saved window, we must tell the server "I'm still here!"
-        // because the 'pagehide' event might have just unlocked it during the refresh.
+        // 🟢 2. AUTO RE-LOCK 🟢
         if (savedWindow && savedWindow !== "Supervisor") {
           currentWindow = savedWindow;
-
-          // SILENTLY RE-ASSIGN ON SERVER
+          // Silent re-assign
           makeAuthenticatedRequest("/api/admin/assign-window", {
             method: "POST",
             body: JSON.stringify({ windowNumber: savedWindow }),
           }).catch((err) => console.warn("Background re-lock failed", err));
 
-          // Update UI
           updateUIWithWindow(currentWindow);
           if (queueManager) queueManager.loadQueues();
-          return; // Stop here, don't show modal
+          return;
         }
 
         if (currentWindowDisplay) currentWindowDisplay.textContent = "N/A";
 
-        // 3. Fetch active windows and show modal (Normal Login Flow)
+        // 3. Fetch active windows
         try {
           const response = await makeAuthenticatedRequest(
             "/api/admin/active-windows"
           );
           const data = await response.json();
           if (data.success) {
+            // Uses the global activeWindows variable we moved to the top
             activeWindows = data.activeWindows;
           }
         } catch (error) {
           console.error("Failed to fetch active windows:", error);
         }
 
-        // Show the modal
+        // Show modal
         const modalElement = document.getElementById("windowSelectionModal");
         if (modalElement) {
           renderWindowButtons(modalElement);
@@ -5582,6 +6064,96 @@
           windowSelectionModalObj.show();
         }
       }
+
+      function renderWindowButtons(modalElement) {
+        const windows = ["Window 1", "Window 2", "Window 3", "Window 4"];
+        const modalBody = modalElement.querySelector(".modal-body .d-grid");
+
+        if (!modalBody) return;
+        modalBody.innerHTML = "";
+
+        windows.forEach((windowName) => {
+          const isLocked = activeWindows.includes(windowName);
+          const isDisabled = isLocked ? "disabled" : "";
+          const lockIcon = isLocked
+            ? '<i class="bi bi-lock-fill ms-auto text-danger"></i>'
+            : "";
+
+          modalBody.innerHTML += `
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary p-3 text-start fw-semibold position-relative"
+                                onclick="${
+                                  isLocked
+                                    ? ""
+                                    : `selectWindow('${windowName}', event)`
+                                }" 
+                                ${isDisabled}
+                            >
+                                <i class="bi bi-display me-3 fs-5"></i> ${windowName}
+                                ${lockIcon}
+                            </button>
+                        `;
+        });
+      }
+
+      // 🟢 HOISTED FUNCTION TO FIX 'NOT DEFINED' ERROR 🟢
+      async function selectWindow(windowName, event) {
+        // 1. Stop default refresh
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        try {
+          // 2. Lock window
+          const response = await makeAuthenticatedRequest(
+            "/api/admin/assign-window",
+            {
+              method: "POST",
+              body: JSON.stringify({ windowNumber: windowName }),
+            }
+          );
+          const data = await response.json();
+
+          if (!data.success) {
+            alert(`Assignment failed: ${data.message}. Refreshing list.`);
+            checkWindowAssignment();
+            return;
+          }
+
+          // 3. Save state
+          localStorage.setItem("assignedWindow", windowName);
+          currentWindow = windowName;
+
+          // 4. Show Loading
+          const modalBody = document.querySelector(
+            "#windowSelectionModal .modal-body"
+          );
+          if (modalBody) {
+            modalBody.innerHTML = `
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <h4 class="fw-bold text-dark">Setting up ${windowName}...</h4>
+                                <p class="text-muted">The page will reload to apply settings.</p>
+                            </div>
+                          `;
+          }
+
+          // 5. Force Reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } catch (error) {
+          console.error("Error assigning window:", error);
+          alert("Network error. Please try again.");
+        }
+      }
+
+      // Ensure global access
+      window.selectWindow = selectWindow;
 
       // The rest of your assignment functions (renderWindowButtons and selectWindow)
       // are still required and remain unchanged from the previous steps.
@@ -5602,77 +6174,77 @@
 
           // 🟢 FIX 2: Pass 'event' to the function call 🟢
           modalBody.innerHTML += `
-                      <button
-                          type="button"
-                          class="btn btn-outline-primary p-3 text-start fw-semibold position-relative"
-                          onclick="${
-                            isLocked
-                              ? ""
-                              : `selectWindow('${windowName}', event)`
-                          }"
-                          ${isDisabled}
-                      >
-                          <i class="bi bi-display me-3 fs-5"></i> ${windowName}
-                          ${lockIcon}
-                      </button>
-                  `;
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary p-3 text-start fw-semibold position-relative"
+                                onclick="${
+                                  isLocked
+                                    ? ""
+                                    : `selectWindow('${windowName}', event)`
+                                }"
+                                ${isDisabled}
+                            >
+                                <i class="bi bi-display me-3 fs-5"></i> ${windowName}
+                                ${lockIcon}
+                            </button>
+                        `;
         });
       }
 
-      window.selectWindow = async function (windowName, event) {
-        // 1. Stop the default immediate form refresh (we need to save data first!)
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
+      // window.selectWindow = async function (windowName, event) {
+      //   // 1. Stop the default immediate form refresh (we need to save data first!)
+      //   if (event) {
+      //     event.preventDefault();
+      //     event.stopPropagation();
+      //   }
 
-        try {
-          // 2. Lock the window on the server
-          const response = await makeAuthenticatedRequest(
-            "/api/admin/assign-window",
-            {
-              method: "POST",
-              body: JSON.stringify({ windowNumber: windowName }),
-            }
-          );
-          const data = await response.json();
+      //   try {
+      //     // 2. Lock the window on the server
+      //     const response = await makeAuthenticatedRequest(
+      //       "/api/admin/assign-window",
+      //       {
+      //         method: "POST",
+      //         body: JSON.stringify({ windowNumber: windowName }),
+      //       }
+      //     );
+      //     const data = await response.json();
 
-          if (!data.success) {
-            alert(`Assignment failed: ${data.message}. Refreshing list.`);
-            checkWindowAssignment();
-            return;
-          }
+      //     if (!data.success) {
+      //       alert(`Assignment failed: ${data.message}. Refreshing list.`);
+      //       checkWindowAssignment();
+      //       return;
+      //     }
 
-          // 3. Save state to Local Storage
-          localStorage.setItem("assignedWindow", windowName);
-          currentWindow = windowName;
+      //     // 3. Save state to Local Storage
+      //     localStorage.setItem("assignedWindow", windowName);
+      //     currentWindow = windowName;
 
-          // 4. 🟢 SHOW LOADING SCREEN IN MODAL 🟢
-          const modalBody = document.querySelector(
-            "#windowSelectionModal .modal-body"
-          );
-          if (modalBody) {
-            modalBody.innerHTML = `
-                      <div class="text-center py-5">
-                          <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
-                              <span class="visually-hidden">Loading...</span>
-                          </div>
-                          <h4 class="fw-bold text-dark">Setting up ${windowName}...</h4>
-                          <p class="text-muted">The page will reload to apply settings.</p>
-                      </div>
-                    `;
-          }
+      //     // 4. 🟢 SHOW LOADING SCREEN IN MODAL 🟢
+      //     const modalBody = document.querySelector(
+      //       "#windowSelectionModal .modal-body"
+      //     );
+      //     if (modalBody) {
+      //       modalBody.innerHTML = `
+      //                       <div class="text-center py-5">
+      //                           <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+      //                               <span class="visually-hidden">Loading...</span>
+      //                           </div>
+      //                           <h4 class="fw-bold text-dark">Setting up ${windowName}...</h4>
+      //                           <p class="text-muted">The page will reload to apply settings.</p>
+      //                       </div>
+      //                     `;
+      //     }
 
-          // 5. 🟢 FORCE RELOAD AFTER 1 SECOND 🟢
-          // This guarantees the dashboard loads fresh with the buttons visible.
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        } catch (error) {
-          console.error("Error assigning window:", error);
-          alert("Network error. Please try again.");
-        }
-      };
+      //     // 5. 🟢 FORCE RELOAD AFTER 1 SECOND 🟢
+      //     // This guarantees the dashboard loads fresh with the buttons visible.
+      //     setTimeout(() => {
+      //       window.location.reload();
+      //     }, 1000);
+      //   } catch (error) {
+      //     console.error("Error assigning window:", error);
+      //     alert("Network error. Please try again.");
+      //   }
+      // };
 
       function updateUIWithWindow(windowName) {
         const currentWindowDisplay = document.getElementById(
@@ -5687,36 +6259,36 @@
         }
       }
 
-      // Hook into existing initialization
-      document.addEventListener("DOMContentLoaded", function () {
-        // checkWindowAssignment();
-      });
+      // // Hook into existing initialization
+      // document.addEventListener("DOMContentLoaded", function () {
+      //   // checkWindowAssignment();
+      // });
 
       // Correct Logout Function
-      window.handleLogout = function () {
-        if (confirm("Are you sure you want to log out?")) {
-          showNotification("Logging out...");
+      // window.handleLogout = function () {
+      //   if (confirm("Are you sure you want to log out?")) {
+      //     showNotification("Logging out...");
 
-          // 1. Ensure we have the window value to send to server
-          if (!currentWindow) {
-            currentWindow = localStorage.getItem("assignedWindow");
-          }
+      //     // 1. Ensure we have the window value to send to server
+      //     if (!currentWindow) {
+      //       currentWindow = localStorage.getItem("assignedWindow");
+      //     }
 
-          // 2. Call server to UNLOCK the window in the database
-          unassignWindowOnServer()
-            .then(() => {
-              // 3. Clear local storage and redirect
-              localStorage.removeItem("assignedWindow");
-              adminLogout();
-            })
-            .catch((err) => {
-              // Even if server fails, log out anyway
-              console.error("Unassign failed", err);
-              localStorage.removeItem("assignedWindow");
-              adminLogout();
-            });
-        }
-      };
+      //     // 2. Call server to UNLOCK the window in the database
+      //     unassignWindowOnServer()
+      //       .then(() => {
+      //         // 3. Clear local storage and redirect
+      //         localStorage.removeItem("assignedWindow");
+      //         adminLogout();
+      //       })
+      //       .catch((err) => {
+      //         // Even if server fails, log out anyway
+      //         console.error("Unassign failed", err);
+      //         localStorage.removeItem("assignedWindow");
+      //         adminLogout();
+      //       });
+      //   }
+      // };
 
       // Function to toggle password visibility
       function toggleRegPassword(inputId, iconSpan) {
@@ -5733,414 +6305,157 @@
           icon.classList.add("bi-eye");
         }
       }
-      // 🟢 ROBUST TAB CLOSE HANDLER 🟢
-      // Uses sendBeacon with a Blob to bypass header restrictions
+      // 🟢 FIXED: Browser Close/Refresh Handler
       window.addEventListener("pagehide", function () {
         if (adminToken) {
-          const payload = JSON.stringify({ token: adminToken });
-          const blob = new Blob([payload], { type: "application/json" });
-
-          // Send signal to the new specific endpoint
-          navigator.sendBeacon("/api/admin/beacon-unlock", blob);
+          // We use the same standard endpoint with keepalive, which is more reliable than sendBeacon for headers
+          fetch("/api/admin/unassign-window", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + adminToken,
+            },
+            body: JSON.stringify({}),
+            keepalive: true,
+          });
         }
       });
-      // 🟢 NEW: History Manager Class (Hierarchical Reporting)
-      class HistoryManager {
-        constructor() {
-          this.rawData = [];
-          this.currentView = "months"; // months, weeks, days, details
-          this.selectedMonth = null;
-          this.selectedWeek = null;
-          this.selectedDay = null;
+
+      // 🟢 FIXED HISTORY MANAGER (Replace your existing HistoryManager class with this)
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // 🟢 CORRECTED TOGGLE LOGIC (Place this inside your DOMContentLoaded listener)
+
+        const nameToggle = document.getElementById("showNameToggle");
+        const nameContainer = document.getElementById(
+          "nameVisibilityContainer"
+        );
+
+        // 1. Check if user is Staff (Hide for Super Admin)
+        // We use the safe 'admin' object stored in localStorage
+        const storedAdmin = JSON.parse(localStorage.getItem("admin") || "{}");
+        if (storedAdmin.role && storedAdmin.role !== "super_admin") {
+          if (nameContainer) nameContainer.style.display = "flex"; // Show the setting
         }
 
-        async loadHistory() {
-          try {
-            const response = await makeAuthenticatedRequest(
-              "/api/admin/history"
-            );
-            const result = await response.json();
-            if (result.success) {
-              this.rawData = result.history;
-              this.renderMonths();
-            }
-          } catch (error) {
-            console.error("Failed to load history:", error);
-            document.getElementById(
-              "historyContentArea"
-            ).innerHTML = `<p class="text-danger text-center">Failed to load history data.</p>`;
-          }
-        }
-
-        // --- LEVEL 1: MONTHS ---
-        renderMonths() {
-          this.currentView = "months";
-          this.updateBreadcrumbs();
-
-          // Group by "Month Year" (e.g., "December 2025")
-          const groups = {};
-          this.rawData.forEach((item) => {
-            const date = new Date(item.completed_at);
-            const key = date.toLocaleString("default", {
-              month: "long",
-              year: "numeric",
-            });
-            if (!groups[key]) groups[key] = 0;
-            groups[key]++;
-          });
-
-          let html = '<div class="row g-3">';
-          if (Object.keys(groups).length === 0) {
-            html +=
-              '<div class="col-12 text-center text-muted">No history available yet.</div>';
-          } else {
-            Object.entries(groups).forEach(([month, count]) => {
-              html += `
-                <div class="col-md-4 col-lg-3">
-                    <div class="card h-100 border-0 shadow-sm report-card" 
-                         onclick="historyManager.selectMonth('${month}')"
-                         style="cursor: pointer; transition: transform 0.2s;">
-                        <div class="card-body text-center">
-                            <i class="bi bi-calendar-month fs-1 text-primary mb-2"></i>
-                            <h5 class="fw-bold mb-1">${month}</h5>
-                            <span class="badge bg-light text-dark border">${count} Requests</span>
-                        </div>
-                    </div>
-                </div>`;
-            });
-          }
-          html += "</div>";
-          document.getElementById("historyContentArea").innerHTML = html;
-        }
-
-        selectMonth(month) {
-          this.selectedMonth = month;
-          this.renderWeeks();
-        }
-
-        // --- LEVEL 2: WEEKS ---
-        renderWeeks() {
-          this.currentView = "weeks";
-          this.updateBreadcrumbs();
-
-          // Filter data for selected month
-          const monthlyData = this.rawData.filter((item) => {
-            const date = new Date(item.completed_at);
-            return (
-              date.toLocaleString("default", {
-                month: "long",
-                year: "numeric",
-              }) === this.selectedMonth
-            );
-          });
-
-          // Group by Week Number
-          const groups = {};
-          monthlyData.forEach((item) => {
-            const date = new Date(item.completed_at);
-            // Get week number of the month (approximate)
-            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-            const weekNum = Math.ceil(
-              ((date - firstDay) / 86400000 + firstDay.getDay() + 1) / 7
-            );
-            const key = `Week ${weekNum}`;
-
-            if (!groups[key])
-              groups[key] = { count: 0, startDate: date, endDate: date };
-
-            groups[key].count++;
-            // Update range logic could go here for precision
-          });
-
-          let html = '<div class="row g-3">';
-          Object.entries(groups)
-            .sort()
-            .forEach(([week, data]) => {
-              html += `
-            <div class="col-md-4 col-lg-3">
-                <div class="card h-100 border-0 shadow-sm report-card" 
-                     onclick="historyManager.selectWeek('${week}')"
-                     style="cursor: pointer;">
-                    <div class="card-body text-center">
-                        <i class="bi bi-calendar-week fs-1 text-success mb-2"></i>
-                        <h5 class="fw-bold mb-1">${week}</h5>
-                        <p class="text-muted small mb-2">of ${this.selectedMonth}</p>
-                        <span class="badge bg-success">${data.count} Requests</span>
-                    </div>
-                </div>
-            </div>`;
-            });
-          html += "</div>";
-          document.getElementById("historyContentArea").innerHTML = html;
-        }
-
-        selectWeek(week) {
-          this.selectedWeek = week;
-          this.renderDays();
-        }
-
-        // --- LEVEL 3: DAYS ---
-        renderDays() {
-          this.currentView = "days";
-          this.updateBreadcrumbs();
-
-          // Filter: Match Month AND Week logic (re-calculate week to match)
-          const dailyData = this.rawData.filter((item) => {
-            const date = new Date(item.completed_at);
-            const monthStr = date.toLocaleString("default", {
-              month: "long",
-              year: "numeric",
-            });
-
-            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-            const weekNum = Math.ceil(
-              ((date - firstDay) / 86400000 + firstDay.getDay() + 1) / 7
-            );
-            const weekStr = `Week ${weekNum}`;
-
-            return (
-              monthStr === this.selectedMonth && weekStr === this.selectedWeek
-            );
-          });
-
-          // Group by exact date (YYYY-MM-DD)
-          const groups = {};
-          dailyData.forEach((item) => {
-            const date = new Date(item.completed_at).toLocaleDateString(
-              "en-US",
-              {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
+        // 2. Fetch Initial State from Server
+        if (nameToggle && adminToken) {
+          fetch("/api/admin/settings", {
+            headers: { Authorization: "Bearer " + adminToken },
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                nameToggle.checked = data.show_name === 1;
               }
-            );
-            if (!groups[date]) groups[date] = [];
-            groups[date].push(item);
-          });
-
-          let html = '<div class="list-group shadow-sm">';
-          Object.entries(groups)
-            .sort((a, b) => new Date(b[0]) - new Date(a[0]))
-            .forEach(([date, items]) => {
-              html += `
-            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3"
-                    onclick="historyManager.selectDay('${date}', ${items.length})">
-                <div class="d-flex align-items-center">
-                    <div class="bg-light rounded p-2 me-3"><i class="bi bi-calendar-day fs-4 text-warning"></i></div>
-                    <div>
-                        <h6 class="fw-bold mb-0">${date}</h6>
-                        <small class="text-muted">Click to view details</small>
-                    </div>
-                </div>
-                <span class="badge bg-primary rounded-pill">${items.length} Items</span>
-            </button>`;
-            });
-          html += "</div>";
-          document.getElementById("historyContentArea").innerHTML = html;
+            })
+            .catch((err) => console.error("Error loading settings:", err));
         }
 
-        selectDay(dateStr) {
-          this.selectedDay = dateStr;
-          this.renderDetails();
-        }
+        // 2. Listen for changes (Toggle ON/OFF)
+        if (nameToggle) {
+          nameToggle.addEventListener("change", function () {
+            const isChecked = this.checked;
 
-        // 🟢 UPDATED: DETAILS TABLE (Shows Staff instead of Payment) 🟢
-        renderDetails() {
-          this.currentView = "details";
-          this.updateBreadcrumbs();
+            // Get the token safely
+            const token =
+              localStorage.getItem("adminToken") ||
+              localStorage.getItem("token");
 
-          // Filter for the selected day
-          const details = this.rawData.filter((item) => {
-            const date = new Date(item.completed_at).toLocaleDateString(
-              "en-US",
-              {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              }
-            );
-            return date === this.selectedDay;
-          });
+            console.log("Switch toggled. Sending request...", isChecked); // Debug log
 
-          let html = `
-    <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-outline-danger" onclick="historyManager.printReport()">
-            <i class="bi bi-file-earmark-pdf me-2"></i> Print / Save as PDF
-        </button>
-    </div>
-    <div class="table-responsive bg-white border rounded" id="printableArea">
-        <div class="d-none d-print-block text-center mb-4 pt-4">
-            <h3>Registrar Office - Daily Report</h3>
-            <p>${this.selectedDay}</p>
-            <hr>
-        </div>
-
-        <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
-                <tr>
-                    <th class="ps-3">Client Name</th>
-                    <th>Student ID</th>
-                    <th>Dept / Course</th>
-                    <th>Service Requested</th>
-                    <th>Staff In Charge</th> <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-          if (details.length === 0) {
-            html += `<tr><td colspan="6" class="text-center py-4 text-muted">No records found.</td></tr>`;
-          } else {
-            // Inside renderDetails() ...
-            details.forEach((row) => {
-              const statusBadge =
-                row.status === "claimed"
-                  ? '<span class="badge bg-secondary">Picked Up</span>'
-                  : '<span class="badge bg-success">Ready</span>';
-
-              const staffName =
-                row.completed_by || row.processed_by || "Registrar Staff";
-
-              // 🟢 NEW CODE: CLEAN THE NOTES 🟢
-              const cleanServices = row.services
-                .map((s) => {
-                  if (typeof s === "string" && s.includes(" [Note:")) {
-                    return s.split(" [Note:")[0];
-                  }
-                  return s;
-                })
-                .join(", ");
-
-              html += `
-    <tr>
-        <td class="ps-3 fw-bold">${row.client_name || "Unknown"}</td>
-        <td>${row.student_id || "N/A"}</td>
-        <td>
-            <div class="small fw-bold">${row.department || "N/A"}</div>
-            <div class="small text-muted">${row.course || ""} ${
-                row.major ? `(${row.major})` : ""
-              }</div>
-        </td>
-        
-        <td>${cleanServices}</td>
-        
-        <td>
-            <div class="d-flex align-items-center">
-                <i class="bi bi-person-circle text-secondary me-2"></i>
-                <span class="fw-medium">${staffName}</span>
-            </div>
-        </td>
-
-        <td>${statusBadge}</td>
-    </tr>`;
-            });
-          }
-
-          html += `
-        </tbody>
-        </table>
-        
-        <div class="d-none d-print-block mt-5 pt-5 px-4">
-            <div class="row">
-                <div class="col-6">
-                    <p class="mb-4">Prepared by:</p>
-                    <div class="border-bottom border-dark w-75 mb-2"></div>
-                    <p class="small text-muted">Registrar Staff</p>
-                </div>
-                <div class="col-6">
-                    <p class="mb-4">Noted by:</p>
-                    <div class="border-bottom border-dark w-75 mb-2"></div>
-                    <p class="small text-muted">University Registrar</p>
-                </div>
-            </div>
-        </div>
-    </div>`;
-
-          document.getElementById("historyContentArea").innerHTML = html;
-        }
-
-        updateBreadcrumbs() {
-          const container = document.getElementById("historyBreadcrumbs");
-          let html = `<span class="breadcrumb-item"><a href="#" onclick="historyManager.renderMonths()">History</a></span>`;
-
-          if (
-            this.currentView === "weeks" ||
-            this.currentView === "days" ||
-            this.currentView === "details"
-          ) {
-            html += ` <i class="bi bi-chevron-right mx-1"></i> <span class="breadcrumb-item"><a href="#" onclick="historyManager.renderWeeks()">${this.selectedMonth}</a></span>`;
-          }
-          if (this.currentView === "days" || this.currentView === "details") {
-            html += ` <i class="bi bi-chevron-right mx-1"></i> <span class="breadcrumb-item"><a href="#" onclick="historyManager.renderDays()">${this.selectedWeek}</a></span>`;
-          }
-          if (this.currentView === "details") {
-            html += ` <i class="bi bi-chevron-right mx-1"></i> <span class="fw-bold text-dark">Details</span>`;
-          }
-          container.innerHTML = html;
-        }
-
-        // 🟢 REPLACEMENT FUNCTION for HistoryManager class 🟢
-
-        printReport() {
-          // 1. Get the content you want to print
-          const printContent =
-            document.getElementById("printableArea").innerHTML;
-
-          // 2. Create a hidden iframe
-          const iframe = document.createElement("iframe");
-          iframe.style.position = "absolute";
-          iframe.style.width = "0px";
-          iframe.style.height = "0px";
-          iframe.style.border = "none";
-          document.body.appendChild(iframe);
-
-          // 3. Write content into the iframe (Include Bootstrap & Fonts for styling)
-          const doc = iframe.contentWindow.document;
-          doc.write(`
-        <html>
-        <head>
-            <title>Registrar Report</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-            <style>
-                body { 
-                    padding: 40px; 
-                    font-family: 'Poppins', sans-serif; 
-                    color: #333;
+            fetch("/api/admin/toggle-name", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
+              body: JSON.stringify({ show: isChecked }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  showNotification("Display setting updated", "success");
+                } else {
+                  // Revert if failed
+                  this.checked = !isChecked;
+                  showNotification(
+                    "Failed to update setting: " +
+                      (data.message || "Unknown error"),
+                    "error"
+                  );
                 }
-                /* Ensure the hidden print header shows up here */
-                .d-none.d-print-block { display: block !important; }
-                
-                /* Table Tweaks for PDF */
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th { background-color: #f8f9fa !important; border-bottom: 2px solid #dee2e6; padding: 10px; }
-                td { border-bottom: 1px solid #dee2e6; padding: 10px; vertical-align: middle; }
-                
-                /* Badges in print */
-                .badge { border: 1px solid #ccc; color: #000; padding: 4px 8px; border-radius: 10px; font-size: 0.8rem; }
-            </style>
-        </head>
-        <body>
-            ${printContent}
-        </body>
-        </html>
-    `);
-          doc.close();
-
-          // 4. Wait for styles to load, then Print
-          iframe.contentWindow.focus();
-          // Small delay ensures Bootstrap CSS is fully loaded before the dialog opens
-          setTimeout(() => {
-            iframe.contentWindow.print();
-            // 5. Cleanup (Remove iframe after printing/canceling)
-            document.body.removeChild(iframe);
-          }, 500);
+              })
+              .catch((err) => {
+                console.error("Settings update error:", err);
+                this.checked = !isChecked;
+                showNotification("Connection error", "error");
+              });
+          });
         }
-      }
+      });
+      // 🟢 ADD THIS SCRIPT BLOCK inside your main script
 
-      const historyManager = new HistoryManager();
+      // // 1. Check User Role & Initialize Toggle
+      // const userRole = localStorage.getItem("userRole"); // Assuming you save role here
+      // const showNameContainer = document.getElementById(
+      //   "nameVisibilityContainer"
+      // );
+      // const nameToggle = document.getElementById("showNameToggle");
+
+      // // Only show toggle for Staff/Admin (NOT Super Admin)
+      // if (userRole && userRole !== "super_admin") {
+      //   showNameContainer.style.display = "block";
+
+      //   // Fetch current setting from DB (We assume you have the user details from login)
+      //   // If you don't have a specific "get settings" API, we can rely on local state or fetch it.
+      //   // For now, let's just listen for changes to keep it simple.
+
+      //   // OPTIONAL: Fetch initial state if you want it to persist across reloads
+      //   // You might need to add a small endpoint for "GET /api/admin/me" to get this true/false
+      // }
+
+      // 2. Listen for changes (Toggle ON/OFF)
+      // (Make sure this code is NOT commented out!)
+      // if (nameToggle) {
+      //   nameToggle.addEventListener("change", function () {
+      //     const isChecked = this.checked;
+
+      //     // Get the token safely
+      //     const token =
+      //       localStorage.getItem("adminToken") || localStorage.getItem("token");
+
+      //     console.log("Switch toggled. Sending request...", isChecked); // Debug log
+
+      //     fetch("/api/admin/toggle-name", {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //         Authorization: "Bearer " + token,
+      //       },
+      //       body: JSON.stringify({ show: isChecked }),
+      //     })
+      //       .then((res) => res.json())
+      //       .then((data) => {
+      //         if (data.success) {
+      //           showNotification("Display setting updated", "success");
+      //         } else {
+      //           // Revert if failed
+      //           this.checked = !isChecked;
+      //           showNotification(
+      //             "Failed to update setting: " +
+      //               (data.message || "Unknown error"),
+      //             "error"
+      //           );
+      //         }
+      //       })
+      //       .catch((err) => {
+      //         console.error("Settings update error:", err);
+      //         this.checked = !isChecked;
+      //         showNotification("Connection error", "error");
+      //       });
+      //   });
+      // }
     </script>
   </body>
 </html>
