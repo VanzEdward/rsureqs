@@ -2148,3 +2148,187 @@ input:focus + .slider {
 
   margin-right: 15px; /* Space between avatar and text */
 }
+.refresh-btn {
+  width: 100%;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.1); /* Subtle transparent background */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px; /* Matches the rounded look of your cards */
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  margin-bottom: 15px; /* Space between button and the "Request Today" card */
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px); /* Slight lift effect */
+}
+
+.refresh-btn i {
+  font-size: 1.2rem; /* Icon size */
+}
+/* =========================================
+   🟢 COMPREHENSIVE DARK MODE FIXES
+   Paste this at the bottom of admindashb.css
+   ========================================= */
+
+body.dark-mode {
+  background-color: #1a1a1a !important;
+  color: #e0e0e0 !important;
+}
+
+/* --- 1. CARDS & CONTAINERS --- */
+body.dark-mode .card,
+body.dark-mode .summary-card,
+body.dark-mode .user-card,
+body.dark-mode .list-group-item,
+body.dark-mode .bg-white {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border-color: #404040 !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Fix "Request Today" and "Profile" cards in sidebar if they aren't green */
+body.dark-mode .sidebar .card {
+  background-color: #2d2d2d !important;
+  color: #fff !important;
+}
+
+/* --- 2. MODALS (Popups) --- */
+body.dark-mode .modal-content {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border: 1px solid #444;
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+  border-color: #444 !important;
+}
+
+body.dark-mode .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%); /* Turns the X close button white */
+}
+
+/* --- 3. TABLES --- */
+body.dark-mode .table {
+  color: #e0e0e0 !important;
+  background-color: #2d2d2d !important;
+}
+
+body.dark-mode .table thead th {
+  background-color: #3d3d3d !important;
+  color: #fff !important;
+  border-bottom: 2px solid #555;
+}
+
+body.dark-mode .table tbody td,
+body.dark-mode .table tbody th {
+  border-bottom: 1px solid #444 !important;
+  background-color: transparent !important; /* Lets the row color show through */
+}
+
+body.dark-mode .table-hover tbody tr:hover {
+  background-color: #383838 !important; /* Slightly lighter on hover */
+}
+
+/* --- 4. INPUTS & DROPDOWNS --- */
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+  background-color: #333 !important;
+  border-color: #555 !important;
+  color: #fff !important;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+  background-color: #444 !important;
+  border-color: #2ecc71 !important; /* Keep your green theme focus */
+  color: #fff !important;
+}
+
+/* Fix dropdown menus (like inside filters) */
+body.dark-mode .dropdown-menu {
+  background-color: #2d2d2d !important;
+  border-color: #444 !important;
+}
+
+body.dark-mode .dropdown-item {
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .dropdown-item:hover {
+  background-color: #3d3d3d !important;
+  color: #fff !important;
+}
+
+/* --- 5. TEXT UTILITIES --- */
+/* Force dark text classes to be white in dark mode */
+body.dark-mode .text-dark,
+body.dark-mode .text-muted,
+body.dark-mode .text-secondary {
+  color: #b0b0b0 !important;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+  color: #ffffff !important;
+}
+
+/* --- 6. SWEETALERT (If you use alerts) --- */
+body.dark-mode div:where(.swal2-container) div:where(.swal2-popup) {
+  background: #2d2d2d !important;
+  color: #fff !important;
+}
+/* =========================================
+   🟢 SIDEBAR DARK MODE FIXES
+   Paste this at the very bottom of admindashb.css
+   ========================================= */
+
+/* 1. Turn the Sidebar Background Dark (Optional - removes the green) */
+body.dark-mode .sidebar {
+  background-color: #1a1a1a !important; /* Matches the body background */
+  border-right: 1px solid #333;
+}
+
+/* 2. Fix the "Request Today" and "User Profile" Cards */
+body.dark-mode .request-today-card,
+body.dark-mode .user-card {
+  background-color: #2d2d2d !important; /* Dark Grey Card */
+  color: #ffffff !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+
+/* 3. Force all text inside these cards to be White */
+body.dark-mode .request-today-card h1,
+body.dark-mode .request-today-card span,
+body.dark-mode .request-today-card div,
+body.dark-mode .user-card h4,
+body.dark-mode .user-card p,
+body.dark-mode .user-card .user-info h4,
+body.dark-mode .user-card .user-info p {
+  color: #ffffff !important;
+}
+
+/* 4. Fix Sidebar Links (In case they are hardcoded to black) */
+body.dark-mode .sidebar a {
+  color: #b0b0b0 !important;
+}
+
+body.dark-mode .sidebar a:hover,
+body.dark-mode .sidebar a.active {
+  background-color: #333 !important;
+  color: #fff !important;
+  border-left: 4px solid #2ecc71; /* Keep the green accent */
+}

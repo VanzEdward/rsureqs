@@ -40,7 +40,7 @@ async function sendNotificationEmail(to, subject, htmlContent) {
     if (!to) return;
 
     const info = await transporter.sendMail({
-      from: '"RSU Registrar" <vanzedwardmantes@gmail.com>', // Sender Name
+      from: '"RSU Registrar" <rsuregistrar@gmail.com>', // Sender Name
       to: to,
       subject: subject,
       html: htmlContent,
@@ -215,6 +215,15 @@ db.getConnection((err, connection) => {
     createQueueTable();
     createAdminStaffTable();
     createFeedbackTable();
+    createNotificationsTable();
+
+    // 🟢 FIX: Force 'status' column to be flexible (Fixes "Data Truncated" error)
+    db.query(
+      "ALTER TABLE service_requests MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'",
+      (err) => {
+        if (!err) console.log("✅ Fixed service_requests status column");
+      }
+    );
 
     // 2. === FIX: ADD MISSING COLUMNS ===
     // This adds the columns so the "N/A" will be replaced by real data
@@ -245,6 +254,8 @@ db.getConnection((err, connection) => {
     addColumnIfNotExists("queue", "progress_data", "JSON");
     addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
     addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
+    addColumnIfNotExists("service_requests", "window_number", "VARCHAR(50)");
+    addColumnIfNotExists("service_requests", "processed_by", "VARCHAR(255)");
   }
 });
 
@@ -493,26 +504,44 @@ function createFeedbackTable() {
   });
 }
 
-// Admin Authentication Middleware
+// 🟢 NEW: Create Notifications Table
+function createNotificationsTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      title VARCHAR(255),
+      message TEXT,
+      is_read TINYINT(1) DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `;
+  db.query(query, (err) => {
+    if (err) console.error("Error creating notifications table:", err);
+    else console.log("✅ notifications table ready");
+  });
+}
+
+// 🟢 UPDATED MIDDLEWARE: "Loud" Version (Prints Errors)
 const authenticateAdmin = (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: "Access denied. No token provided.",
-    });
+    console.log("❌ BLOCKED: No Token Provided");
+    return res.status(401).json({ success: false, message: "No token" });
   }
 
   try {
+    // Attempt to open the token
     const decoded = jwt.verify(token, JWT_SECRET);
     req.admin = decoded;
-    next();
+    next(); // Pass to the next function
   } catch (error) {
-    res.status(401).json({
-      success: false,
-      message: "Invalid token",
-    });
+    console.log("❌ BLOCKED: Token Invalid or Expired!");
+    console.log("👉 Error Details:", error.message);
+    // This usually means you are sending a Student Token to an Admin Route
+    res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 
@@ -1122,9 +1151,19 @@ app.post("/api/login", (req, res) => {
   );
 });
 
+// 🟢 UPDATED: Register Route with Duplicate Handling
 app.post("/api/register", async (req, res) => {
-  const { lastName, firstName, middleName, gender, email, phone, password } =
-    req.body;
+  // 1. Get student_id from body
+  const {
+    lastName,
+    firstName,
+    middleName,
+    gender,
+    email,
+    phone,
+    password,
+    student_id,
+  } = req.body;
 
   if (!lastName || !firstName || !gender || !email || !phone || !password) {
     return res
@@ -1132,6 +1171,7 @@ app.post("/api/register", async (req, res) => {
       .json({ success: false, message: "All fields are required" });
   }
 
+  // 2. Check existing Email/Phone (Manual Check)
   db.query(
     "SELECT * FROM users WHERE email = ? OR phone = ?",
     [email, phone],
@@ -1152,12 +1192,12 @@ app.post("/api/register", async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const fullName = `${lastName}, ${firstName}${
           middleName ? " " + middleName : ""
-        }`; // Construct full name
+        }`;
 
-        // --- UPDATED INSERT QUERY ---
+        // 3. INSERT with student_id
         db.query(
-          `INSERT INTO users (last_name, first_name, middle_name, gender, fullname, email, phone, password) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO users (last_name, first_name, middle_name, gender, fullname, email, phone, password, student_id) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             lastName,
             firstName,
@@ -1167,9 +1207,24 @@ app.post("/api/register", async (req, res) => {
             email,
             phone,
             hashedPassword,
+            student_id || null, // Allow null if they haven't set it yet
           ],
           (err, result) => {
             if (err) {
+              // 🟢 STEP 4: Handle Duplicate Entry (The code you wanted)
+              if (err.code === "ER_DUP_ENTRY") {
+                if (err.sqlMessage.includes("student_id")) {
+                  return res.json({
+                    success: false,
+                    message: "Student ID is already registered.",
+                  });
+                }
+                return res.json({
+                  success: false,
+                  message: "Email or Phone already exists.",
+                });
+              }
+
               console.error("Database error during registration:", err);
               return res
                 .status(500)
@@ -1467,12 +1522,21 @@ app.post(
       });
     } catch (error) {
       console.error("Database error:", error);
-      // Add a specific check for duplicate entry errors
+
+      // 🟢 IMPROVED ERROR HANDLING
       if (error.code === "ER_DUP_ENTRY") {
+        // Check what actually caused the duplicate
+        if (error.sqlMessage && error.sqlMessage.includes("student_id")) {
+          return res.status(400).json({
+            success: false,
+            message: "Student ID is already registered to another account.",
+          });
+        }
         return res
           .status(400)
           .json({ success: false, message: "That email is already in use." });
       }
+
       return res
         .status(500)
         .json({ success: false, message: "Database error" });
@@ -1733,6 +1797,54 @@ WHERE queue_id = ? AND status = 'waiting'
       });
     }
   );
+});
+
+// 🟢 API: REJECT SERVICE REQUEST
+app.post("/api/admin/reject-request", authenticateAdmin, (req, res) => {
+  const { requestId, reason } = req.body;
+  const adminId = req.admin.adminId;
+  const adminName = req.admin.full_name;
+
+  if (!requestId || !reason) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Request ID and reason are required." });
+  }
+
+  // Update logic: Set status to 'declined' and save the reason
+  const query = `
+    UPDATE service_requests 
+    SET status = 'declined', 
+        declined_by = ?, 
+        declined_by_id = ?, 
+        declined_at = NOW(), 
+        decline_reason = ? 
+    WHERE request_id = ?
+  `;
+
+  db.query(query, [adminName, adminId, reason, requestId], (err, result) => {
+    if (err) {
+      console.error("Database error rejecting request:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Database error" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found." });
+    }
+
+    // Optional: Also remove it from the active queue if it was there
+    const deleteQueueQuery = "DELETE FROM queue WHERE request_id = ?";
+    db.query(deleteQueueQuery, [requestId]);
+
+    console.log(
+      `[ADMIN] Request ${requestId} rejected by ${adminName}. Reason: ${reason}`
+    );
+    res.json({ success: true, message: "Request rejected successfully." });
+  });
 });
 app.get("/api/admin/service-requests", authenticateAdmin, (req, res) => {
   // 🟢 MEMORY FIX: Exclude heavy image columns
@@ -3204,70 +3316,125 @@ app.post("/api/admin/lock-request", authenticateAdmin, (req, res) => {
   );
 });
 
-// 🟢 STEP 1 FIX: CRASH-PROOF REVIEW DECISION
-app.post("/api/admin/review-decision", authenticateAdmin, (req, res) => {
+// 🟢 FIXED: Review Decision (Smart ID Resolver)
+app.post("/api/admin/review-decision", authenticateAdmin, async (req, res) => {
   const { queueId, action, reason } = req.body;
 
-  // 🛡️ SAFETY: Use NULL if ID is missing. Database allows NULL, but hates 0.
-  const adminObj = req.user || req.admin || {};
-  const adminName =
-    adminObj.full_name || adminObj.fullname || "Registrar Staff";
-  const adminId = adminObj.id || null; // <--- This prevents the "Foreign Key" crash
+  // 1. Safety Checks
+  const adminObj = req.admin || req.user || {};
+  const adminId = adminObj.adminId || adminObj.id || null;
 
-  // 1. Get Request ID
-  db.query(
-    "SELECT request_id FROM queue WHERE queue_id = ?",
-    [queueId],
-    (err, rows) => {
-      if (err || rows.length === 0)
-        return res
-          .status(500)
-          .json({ success: false, message: "Request not found." });
+  if (!adminId) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Unauthorized: Invalid Token" });
+  }
 
-      const requestId = rows[0].request_id;
+  try {
+    // 🟢 STEP 2: RESOLVE THE CORRECT ID (The Fix)
+    // The frontend might send a Queue ID (e.g., 155) or a Request ID (e.g., "REQ-xyz").
+    // We MUST find the "request_id" string to update the service_requests table.
 
-      if (action === "decline") {
-        // 2. DECLINE: Save Status + Staff Name + Reason
-        const updateQueue =
-          "UPDATE queue SET status = 'cancelled', processed_by = ?, processed_by_id = ?, completed_at = NOW() WHERE queue_id = ?";
+    let targetRequestId = queueId; // Default to input
 
-        // We use 'declined' here to match your student dashboard logic
-        const updateRequest =
-          "UPDATE service_requests SET status = 'declined', queue_status = 'declined', decline_reason = ? WHERE request_id = ?";
+    // Look it up in the queue table to be sure
+    const [qRows] = await db
+      .promise()
+      .query(
+        "SELECT request_id FROM queue WHERE queue_id = ? OR request_id = ? OR queue_number = ?",
+        [queueId, queueId, queueId]
+      );
 
-        db.query(updateQueue, [adminName, adminId, queueId], (err) => {
-          if (err) {
-            console.error("Queue Error:", err);
-            return res
-              .status(500)
-              .json({ success: false, message: "DB Error" });
-          }
-
-          // Sync Student Data
-          db.query(updateRequest, [reason, requestId], (err) => {
-            if (err) console.error("Sync Error:", err);
-          });
-
-          res.json({ success: true, message: "Request declined." });
-        });
-      } else if (action === "process") {
-        // 3. ACCEPT Logic
-        const updateQueue =
-          "UPDATE queue SET status = 'processing', processed_by = ?, processed_by_id = ?, started_at = NOW() WHERE queue_id = ?";
-        const updateRequest =
-          "UPDATE service_requests SET status = 'processing', queue_status = 'processing' WHERE request_id = ?";
-
-        db.query(updateQueue, [adminName, adminId, queueId], (err) => {
-          if (err)
-            return res
-              .status(500)
-              .json({ success: false, message: "DB Error" });
-          db.query(updateRequest, [requestId]);
-          res.json({ success: true, message: "Request accepted." });
-        });
-      }
+    if (qRows.length > 0) {
+      targetRequestId = qRows[0].request_id; // Found the correct string ID
     }
-  );
+
+    // 3. Fetch Admin Details
+    const [adminRows] = await db
+      .promise()
+      .query(
+        "SELECT full_name, assigned_window FROM admin_staff WHERE id = ?",
+        [adminId]
+      );
+
+    if (adminRows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Admin not found." });
+    }
+
+    const staffName = adminRows[0].full_name || "Registrar Staff";
+    const windowNumber =
+      adminRows[0].assigned_window || adminObj.window_number || "Main";
+
+    // 4. Prepare Queries using the RESOLVED 'targetRequestId'
+    let reqQuery = "";
+    let queueQuery = "";
+    let reqParams = [];
+    let queueParams = [];
+
+    if (action === "process") {
+      // 🟢 PROCESS: Update using targetRequestId
+      reqQuery = `
+        UPDATE service_requests 
+        SET status = 'approved', queue_status = 'processing', 
+            window_number = ?, processed_by = ? 
+        WHERE request_id = ?`;
+      reqParams = [windowNumber, staffName, targetRequestId];
+
+      queueQuery = `
+        UPDATE queue 
+        SET status = 'processing', window_number = ?, 
+            processed_by = ?, started_at = NOW() 
+        WHERE request_id = ?`;
+      queueParams = [windowNumber, staffName, targetRequestId];
+    } else if (action === "decline") {
+      // 🔴 DECLINE
+      reqQuery = `
+        UPDATE service_requests 
+        SET status = 'declined', queue_status = 'declined', 
+            decline_reason = ?, declined_by = ? 
+        WHERE request_id = ?`;
+      reqParams = [reason, staffName, targetRequestId];
+
+      queueQuery = `
+        UPDATE queue 
+        SET status = 'completed', completed_by = ? 
+        WHERE request_id = ?`;
+      queueParams = [staffName, targetRequestId];
+    } else if (action === "complete") {
+      // 🔵 COMPLETE
+      reqQuery = `
+        UPDATE service_requests 
+        SET queue_status = 'completed', completed_by = ? 
+        WHERE request_id = ?`;
+      reqParams = [staffName, targetRequestId];
+
+      queueQuery = `
+        UPDATE queue 
+        SET status = 'completed', completed_by = ?, completed_at = NOW() 
+        WHERE request_id = ?`;
+      queueParams = [staffName, targetRequestId];
+    }
+
+    // 5. Execute Updates
+    await Promise.all([
+      db.promise().query(reqQuery, reqParams),
+      db.promise().query(queueQuery, queueParams),
+    ]);
+
+    // 6. Send Success Response
+    res.json({
+      success: true,
+      message:
+        action === "process" ? `Serving at ${windowNumber}` : "Request updated",
+    });
+  } catch (error) {
+    console.error("❌ Review Decision Error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Database Error: " + error.message });
+  }
 });
 // // 🟢 NEW: LOCK REQUEST (Sets status to 'reviewing' so student sees it)
 // app.post("/api/admin/lock-request", authenticateAdmin, (req, res) => {
@@ -3384,7 +3551,7 @@ app.get("/api/admin/pending-users", authenticateAdmin, (req, res) => {
   });
 });
 
-// 🟢 UPDATED: Verify User Route (With Email Notification)
+// 🟢 UPDATED: Verify User Route (Fixed Column Names)
 app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
   const { userId, action } = req.body; // action: 'verified' or 'rejected'
 
@@ -3407,23 +3574,29 @@ app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
       const userName = `${results[0].first_name} ${results[0].last_name}`;
 
       // 2. Perform the update
+      // 🟢 FIX: Update 'account_status' instead of 'status'/'is_verified'
       let query = "";
+      let newStatus = "";
+
       if (action === "verified") {
-        query =
-          "UPDATE users SET is_verified = 1, status = 'active' WHERE id = ?";
+        query = "UPDATE users SET account_status = 'verified' WHERE id = ?";
+        newStatus = "verified";
       } else {
-        query = "UPDATE users SET status = 'rejected' WHERE id = ?";
+        query = "UPDATE users SET account_status = 'rejected' WHERE id = ?";
+        newStatus = "rejected";
       }
 
       db.query(query, [userId], (updateErr, updateResult) => {
         if (updateErr) {
-          return res
-            .status(500)
-            .json({ success: false, message: "Database update failed" });
+          console.error("❌ Verify User DB Error:", updateErr); // Added log for debugging
+          return res.status(500).json({
+            success: false,
+            message: "Database update failed: " + updateErr.message,
+          });
         }
 
         // 🟢 3. SEND EMAIL
-        if (action === "verified") {
+        if (newStatus === "verified") {
           const subject = "🎉 Account Verified - RSU Registrar";
           const html = `
           <h3>Hello ${userName},</h3>
@@ -3452,20 +3625,21 @@ app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
 app.get("/api/admin/history", authenticateAdmin, (req, res) => {
   const query = `
     SELECT 
-      q.queue_id,                  -- ✅ MATCHES SCHEMA (was q.id)
+      q.queue_id,
       q.queue_number, 
       q.user_name AS client_name, 
       q.student_id, 
       q.services, 
       q.status, 
       q.window_number,
-      q.completed_at,              -- ✅ MATCHES SCHEMA (was q.created_at)
+      q.completed_at,
+      q.completed_by,  -- 🟢 ADDED THIS LINE (This is where the name lives)
       u.course,
       u.year_level
     FROM queue q 
-    LEFT JOIN users u ON q.user_id = u.id  -- ✅ Uses proper Foreign Key link
+    LEFT JOIN users u ON q.user_id = u.id
     WHERE q.status IN ('completed', 'claimed')
-    ORDER BY q.queue_id DESC       -- ✅ Sorts by your actual primary key
+    ORDER BY q.queue_id DESC
   `;
 
   db.query(query, (err, results) => {
@@ -3481,47 +3655,57 @@ app.get("/api/admin/history", authenticateAdmin, (req, res) => {
   });
 });
 
-// ==========================================
-// 🟢 NEW FEATURE: SHOW NAME TOGGLE
-// ==========================================
-
-// ==========================================
-// 🟢 NEW FEATURE: SHOW NAME TOGGLE (FIXED)
-// ==========================================
-
-// ==========================================
-// 🟢 NEW FEATURE: SHOW NAME TOGGLE (FINAL FIX)
-// ==========================================
-
-// We must use 'authenticateAdmin' because you are logged in as Staff/Admin
+// 🟢 SAFE VERSION: Toggle Staff Name
 app.post("/api/admin/toggle-name", authenticateAdmin, (req, res) => {
   const { show } = req.body;
 
-  // 🟢 FIX: Use 'req.admin.adminId' provided by authenticateAdmin
-  const userId = req.admin.adminId;
-
-  if (!userId) {
-    console.error("❌ Toggle Error: Admin ID missing.");
-    return res.json({ success: false, message: "Admin ID missing" });
+  // 🛡️ SAFETY CHECK
+  if (!req.admin) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
-  // Debug log to see it working in your terminal
-  console.log(`Checked Toggle: Admin ID ${userId} set to ${show}`);
+  const userId = req.admin.adminId || req.admin.id;
 
-  const query = "UPDATE admin_staff SET show_name = ? WHERE id = ?";
-  db.query(query, [show ? 1 : 0, userId], (err, result) => {
-    if (err) {
-      console.error("Error updating show_name:", err);
-      return res.status(500).json({ success: false });
+  // Explicitly convert to 1 or 0
+  let dbValue =
+    show === true || show === "true" || show === 1 || show === "1" ? 1 : 0;
+
+  console.log(
+    `DEBUG: Toggle ID ${userId} | Input: ${show} | Saving: ${dbValue}`
+  );
+
+  db.query(
+    "UPDATE admin_staff SET show_name = ? WHERE id = ?",
+    [dbValue, userId],
+    (err, result) => {
+      if (err) {
+        console.error("❌ DB Error:", err);
+        return res.json({ success: false });
+      }
+      res.json({ success: true });
     }
+  );
+});
 
-    // Check if any row was actually touched
-    if (result.affectedRows === 0) {
-      console.warn(`⚠️ Warning: No staff found with ID ${userId}`);
+// 2. Get Settings Route - MUST use 'authenticateAdmin'
+app.get("/api/admin/settings", authenticateAdmin, (req, res) => {
+  // 🛡️ SAFETY CHECK
+  if (!req.admin) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  const userId = req.admin.adminId || req.admin.id;
+
+  db.query(
+    "SELECT show_name FROM admin_staff WHERE id = ?",
+    [userId],
+    (err, results) => {
+      if (err || results.length === 0) return res.json({ success: false });
+
+      // Return true/false to the frontend
+      res.json({ success: true, show_name: results[0].show_name });
     }
-
-    res.json({ success: true });
-  });
+  );
 });
 
 // 2. API to Get Staff Names for Queue Screen
@@ -3553,19 +3737,6 @@ app.get("/api/public/window-staff", (req, res) => {
   });
 });
 
-// 🟢 CORRECT CODE: Get Settings
-app.get("/api/admin/settings", authenticateAdmin, (req, res) => {
-  const userId = req.admin.adminId; // <--- Use Admin ID
-
-  db.query(
-    "SELECT show_name FROM admin_staff WHERE id = ?",
-    [userId],
-    (err, results) => {
-      if (err || results.length === 0) return res.json({ success: false });
-      res.json({ success: true, show_name: results[0].show_name });
-    }
-  );
-});
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
 

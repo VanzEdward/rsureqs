@@ -1042,3 +1042,52 @@ body.dark-mode .current-serving-container {
   border-color: #404040; /* Darker border */
   box-shadow: none;
 }
+/* =========================================
+   🟢 SIDEBAR & CARD DARK MODE OVERRIDES
+   Paste this at the bottom of improved_admindash.css
+   ========================================= */
+
+/* 1. Force Sidebar Background to Dark */
+body.dark-mode .sidebar {
+  background-color: #1a1a1a !important;
+  border-right: 1px solid #333 !important;
+}
+
+/* 2. Fix "Request Today" Card */
+body.dark-mode .request-today-card {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+
+/* 3. Fix "User Profile" Card */
+body.dark-mode .user-card {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border: 1px solid #444 !important;
+  box-shadow: none !important;
+}
+
+/* 4. Force ALL text inside Sidebar Cards to be White */
+body.dark-mode .request-today-card h1,
+body.dark-mode .request-today-card span,
+body.dark-mode .request-today-card div,
+body.dark-mode .user-card h4,
+body.dark-mode .user-card p,
+body.dark-mode .user-card .user-info h4,
+body.dark-mode .user-card .user-info p {
+  color: #ffffff !important;
+}
+
+/* 5. Fix Sidebar Links */
+body.dark-mode .sidebar a {
+  color: #b0b0b0 !important;
+}
+
+body.dark-mode .sidebar a:hover,
+body.dark-mode .sidebar a.active {
+  background-color: #333 !important;
+  color: #fff !important;
+  border-left: 4px solid #2ecc71 !important;
+}

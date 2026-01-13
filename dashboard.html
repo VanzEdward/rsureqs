@@ -4156,7 +4156,7 @@ function closeSuccessModal() {
         }
       }
 
-// 🟢 UPDATED: Display Requests with Payment Status
+// 🟢 UPDATED: Display Requests with Decline Reason
       function displayUserRequests(requests) {
         const container = document.getElementById("requestsContainer");
         if (!container) return;
@@ -4181,7 +4181,8 @@ function closeSuccessModal() {
             );
 
             // 2. Prepare Staff & Window Info
-            const staffName = request.processed_by || request.declined_by || "Registrar Staff";
+            // 🟢 UPDATED: Check 'completed_by' and 'processed_by' to find the name
+const staffName = request.completed_by || request.processed_by || request.declined_by || "Registrar Staff";
             const windowName = request.window_number ? `Window ${request.window_number}` : "Registrar Office";
 
             // 3. Queue Badge
@@ -4189,11 +4190,7 @@ function closeSuccessModal() {
               ? `<div class="mt-2"><strong>Queue Number:</strong> <span class="badge queue-status-badge bg-secondary">${request.queue_number}</span></div>`
               : "";
             
-            // 🟢 4. PAYMENT STATUS DISPLAY (REMOVED) 🟢
-            // We set this to empty so NO badges (Paid/Unpaid) ever show up.
-            let paymentDisplay = "";
-
-            // 5. PROCESSING BAR
+            // 4. PROCESSING BAR
             let progressHtml = "";
             if (request.queue_status === "processing" && request.progress) {
               const p = request.progress;
@@ -4211,7 +4208,7 @@ function closeSuccessModal() {
                 </div>`;
             }
 
-            // 6. RED DECLINE BOX
+            // 🟢 5. RED DECLINE BOX (This is the important part)
             let declineHtml = "";
             if (request.status === "declined" || request.status === "cancelled") {
               declineHtml = `
@@ -4220,7 +4217,9 @@ function closeSuccessModal() {
                         <div class="me-3"><i class="bi bi-x-circle-fill fs-1 text-danger"></i></div>
                         <div>
                             <h5 class="fw-bold text-danger mb-1">Request Declined</h5>
-                            <p class="mb-0 small"><strong>Reason:</strong> ${request.decline_reason || "Requirements not met."}</p>
+                            <p class="mb-0 small">
+                                <strong>Reason:</strong> ${request.decline_reason || "Requirements not met."}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -4231,7 +4230,7 @@ function closeSuccessModal() {
                 </div>`;
             }
 
-            // 7. GREEN COMPLETED/CLAIMED BOX
+            // 6. GREEN COMPLETED/CLAIMED BOX
             let completedHtml = "";
             const isFinished = request.queue_status === "completed" || request.queue_status === "claimed";
 
@@ -4240,7 +4239,22 @@ function closeSuccessModal() {
               const alertClass = isClaimed ? "alert-secondary" : "alert-success";
               const icon = isClaimed ? "bi-check2-all" : "bi-check-circle-fill";
               const title = isClaimed ? "Documents Picked Up" : "Ready to Claim!";
-              const desc = isClaimed ? "Transaction complete. Documents received." : "Your document is ready. Please proceed to the window.";
+              
+              // 🟢 UPDATED: Dynamic Description with Window & Staff
+              // Note: 'windowName' and 'staffName' are already defined at the top of this map function
+              let desc = "";
+              
+              if (isClaimed) {
+                  desc = "Transaction complete. Documents received.";
+              } else {
+                  // Ready to Claim Message
+                  desc = `
+                    Your document is ready.<br>
+                    <hr class="my-1">
+                    Please proceed to <strong>${windowName}</strong><br>
+                    Processed by: <strong>${staffName}</strong>
+                  `;
+              }
 
               completedHtml = `
               <div class="alert ${alertClass} mt-3 border-0 shadow-sm">
@@ -4254,7 +4268,7 @@ function closeSuccessModal() {
               </div>`;
             }
 
-            // 8. FEEDBACK BUTTON
+            // 7. FEEDBACK BUTTON
             let feedbackBtn = "";
             if (isFinished) {
               if (!request.feedback_id) {
@@ -4273,13 +4287,13 @@ function closeSuccessModal() {
               }
             }
 
-            // 9. ASSEMBLE CARD
+            // 8. ASSEMBLE CARD
             return `
               <div class="update-card">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                       <div class="d-flex align-items-center flex-wrap gap-2">
                           <h4 class="mb-0 text-break">${request.services.join(", ")}</h4>
-                          ${paymentDisplay} </div>
+                      </div>
                       <span class="queue-status-badge ${statusInfo.class}">${statusInfo.text}</span>
                   </div>
                   <p class="text-muted small mb-0">
