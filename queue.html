@@ -477,16 +477,14 @@
       setInterval(updateClock, 1000);
       updateClock();
 
-      // --- STATE MANAGEMENT ---
-      // Holds the raw data from backend
+      // 2. DATA
       let queueData = {
-        window1: { processing: [], completed: [], staffName: null },
-        window2: { processing: [], completed: [], staffName: null },
-        window3: { processing: [], completed: [], staffName: null },
-        window4: { processing: [], completed: [], staffName: null },
+        window1: { processing: [], completed: [], staffName: "" },
+        window2: { processing: [], completed: [], staffName: "" },
+        window3: { processing: [], completed: [], staffName: "" },
+        window4: { processing: [], completed: [], staffName: "" },
       };
 
-      // Tracks current index for animation
       let displayState = {
         1: { procIndex: 0, compPage: 0 },
         2: { procIndex: 0, compPage: 0 },
@@ -494,170 +492,81 @@
         4: { procIndex: 0, compPage: 0 },
       };
 
-      // 2. DATA FETCH (Runs every 2 seconds)
+      // 3. FETCH
       async function fetchQueueData() {
         try {
-          // 🟢 CRITICAL FIX: Use the NEW route that sends staffName
-          const response = await fetch("/api/queue/data");
-          const res = await response.json();
-          if (res) {
-            // The new API returns the object directly, or inside success. Handle both.
-            const data = res.success ? res.data : res;
-
-            if (data) {
-              queueData.window1 = data.window1;
-              queueData.window2 = data.window2;
-              queueData.window3 = data.window3;
-              queueData.window4 = data.window4;
-            }
+          const response = await fetch("/api/public/queue-data");
+          if (!response.ok) return;
+          const data = await response.json();
+          if (data) {
+            queueData = data;
+            [1, 2, 3, 4].forEach((num) => renderWindow(num));
           }
         } catch (error) {
-          console.error("Fetch error:", error);
+          console.error(error);
         }
       }
-      // 🟢 NEW FUNCTION: Fetch and Display Staff Names
-      // async function updateStaffNames() {
-      //   try {
-      //     const response = await fetch("/api/public/window-staff");
-      //     const staffMap = await response.json();
-      //     // Format: { "1": "Vanz Mantes", "2": "Jane Doe" }
 
-      //     // Loop through Windows 1 to 4
-      //     for (let i = 1; i <= 4; i++) {
-      //       // Find the Header element for this window (adjust selector to match your HTML)
-      //       // Assuming your window headers look like: <div id="window1-header"> or <h2 class="card-title">Window 1</h2>
-
-      //       // We need to target the card header or a specific name container.
-      //       // Let's assume you have a container. If not, we create/select it.
-      //       const windowCard = document.querySelector(`.window-${i}-card`); // OR however you select the card
-      //       if (!windowCard) continue;
-
-      //       let nameElement = document.getElementById(`staff-name-w${i}`);
-
-      //       // If the element doesn't exist yet, let's create it dynamically under the "Window X" text
-      //       if (!nameElement) {
-      //         const titleArea =
-      //           windowCard.querySelector(".card-header") ||
-      //           windowCard.querySelector(".card-title");
-      //         if (titleArea) {
-      //           nameElement = document.createElement("div");
-      //           nameElement.id = `staff-name-w${i}`;
-      //           nameElement.style.fontSize = "0.7em"; // Smaller than Window text
-      //           nameElement.style.color = "#ffc107"; // Gold color
-      //           nameElement.style.fontWeight = "normal";
-      //           nameElement.style.marginTop = "5px";
-      //           titleArea.appendChild(nameElement);
-      //         }
-      //       }
-
-      //       // Update Text
-      //       if (staffMap[i]) {
-      //         // Staff has turned ON "Show Name"
-      //         nameElement.textContent = "Staff: " + staffMap[i];
-      //         nameElement.style.display = "block";
-      //       } else {
-      //         // Staff has turned OFF "Show Name" or no staff
-      //         nameElement.textContent = "";
-      //         nameElement.style.display = "none";
-      //       }
-      //     }
-      //   } catch (error) {
-      //     console.error("Error updating staff names:", error);
-      //   }
-      // }
-
-      // 🟢 ADD TO YOUR LOOP
-      // Call this function inside your existing setInterval
-      // or set a separate interval (every 10 seconds is enough)
-      // setInterval(updateStaffNames, 10000);
-
-      // Run immediately on load
-      // updateStaffNames();
-
-      // 3. UI RENDERER (Handles Cycling & Names)
+      // 4. RENDER
       function renderWindow(winNum) {
-        const data = queueData[`window${winNum}`];
-        const state = displayState[winNum];
+        const winData = queueData[`window${winNum}`];
+        if (!winData) return;
 
         // --- A. STAFF NAME DISPLAY ---
-        const staffEl = document.getElementById(`w${winNum}-staff`);
-        if (data && data.staffName) {
-          staffEl.textContent = "Staff: " + data.staffName;
-          staffEl.style.display = "block"; // Show if name exists
-        } else {
-          staffEl.style.display = "none"; // Hide if null/off
-        }
-
-        // --- B. PROCESSING CYCLE ---
-        const servingEl = document.getElementById(`w${winNum}-serving`);
-        // The new API sends an array of OBJECTS, we need the queue_number
-        const procList = data.processing || [];
-
-        if (procList.length === 0) {
-          servingEl.textContent = "---";
-          servingEl.classList.remove("text-success");
-        } else {
-          if (state.procIndex >= procList.length) state.procIndex = 0;
-
-          // Handle if API sends objects (rows) or just strings
-          const item = procList[state.procIndex];
-          const ticketToShow =
-            typeof item === "object" && item.queue_number
-              ? item.queue_number
-              : item;
-
-          if (servingEl.textContent !== ticketToShow) {
-            animateTextChange(servingEl, ticketToShow);
+        // 🟢 FIX: Changed ID from `w${winNum}-staff-name` to `w${winNum}-staff`
+        // This matches your HTML: <div class="staff-name-display" id="w1-staff">
+        const staffContainer = document.getElementById(`w${winNum}-staff`);
+        if (staffContainer) {
+          if (winData.staffName) {
+            staffContainer.textContent = `Staff: ${winData.staffName}`;
+            staffContainer.style.display = "block"; // Show if name exists
+          } else {
+            staffContainer.style.display = "none"; // Hide if not visible
           }
         }
 
-        // --- C. COMPLETED BATCH CYCLE ---
-        const readyContainer = document.getElementById(
+        // --- B. NOW SERVING (Big Box) ---
+        const procList = winData.processing || [];
+        const procContainer = document.getElementById(`w${winNum}-serving`);
+        if (procContainer) {
+          if (procList.length > 0) {
+            const item = procList[procList.length - 1];
+            updateTextWithFade(procContainer, item.queue_number);
+          } else {
+            updateTextWithFade(procContainer, "---");
+          }
+        }
+
+        // --- C. READY TO CLAIM (Footer) ---
+        const compList = winData.completed || [];
+        const compContainer = document.getElementById(
           `w${winNum}-ready-container`
         );
-        const batchIndicator = document.getElementById(`w${winNum}-batch`);
-        const compList = data.completed || [];
-        const itemsPerPage = 6;
-        const totalPages = Math.ceil(compList.length / itemsPerPage);
+        if (compContainer) {
+          compContainer.style.display = "flex";
+          compContainer.style.gap = "8px";
+          compContainer.style.flexWrap = "wrap";
 
-        if (compList.length === 0) {
-          readyContainer.innerHTML = `<span style="font-size:0.85rem; color:#999; font-style:italic; padding-left:10px;">None yet</span>`;
-          batchIndicator.textContent = "";
-        } else {
-          if (state.compPage >= totalPages) state.compPage = 0;
+          const itemsPerPage = 4;
+          const start = displayState[winNum].compPage * itemsPerPage;
+          let pageItems = compList.slice(start, start + itemsPerPage);
 
-          const start = state.compPage * itemsPerPage;
-          const end = start + itemsPerPage;
-          const currentBatch = compList.slice(start, end);
-
-          const html =
-            `<div class="ready-list fade-in">` +
-            currentBatch
-              .map((item) => {
-                // Handle Object vs String
-                const t =
-                  typeof item === "object" && item.queue_number
-                    ? item.queue_number
-                    : item;
-                return `<span class="ready-item">${t}</span>`;
-              })
-              .join("") +
-            `</div>`;
-
-          readyContainer.innerHTML = html;
-
-          if (totalPages > 1) {
-            batchIndicator.textContent = `Page ${
-              state.compPage + 1
-            }/${totalPages}`;
-          } else {
-            batchIndicator.textContent = "";
+          if (pageItems.length === 0 && compList.length > 0) {
+            displayState[winNum].compPage = 0;
+            pageItems = compList.slice(0, itemsPerPage);
           }
+
+          compContainer.innerHTML = pageItems
+            .map(
+              (item) =>
+                `<span class="badge bg-success fs-5 shadow-sm">${item.queue_number}</span>`
+            )
+            .join("");
         }
       }
 
-      // --- ANIMATION HELPER ---
-      function animateTextChange(element, newText) {
+      function updateTextWithFade(element, newText) {
+        if (element.textContent === newText) return;
         element.classList.add("fade-out");
         setTimeout(() => {
           element.textContent = newText;
@@ -667,43 +576,19 @@
         }, 500);
       }
 
-      // --- 4. CYCLE LOOPS ---
+      // 5. LOOPS
       setInterval(() => {
-        [1, 2, 3, 4].forEach((winNum) => {
-          const list = queueData[`window${winNum}`].processing || [];
-          if (list.length > 1) {
-            displayState[winNum].procIndex =
-              (displayState[winNum].procIndex + 1) % list.length;
-            renderWindow(winNum);
+        [1, 2, 3, 4].forEach((win) => {
+          const list = queueData[`window${win}`]?.completed || [];
+          if (list.length > 4) {
+            displayState[win].compPage++;
+            renderWindow(win);
           }
         });
-      }, 10000);
+      }, 4000);
 
-      setTimeout(() => {
-        setInterval(() => {
-          [1, 2, 3, 4].forEach((winNum) => {
-            const list = queueData[`window${winNum}`].completed || [];
-            const itemsPerPage = 6;
-            const totalPages = Math.ceil(list.length / itemsPerPage);
-
-            if (totalPages > 1) {
-              displayState[winNum].compPage =
-                (displayState[winNum].compPage + 1) % totalPages;
-              renderWindow(winNum);
-            }
-          });
-        }, 10000);
-      }, 5000);
-
-      // --- INITIALIZATION ---
-      setInterval(async () => {
-        await fetchQueueData();
-        [1, 2, 3, 4].forEach(renderWindow);
-      }, 2000);
-
-      fetchQueueData().then(() => {
-        [1, 2, 3, 4].forEach(renderWindow);
-      });
+      fetchQueueData();
+      setInterval(fetchQueueData, 2000);
     </script>
   </body>
 </html>

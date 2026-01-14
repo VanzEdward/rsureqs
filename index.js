@@ -40,7 +40,7 @@ async function sendNotificationEmail(to, subject, htmlContent) {
     if (!to) return;
 
     const info = await transporter.sendMail({
-      from: '"RSU Registrar" <rsuregistrar@gmail.com>', // Sender Name
+      from: '"RSU Registrar" <t90517452@gmail.com>', // Sender Name
       to: to,
       subject: subject,
       html: htmlContent,
@@ -208,56 +208,70 @@ db.getConnection((err, connection) => {
     console.error("❌ AIVEN HARDCODE FAILED:", err.code, err.message);
   } else {
     console.log("✅ CONNECTED TO AIVEN (HARDCODED)!");
-    connection.release();
 
-    // 1. Init Tables
-    createServiceRequestsTable();
-    createQueueTable();
-    createAdminStaffTable();
-    createFeedbackTable();
-    createNotificationsTable();
-
-    // 🟢 FIX: Force 'status' column to be flexible (Fixes "Data Truncated" error)
-    db.query(
-      "ALTER TABLE service_requests MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'",
-      (err) => {
-        if (!err) console.log("✅ Fixed service_requests status column");
+    // 🟢 PASTE FIX 1 HERE: Fix 'Reject' Crash
+    connection.query(
+      "ALTER TABLE queue MODIFY COLUMN status VARCHAR(50)",
+      (alterErr) => {
+        if (alterErr)
+          console.log("⚠️ Status column check: " + alterErr.message);
+        else
+          console.log(
+            "✅ FIXED: Status column expanded to support 'declined'."
+          );
       }
     );
 
-    // 2. === FIX: ADD MISSING COLUMNS ===
-    // This adds the columns so the "N/A" will be replaced by real data
-    addColumnIfNotExists(
-      "users",
-      "account_status",
-      "VARCHAR(20) DEFAULT 'pending'"
-    );
-    // ... existing addColumnIfNotExists calls ...
-    // Add this line with your other "addColumnIfNotExists" calls
-    addColumnIfNotExists("queue", "admin_notes", "TEXT DEFAULT NULL");
-    addColumnIfNotExists("admin_staff", "show_name", "BOOLEAN DEFAULT 0"); // 🟢 New Column
-    addColumnIfNotExists("service_requests", "campus", "VARCHAR(255)");
-    addColumnIfNotExists("service_requests", "dob", "DATE");
-    addColumnIfNotExists("service_requests", "pob", "VARCHAR(255)");
-    addColumnIfNotExists("service_requests", "nationality", "VARCHAR(100)");
-    addColumnIfNotExists("service_requests", "home_address", "TEXT");
-    addColumnIfNotExists("service_requests", "school_id_picture", "LONGTEXT");
-    addColumnIfNotExists(
-      "service_requests",
-      "requirements_confirmed",
-      "TINYINT(1) DEFAULT 0"
-    );
-
-    // 3. Keep existing columns
-    addColumnIfNotExists("service_requests", "claim_details", "TEXT");
-    addColumnIfNotExists("queue", "claim_details", "TEXT");
-    addColumnIfNotExists("queue", "progress_data", "JSON");
-    addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
-    addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
-    addColumnIfNotExists("service_requests", "window_number", "VARCHAR(50)");
-    addColumnIfNotExists("service_requests", "processed_by", "VARCHAR(255)");
+    connection.release();
   }
 });
+
+// 1. Init Tables
+createServiceRequestsTable();
+createQueueTable();
+createAdminStaffTable();
+createFeedbackTable();
+createNotificationsTable();
+
+// 🟢 FIX: Force 'status' column to be flexible (Fixes "Data Truncated" error)
+db.query(
+  "ALTER TABLE service_requests MODIFY COLUMN status VARCHAR(50) DEFAULT 'pending'",
+  (err) => {
+    if (!err) console.log("✅ Fixed service_requests status column");
+  }
+);
+
+// 2. === FIX: ADD MISSING COLUMNS ===
+// This adds the columns so the "N/A" will be replaced by real data
+addColumnIfNotExists(
+  "users",
+  "account_status",
+  "VARCHAR(20) DEFAULT 'pending'"
+);
+// ... existing addColumnIfNotExists calls ...
+// Add this line with your other "addColumnIfNotExists" calls
+addColumnIfNotExists("queue", "admin_notes", "TEXT DEFAULT NULL");
+addColumnIfNotExists("admin_staff", "show_name", "BOOLEAN DEFAULT 0"); // 🟢 New Column
+addColumnIfNotExists("service_requests", "campus", "VARCHAR(255)");
+addColumnIfNotExists("service_requests", "dob", "DATE");
+addColumnIfNotExists("service_requests", "pob", "VARCHAR(255)");
+addColumnIfNotExists("service_requests", "nationality", "VARCHAR(100)");
+addColumnIfNotExists("service_requests", "home_address", "TEXT");
+addColumnIfNotExists("service_requests", "school_id_picture", "LONGTEXT");
+addColumnIfNotExists(
+  "service_requests",
+  "requirements_confirmed",
+  "TINYINT(1) DEFAULT 0"
+);
+
+// 3. Keep existing columns
+addColumnIfNotExists("service_requests", "claim_details", "TEXT");
+addColumnIfNotExists("queue", "claim_details", "TEXT");
+addColumnIfNotExists("queue", "progress_data", "JSON");
+addColumnIfNotExists("queue", "window_number", "VARCHAR(50)");
+addColumnIfNotExists("admin_staff", "assigned_window", "VARCHAR(50)");
+addColumnIfNotExists("service_requests", "window_number", "VARCHAR(50)");
+addColumnIfNotExists("service_requests", "processed_by", "VARCHAR(255)");
 
 // Paste this function near the top of index.js, after the imports
 function addColumnIfNotExists(tableName, columnName, columnDefinition) {
@@ -2143,86 +2157,50 @@ app.post("/api/admin/notify-student", authenticateAdmin, (req, res) => {
   });
 });
 
-app.get("/api/user/service-requests", (req, res) => {
-  const userId = req.query.userId;
+// 🟢 FIXED: Fetch User Requests (Fixes "Illegal Mix of Collations" Error)
+app.get("/api/user/service-requests", authenticateToken, (req, res) => {
+  const userId = req.user.id || req.query.userId;
 
-  if (!userId) {
-    return res.status(400).json({
-      success: false,
-      message: "User ID is required",
-    });
-  }
-
-  // 🟢 FIX: Added 'COLLATE utf8mb4_general_ci' to the JOIN conditions
   const query = `
-    SELECT sr.*,
-           sr.payment_url, 
-           q.progress_data, 
-           q.status AS live_queue_status,
-           q.window_number,
-           q.completed_by,
-           COALESCE(q.claim_details, sr.claim_details) as final_claim_details,
-           f.id as feedback_id
-    FROM service_requests sr
-    LEFT JOIN queue q ON sr.request_id = q.request_id COLLATE utf8mb4_general_ci
-    LEFT JOIN feedback f ON sr.request_id = f.request_id COLLATE utf8mb4_general_ci
-    WHERE sr.user_id = ? 
-    ORDER BY sr.submitted_at DESC
+    SELECT 
+      q.request_id, 
+      q.services, 
+      q.status, 
+      q.queue_number, 
+      q.window_number, 
+      q.submitted_at, 
+      q.completed_at, 
+      q.processed_by, 
+      q.admin_note,
+      q.progress_data,
+      f.id as feedback_id
+    FROM queue q
+    -- 🟢 FIX BELOW: Forces both columns to use the same collation so they can be compared
+    LEFT JOIN feedback f ON q.request_id COLLATE utf8mb4_general_ci = f.request_id COLLATE utf8mb4_general_ci
+    WHERE q.user_id = ? 
+    ORDER BY q.submitted_at DESC
   `;
 
   db.query(query, [userId], (err, results) => {
     if (err) {
-      console.error("Database error:", err);
-      return res.status(500).json({
-        success: false,
-        message: "Database error",
-      });
+      console.error("Error loading requests:", err);
+      // Return empty list safely instead of crashing
+      return res.status(500).json({ success: false });
     }
 
-    const requests = results.map((request) => {
-      try {
-        let reqs = JSON.parse(request.requirements || "[]");
-        let paths = JSON.parse(request.requirements_paths || "[]");
+    // Parse services JSON safely
+    const requests = results.map((r) => ({
+      ...r,
+      services:
+        typeof r.services === "string" &&
+        (r.services.startsWith("[") || r.services.startsWith('"'))
+          ? JSON.parse(r.services)
+          : Array.isArray(r.services)
+          ? r.services
+          : [r.services],
+    }));
 
-        if (typeof reqs === "string") reqs = JSON.parse(reqs);
-        if (typeof paths === "string") paths = JSON.parse(paths);
-
-        // Parse Progress
-        let progress = null;
-        if (request.progress_data) {
-          progress =
-            typeof request.progress_data === "string"
-              ? JSON.parse(request.progress_data)
-              : request.progress_data;
-        }
-
-        // 🟢 FIX: Use LIVE status if available, otherwise fallback 🟢
-        // This ensures the frontend sees 'processing' instead of 'in_queue'
-        const activeStatus = request.live_queue_status || request.queue_status;
-
-        return {
-          ...request,
-          queue_status: activeStatus, // <--- Send the correct status
-          services: JSON.parse(request.services || "[]"),
-          requirements: reqs,
-          requirements_paths: paths,
-          progress: progress,
-        };
-      } catch (parseErr) {
-        console.error("Error parsing JSON for request:", request.request_id);
-        return {
-          ...request,
-          services: [],
-          requirements: [],
-          progress: null,
-        };
-      }
-    });
-
-    res.json({
-      success: true,
-      requests: requests,
-    });
+    res.json({ success: true, requests });
   });
 });
 
@@ -2592,21 +2570,27 @@ function parseServices(servicesData) {
   }
 }
 
-// ==========================================
-// 🟢 DEBUG VERSION: Mark Done + Email (FIXED COLUMN NAMES)
-// ==========================================
+// 🟢 FIXED: "Mark Done" (Catches the note regardless of variable name)
 app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
-  const { queueId, claimDetails } = req.body;
+  // 1. Capture ALL possible names for the note to ensure we get it
+  const { queueId, requestId, claimDetails, note, admin_note } = req.body;
+
+  // Resolve ID and Note
+  const targetId = queueId || requestId;
+  // This line is the secret sauce: it checks ALL variables.
+  const finalNote = note || claimDetails || admin_note || "";
+
   const adminName = req.admin.full_name || "Staff";
 
-  console.log(`\n--- 🟢 DEBUG: MARK DONE CLICKED ---`);
-  console.log(`Queue ID: ${queueId}`);
+  // 🟢 DEBUG LOG: Check your terminal when you click "Mark Done"!
+  console.log(`=== DEBUG: Saving Note for Request #${targetId} ===`);
+  console.log(`Note Content: "${finalNote}"`);
 
-  if (!queueId) {
+  if (!targetId) {
     return res.json({ success: false, message: "Missing Queue ID" });
   }
 
-  // 🟢 FIX: Fetch 'first_name' and 'last_name' instead of 'full_name'
+  // 2. Fetch User Info
   const fetchQuery = `
     SELECT q.user_id, u.email, u.first_name, u.last_name, q.queue_number 
     FROM queue q
@@ -2614,75 +2598,55 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
     WHERE q.queue_id = ?
   `;
 
-  db.query(fetchQuery, [queueId], (err, results) => {
+  db.query(fetchQuery, [targetId], (err, results) => {
     if (err) {
-      console.error("❌ DB Fetch Error:", err);
+      console.error("DB Error:", err);
       return res.status(500).json({ success: false });
     }
 
-    if (results.length === 0) {
-      console.error("❌ Error: Queue ID not found.");
-      return res.json({ success: true });
-    }
+    if (results.length === 0) return res.json({ success: true });
 
     const row = results[0];
-
-    // 🟢 FIX: Combine names here
     const userEmail = row.email;
-    const userName =
-      row.first_name && row.last_name
-        ? `${row.first_name} ${row.last_name}`
-        : "Student";
+    const userName = row.first_name
+      ? `${row.first_name} ${row.last_name}`
+      : "Student";
 
-    const queueNum = row.queue_number;
-
-    console.log(`✅ User Found: ${userName} (${userEmail})`);
-
-    // 2. Update Status
+    // 3. Update Database (Ensure 'admin_note' is updated)
     const updateQuery = `
       UPDATE queue 
       SET status = 'completed', 
           completed_at = NOW(),
           completed_by = ?,
-          admin_notes = ? 
+          admin_note = ? 
       WHERE queue_id = ?
     `;
 
-    db.query(
-      updateQuery,
-      [adminName, claimDetails || "", queueId],
-      (updateErr, result) => {
-        if (updateErr) {
-          console.error("❌ DB Update Error:", updateErr);
-          return res.status(500).json({ success: false });
-        }
-
-        console.log("✅ Database Updated. Sending Email...");
-
-        // 3. Send Email
-        if (userEmail) {
-          const subject = "📄 Documents Ready for Pickup - RSU Registrar";
-          const html = `
-          <h3>Hello ${userName},</h3>
-          <p>Good news! Your request (Queue #: <b>${queueNum}</b>) is now <b>READY TO CLAIM</b>.</p>
-          <div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00;">
-            <strong>Note from Staff:</strong><br>
-            ${
-              claimDetails ||
-              "Please proceed to the Registrar's window to claim your documents."
-            }
-          </div>
-          <br>
-          <p>Thank you,<br>RSU Registrar</p>
-        `;
-          sendNotificationEmail(userEmail, subject, html);
-        } else {
-          console.warn("⚠️ No email found for this user. Skipping email.");
-        }
-
-        res.json({ success: true });
+    db.query(updateQuery, [adminName, finalNote, targetId], (updateErr) => {
+      if (updateErr) {
+        console.error("Update Error:", updateErr);
+        return res.status(500).json({ success: false });
       }
-    );
+
+      // 4. Send Email
+      if (userEmail) {
+        const noteHtml = finalNote
+          ? `<div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00; margin-top:10px;">
+               <strong>Note from Staff:</strong><br>${finalNote}
+             </div>`
+          : "";
+
+        const html = `
+          <h3>Hello ${userName},</h3>
+          <p>Your request (Queue #: <b>${row.queue_number}</b>) is <b>READY TO CLAIM</b>.</p>
+          ${noteHtml}
+          <br><p>RSU Registrar</p>
+        `;
+        sendNotificationEmail(userEmail, "Documents Ready", html);
+      }
+
+      res.json({ success: true });
+    });
   });
 });
 
@@ -3498,34 +3462,24 @@ app.get("/api/student/requests", authenticateToken, (req, res) => {
     res.json({ success: true, requests: results });
   });
 });
-// 🟢 FIXED: Fetch Updates (With Staff Name)
+// 🟢 FIXED: Fetch Updates (Explicitly selects 'admin_note')
 app.get("/api/student/updates", authenticateToken, (req, res) => {
   const userId = req.user.id;
 
   const query = `
-        SELECT 
-            sr.request_id, 
-            sr.status, 
-            sr.decline_reason, 
-            sr.submitted_at,
-            sr.payment_status,
-            q.queue_number, 
-            q.window_number,
-            q.processed_by 
-        FROM service_requests sr
-        LEFT JOIN queue q ON sr.request_id = q.request_id
-        WHERE sr.user_id = ? 
-        ORDER BY sr.submitted_at DESC 
-        LIMIT 5
-    `;
+    SELECT 
+      request_id, status, queue_number, submitted_at, processed_by, 
+      admin_note    -- 🟢 Critical: The frontend needs this column
+    FROM queue 
+    WHERE user_id = ? 
+    ORDER BY submitted_at DESC LIMIT 20
+  `;
 
   db.query(query, [userId], (err, results) => {
     if (err) {
       console.error("Error fetching updates:", err);
-      // If this still fails, check if the column is named 'processed_by' or something else
-      return res
-        .status(500)
-        .json({ success: false, message: "Database Error" });
+      // Return empty array instead of crashing
+      return res.json({ success: true, updates: [] });
     }
     res.json({ success: true, updates: results });
   });
@@ -3737,6 +3691,168 @@ app.get("/api/public/window-staff", (req, res) => {
   });
 });
 
+// 🟢 MASTER ROUTE: Handles Accept, Done, Reject, and Picked Up
+// FIXED: Now uses 'queue_id' in the WHERE clause to ensure the row is found.
+app.post("/api/admin/update-status", authenticateAdmin, (req, res) => {
+  const { requestId, status, note } = req.body;
+  const adminName = req.admin.full_name || "Staff";
+
+  // LOGGING: Helps you see if it works in the terminal
+  console.log(`⚡ Updating Queue ID #${requestId} to '${status}'`);
+
+  let query = "";
+  let params = [];
+
+  // 1. ACCEPT -> PROCESSING
+  if (status === "processing") {
+    // 🟢 FIX: Changed 'WHERE request_id' to 'WHERE queue_id'
+    query =
+      "UPDATE queue SET status = ?, processed_by = ?, started_at = NOW() WHERE queue_id = ?";
+    params = ["processing", adminName, requestId];
+  }
+  // 2. DONE -> READY TO CLAIM (completed)
+  else if (status === "completed") {
+    query =
+      "UPDATE queue SET status = ?, admin_note = ?, completed_by = ?, completed_at = NOW() WHERE queue_id = ?";
+    params = ["completed", note || "", adminName, requestId];
+  }
+  // 3. PICKED UP -> CLAIMED
+  else if (status === "claimed") {
+    query = "UPDATE queue SET status = ? WHERE queue_id = ?";
+    params = ["claimed", requestId];
+  }
+  // 4. REJECT -> DECLINED
+  else if (status === "declined") {
+    query =
+      "UPDATE queue SET status = ?, admin_note = ?, processed_by = ? WHERE queue_id = ?";
+    params = ["declined", note || "Requirements not met", adminName, requestId];
+  }
+  // Fallback
+  else {
+    query = "UPDATE queue SET status = ? WHERE queue_id = ?";
+    params = [status, requestId];
+  }
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("❌ DB Error:", err);
+      return res.status(500).json({ success: false, message: "DB Error" });
+    }
+
+    // 🟢 SAFETY CHECK: Did we actually update anything?
+    if (result.affectedRows === 0) {
+      console.warn(
+        `⚠️ Warning: No row found with queue_id ${requestId}. Check if frontend is sending the correct ID.`
+      );
+    } else {
+      console.log(`✅ Success: Updated Queue ID ${requestId}`);
+    }
+
+    res.json({ success: true });
+  });
+});
+// 🟢 NEW: Get Anonymous Complaints API (Fixes 404 Error)
+app.get("/api/admin/complaints", authenticateAdmin, (req, res) => {
+  const query =
+    "SELECT comments, created_at FROM feedback WHERE comments IS NOT NULL AND comments != '' ORDER BY created_at DESC LIMIT 50";
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching complaints:", err);
+      return res.status(500).json({ success: false });
+    }
+    res.json({ success: true, complaints: results });
+  });
+});
+
+// 🟢 FINAL COMPLETE FIX:
+// 1. Excludes 'claimed' (Picked Up items vanish).
+// 2. Checks Staff Visibility (Joins admin_staff table correctly).
+app.get("/api/public/queue-data", (req, res) => {
+  // 1. FETCH DATA
+  // 🟢 FIX: Join 'admin_staff' (not users) on 'processed_by_id'
+  // 🟢 FIX: Select 'show_name' (not is_visible)
+  const query = `
+      SELECT 
+        q.queue_number, 
+        q.window_number, 
+        q.status, 
+        q.progress_data, 
+        q.processed_by,
+        s.show_name as staff_visible
+      FROM queue q
+      LEFT JOIN admin_staff s ON q.processed_by_id = s.id 
+      WHERE DATE(q.submitted_at) = CURDATE() 
+      AND q.status IN ('processing', 'completed')
+      ORDER BY q.updated_at ASC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("❌ DB Error:", err);
+      return res.status(500).json(null);
+    }
+
+    const responseData = {
+      window1: { processing: [], completed: [], staffName: "" },
+      window2: { processing: [], completed: [], staffName: "" },
+      window3: { processing: [], completed: [], staffName: "" },
+      window4: { processing: [], completed: [], staffName: "" },
+    };
+
+    results.forEach((row) => {
+      // --- A. CALCULATE PERCENTAGE ---
+      let percent = 0;
+      if (row.progress_data) {
+        try {
+          const p =
+            typeof row.progress_data === "string"
+              ? JSON.parse(row.progress_data)
+              : row.progress_data;
+          if (p && p.total > 0) percent = (p.current / p.total) * 100;
+        } catch (e) {
+          percent = 0;
+        }
+      }
+      if (row.status === "completed") percent = 100;
+
+      // RULE 1: If < 100%, HIDE IT.
+      if (percent < 100) return;
+
+      // --- B. DETERMINE WINDOW ---
+      let winNum = 1;
+      if (row.window_number) {
+        const nums = row.window_number.toString().replace(/\D/g, "");
+        if (nums.length > 0) winNum = parseInt(nums);
+      }
+      if (winNum < 1 || winNum > 4) winNum = 1;
+
+      const winKey = `window${winNum}`;
+
+      if (responseData[winKey]) {
+        const status = (row.status || "").toLowerCase();
+
+        // 🟢 STAFF NAME LOGIC:
+        // Checks if show_name is 1 (True) from the admin_staff table
+        if (row.staff_visible === 1 && row.processed_by) {
+          responseData[winKey].staffName = row.processed_by;
+        }
+
+        // 🟢 SORTING LOGIC:
+        // 1. Processing (100%) -> Now Serving (Big Box)
+        if (status.includes("process")) {
+          responseData[winKey].processing.push(row);
+        }
+        // 2. Completed -> Ready to Claim (Footer)
+        else if (status.includes("complete")) {
+          responseData[winKey].completed.push(row);
+        }
+      }
+    });
+
+    res.json(responseData);
+  });
+});
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
 

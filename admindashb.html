@@ -270,6 +270,34 @@
             <ul class="request-list" id="recentRequestsList"></ul>
           </div>
         </div>
+        <div class="col-12 mt-4 mb-5">
+          <div class="card shadow-sm border-0">
+            <div
+              class="card-header bg-danger text-white d-flex justify-content-between align-items-center"
+            >
+              <h5 class="mb-0">
+                <i class="bi bi-megaphone-fill me-2"></i>Anonymous Complaints &
+                Suggestions
+              </h5>
+              <button
+                class="btn btn-sm btn-light text-danger fw-bold"
+                onclick="loadComplaints()"
+              >
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <div
+                id="complaintsList"
+                style="height: 350px; overflow-y: auto; background: #f8f9fa"
+              >
+                <div class="text-center p-5 text-muted">
+                  Loading comments...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="history-table" id="queueReportHistoryContainer">
           <h2 class="history-title">Queue Report History</h2>
@@ -4987,42 +5015,43 @@
           toggleModal("markDoneModal");
         }
 
-        // 🟢 SUBMIT TO API 🟢
+        // 🟢 MASTER FIX: Mark as Done (Unified Route)
         async confirmMarkAsDone() {
           const queueId = document.getElementById("markDoneQueueId").value;
           const claimDetails = document.getElementById("markDoneMessage").value;
           const btn = document.querySelector("#markDoneModal .btn-success");
 
-          // Loading state
+          // Disable button
           const originalText = btn.innerHTML;
           btn.innerHTML =
-            '<span class="spinner-border spinner-border-sm"></span> Processing...';
+            '<span class="spinner-border spinner-border-sm"></span> Saving...';
           btn.disabled = true;
 
           try {
+            // 🟢 CALLS THE NEW UNIFIED ENDPOINT
             const response = await makeAuthenticatedRequest(
-              "/api/admin/mark-done",
+              "/api/admin/update-status",
               {
                 method: "POST",
-                body: JSON.stringify({ queueId, claimDetails }),
+                body: JSON.stringify({
+                  requestId: queueId,
+                  status: "completed",
+                  note: claimDetails, // This saves the Admin Note!
+                }),
               }
             );
 
             const result = await response.json();
             if (result.success) {
-              showNotification("Request completed successfully!");
+              showNotification("Request marked as Ready to Claim!");
               toggleModal("markDoneModal");
-
-              // Refresh Lists
               await this.loadQueues();
-              if (serviceRequestManager)
-                serviceRequestManager.loadServiceRequests();
             } else {
               alert("Error: " + result.message);
             }
           } catch (error) {
             console.error("Error marking as done:", error);
-            alert("Error completing request. Please try again.");
+            alert("Error completing request.");
           } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -5247,16 +5276,13 @@
           }
         }
 
-        // 🟢 UPDATED FUNCTION: Disables button immediately 🟢
+        // 🟢 MASTER FIX: Picked Up (Unified Route)
         async markAsClaimed(queueId, btnElement) {
           if (
-            !confirm(
-              "Has the student received their documents? This will remove the name from the TV screen."
-            )
+            !confirm("Confirm that the student has received their documents?")
           )
             return;
 
-          // 1. Disable button instantly to prevent double-clicks
           if (btnElement) {
             btnElement.disabled = true;
             btnElement.innerHTML =
@@ -5264,66 +5290,53 @@
           }
 
           try {
+            // 🟢 CALLS THE NEW UNIFIED ENDPOINT
             const response = await makeAuthenticatedRequest(
-              "/api/admin/mark-claimed",
+              "/api/admin/update-status",
               {
                 method: "POST",
-                body: JSON.stringify({ queueId }),
+                body: JSON.stringify({
+                  requestId: queueId,
+                  status: "claimed",
+                }),
               }
             );
 
             const result = await response.json();
             if (result.success) {
-              showNotification("Item claimed. Removed from screen.");
-
-              // 2. Refresh lists (The item will vanish from the list here)
+              showNotification("Documents Picked Up. Removed from screen.");
               await this.loadQueues();
-              if (serviceRequestManager)
-                serviceRequestManager.renderCompletedRequests();
             } else {
               alert("Error: " + result.message);
-              // Re-enable if error
-              if (btnElement) {
-                btnElement.disabled = false;
-                btnElement.innerHTML =
-                  '<i class="bi bi-box-seam me-1"></i> Picked Up';
-              }
+              if (btnElement) btnElement.disabled = false;
             }
           } catch (error) {
             console.error("Error marking claimed:", error);
-            // Re-enable if error
-            if (btnElement) {
-              btnElement.disabled = false;
-              btnElement.innerHTML =
-                '<i class="bi bi-box-seam me-1"></i> Picked Up';
-            }
+            if (btnElement) btnElement.disabled = false;
           }
         }
 
-        // 🟢 EXECUTE API CALL 🟢
+        // 🟢 MASTER FIX: Accept & Process (Unified Route)
         async confirmStartProcessing() {
           const queueId = document.getElementById("serveQueueId").value;
-
-          // Disable button to prevent double clicks
           const btn = document.querySelector("#confirmServeModal .btn-primary");
+
+          // Disable button
           const originalText = btn.innerHTML;
           btn.innerHTML =
             '<span class="spinner-border spinner-border-sm"></span> Processing...';
           btn.disabled = true;
 
-          // --- OPTIMISTIC UI UPDATE ---
-          // Remove card immediately from the "New Requests" list behind the modal
-          const cardToRemove = document.getElementById(`req-${queueId}`);
-          if (cardToRemove) cardToRemove.remove();
-
           try {
+            // 🟢 CALLS THE NEW UNIFIED ENDPOINT
             const response = await makeAuthenticatedRequest(
-              "/api/admin/start-processing",
+              "/api/admin/update-status",
               {
                 method: "POST",
                 body: JSON.stringify({
-                  queueId: queueId,
-                  windowNumber: currentWindow,
+                  requestId: queueId, // We send queueId as requestId
+                  status: "processing",
+                  note: "", // No note needed for starting
                 }),
               }
             );
@@ -5332,30 +5345,20 @@
 
             if (result.success) {
               showNotification(
-                `Now Serving: ${
+                "Now Serving: " +
                   document.getElementById("serveQueueNumber").textContent
-                }`
               );
               toggleModal("confirmServeModal");
-              await this.loadQueues();
-              this.renderNowServing();
+              await this.loadQueues(); // Refresh UI
             } else {
               alert("Error: " + result.message);
-              // If error, reload queue to bring card back
-              this.loadQueues();
             }
           } catch (error) {
             console.error("Error starting processing:", error);
             alert("Connection error. Please try again.");
-            this.loadQueues();
           } finally {
-            // Reset button
             btn.innerHTML = originalText;
             btn.disabled = false;
-            // Close modal if still open
-            const modal = document.getElementById("confirmServeModal");
-            if (modal.classList.contains("active"))
-              toggleModal("confirmServeModal");
           }
         }
         // 🟢 1. LOCK FUNCTION (Solves the Conflict)
@@ -5579,70 +5582,65 @@
           }
         }
 
+        // 🟢 MASTER FIX: Review Decision (Accept or Reject)
         async submitDecision(action) {
           const queueId = document.getElementById("reviewQueueId").value;
-
-          // 🟢 UPDATED LOGIC FOR DROPDOWN 🟢
           let reason = "";
 
-          // Only check for reason if we are DECLINING
+          // Handle Rejection Reason
           if (action === "decline") {
             const selectBox = document.getElementById("reviewDeclineDropdown");
             reason = selectBox.value;
-
-            // If "Other" is selected, use the text input instead
             if (reason === "Other") {
               reason = document.getElementById("reviewOtherReasonInput").value;
             }
-
-            // Validation
             if (!reason || reason.trim() === "") {
-              alert("Please select or type a reason for rejection.");
+              alert("Please select a reason for rejection.");
               return;
             }
           }
 
           if (
-            confirm(
+            !confirm(
               action === "process"
-                ? "Everything looks good? Proceed to serving?"
+                ? "Accept this request?"
                 : "Reject this request?"
             )
-          ) {
-            // 🟢 OPTIMISTIC UPDATE: Hide the card immediately
-            const card = document.getElementById(`req-${queueId}`);
-            if (card) card.style.display = "none";
+          )
+            return;
 
-            // Close modal immediately
+          // Determine status string for the backend
+          const statusToSend = action === "process" ? "processing" : "declined";
+
+          try {
+            // 🟢 CALLS THE NEW UNIFIED ENDPOINT
+            const response = await makeAuthenticatedRequest(
+              "/api/admin/update-status",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  requestId: queueId,
+                  status: statusToSend,
+                  note: reason, // Sends rejection reason as the note
+                }),
+              }
+            );
+
+            const result = await response.json();
             toggleModal("reviewRequestModal");
 
-            try {
-              const response = await makeAuthenticatedRequest(
-                "/api/admin/review-decision",
-                {
-                  method: "POST",
-                  body: JSON.stringify({ queueId, action, reason }),
-                }
+            if (result.success) {
+              showNotification(
+                action === "process" ? "Request Accepted" : "Request Declined",
+                "success"
               );
-              const result = await response.json();
-
-              if (result.success) {
-                showNotification(
-                  result.message,
-                  action === "process" ? "success" : "warning"
-                );
-                this.loadQueues();
-              } else {
-                alert(result.message);
-                // If error, show card again
-                if (card) card.style.display = "block";
-                this.loadQueues();
-              }
-            } catch (error) {
-              console.error("Decision error:", error);
-              // If error, show card again
-              if (card) card.style.display = "block";
+              this.loadQueues();
+            } else {
+              alert(result.message);
+              this.loadQueues();
             }
+          } catch (error) {
+            console.error("Decision error:", error);
           }
         }
 
@@ -6757,6 +6755,99 @@
         // This reloads the current URL, effectively "refreshing" the system
         window.location.reload();
       }
+      // 🟢 FIXED: Load Anonymous Complaints (Checks Admin Token First)
+      async function loadComplaints() {
+        const list = document.getElementById("complaintsList");
+
+        // 🟢 CRITICAL: Must check 'adminToken' first, otherwise server blocks it
+        const token =
+          localStorage.getItem("adminToken") || localStorage.getItem("token");
+
+        if (!token) {
+          console.error("No admin token found.");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/admin/complaints", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+          });
+
+          // Handle session expiry
+          if (response.status === 401 || response.status === 403) {
+            list.innerHTML = `<div class="text-center p-4 text-danger small">Unauthorized. Please re-login.</div>`;
+            return;
+          }
+
+          const data = await response.json();
+
+          if (data.success) {
+            if (data.complaints.length === 0) {
+              list.innerHTML = `<div class="text-center p-5 text-muted"><h5>No complaints or suggestions yet.</h5></div>`;
+              return;
+            }
+
+            // Build the list items
+            list.innerHTML = data.complaints
+              .map(
+                (item) => `
+                    <div class="p-3 border-bottom bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="text-danger" style="font-size: 0.9rem;">
+                                <i class="bi bi-person-fill-slash"></i> Anonymous Client
+                            </strong>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                ${new Date(
+                                  item.created_at
+                                ).toLocaleDateString()}
+                            </small>
+                        </div>
+                        <p class="mb-0 text-dark small" style="font-style: italic; background: #f8f9fa; padding: 8px; border-radius: 4px;">
+                            "${item.comments}"
+                        </p>
+                    </div>
+                `
+              )
+              .join("");
+          } else {
+            list.innerHTML = `<div class="text-center p-5 text-danger">Failed to load data.</div>`;
+          }
+        } catch (error) {
+          console.error("Error loading complaints:", error);
+          list.innerHTML = `<div class="text-center p-5 text-danger">Connection Error.</div>`;
+        }
+      }
+
+      // Load complaints automatically when page opens
+      document.addEventListener("DOMContentLoaded", loadComplaints);
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const darkModeSwitch = document.getElementById("darkModeSwitch");
+
+        // 1. Check for saved preference on load
+        const savedTheme = localStorage.getItem("darkMode");
+        if (savedTheme === "enabled") {
+          document.body.classList.add("dark-mode");
+          if (darkModeSwitch) darkModeSwitch.checked = true;
+        }
+
+        // 2. Listen for toggle changes
+        if (darkModeSwitch) {
+          darkModeSwitch.addEventListener("change", () => {
+            if (darkModeSwitch.checked) {
+              document.body.classList.add("dark-mode");
+              localStorage.setItem("darkMode", "enabled");
+            } else {
+              document.body.classList.remove("dark-mode");
+              localStorage.setItem("darkMode", "disabled");
+            }
+          });
+        }
+      });
     </script>
   </body>
 </html>
