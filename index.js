@@ -2582,51 +2582,49 @@ function parseServices(servicesData) {
   }
 }
 
-// 🟢 FIXED: "Mark Done" (Catches the note regardless of variable name)
+// 🟢 FINAL ROBUST "MARK DONE" ROUTE
 app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
-  // 1. Capture ALL possible names for the note to ensure we get it
   const { queueId, requestId, claimDetails, note, admin_note } = req.body;
-
-  // Resolve ID and Note
-  const targetId = queueId || requestId;
-  // This line is the secret sauce: it checks ALL variables.
-  const finalNote = note || claimDetails || admin_note || "";
-
   const adminName = req.admin.full_name || "Staff";
 
-  // 🟢 DEBUG LOG: Check your terminal when you click "Mark Done"!
-  console.log(`=== DEBUG: Saving Note for Request #${targetId} ===`);
-  console.log(`Note Content: "${finalNote}"`);
+  // 1. CATCH-ALL NOTE: Grab the note from any possible field name
+  const finalNote = note || claimDetails || admin_note || "";
 
-  if (!targetId) {
-    return res.json({ success: false, message: "Missing Queue ID" });
+  // 2. CATCH-ALL ID: Grab the ID from either field
+  const searchId = queueId || requestId;
+
+  console.log(`[MARK-DONE] ⚡ Processing ID: ${searchId}`);
+
+  if (!searchId) {
+    return res.status(400).json({ success: false, message: "No ID provided." });
   }
 
-  // 2. Fetch User Info
-  const fetchQuery = `
-    SELECT q.user_id, u.email, u.first_name, u.last_name, q.queue_number 
+  // 3. HYBRID SEARCH: Look for the ID in BOTH columns
+  const query = `
+    SELECT q.queue_id, q.queue_number, u.email, u.first_name 
     FROM queue q
     LEFT JOIN users u ON q.user_id = u.id
-    WHERE q.queue_id = ?
+    WHERE q.queue_id = ? OR q.request_id = ?
   `;
 
-  // ... inside /api/admin/mark-done ...
-
-  db.query(fetchQuery, [targetId], (err, results) => {
+  db.query(query, [searchId, searchId], (err, results) => {
     if (err) {
-      console.error("DB Error:", err);
+      console.error("[MARK-DONE] ❌ Database Error:", err);
       return res.status(500).json({ success: false });
     }
 
-    // If no user found, just success (maybe it was a manual entry)
-    if (results.length === 0) return res.json({ success: true });
+    if (results.length === 0) {
+      console.warn(`[MARK-DONE] ⚠️ ID ${searchId} not found in database.`);
+      return res.json({ success: true, message: "Request not found." });
+    }
 
     const row = results[0];
-    const userEmail = row.email; // 🟢 VARIABLE DEFINED HERE
-    const userFirstName = row.first_name || "Student";
+    // 🟢 CRITICAL: Use the REAL ID from the database row
+    const realQueueId = row.queue_id;
+    const userEmail = row.email;
 
-    // 3. Update Database
-    const updateQuery = `
+    // 4. UPDATE STATUS
+    const updateSql = `
       UPDATE queue 
       SET status = 'completed', 
           completed_at = NOW(),
@@ -2635,21 +2633,20 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
       WHERE queue_id = ?
     `;
 
-    db.query(updateQuery, [adminName, finalNote, targetId], (updateErr) => {
+    db.query(updateSql, [adminName, finalNote, realQueueId], (updateErr) => {
       if (updateErr) {
-        console.error("Update Error:", updateErr);
+        console.error("[MARK-DONE] ❌ Update Failed:", updateErr);
         return res.status(500).json({ success: false });
       }
 
-      // 4. Send Email
-      // 🟢 FIX: Use 'userEmail' and 'row' data, NOT 'user.email'
+      // 5. SEND EMAIL
       if (userEmail) {
-        console.log(`📧 Sending 'Ready to Claim' email to ${userEmail}...`);
+        console.log(`[MARK-DONE] 📧 Sending Email to: ${userEmail}`);
 
         const subject = "📄 Documents Ready for Pickup - RSU Registrar";
         const html = `
           <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h3>Hello ${userFirstName},</h3>
+            <h3>Hello ${row.first_name || "Student"},</h3>
             <p>Good news! Your request (Queue #: <b>${
               row.queue_number
             }</b>) is now <b>READY TO CLAIM</b>.</p>
@@ -2659,14 +2656,15 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
                ${finalNote || "Please proceed to the window."}
             </div>
             
-            <p>Please proceed to the Registrar's Office to pick up your documents.</p>
+            <p>Please proceed to the Registrar's Office.</p>
           </div>
         `;
 
-        // Use the API function
         sendNotificationEmail(userEmail, subject, html);
       } else {
-        console.warn("⚠️ No email found for this user. Notification skipped.");
+        console.warn(
+          `[MARK-DONE] ⚠️ No email linked to User ID ${row.user_id}`
+        );
       }
 
       res.json({ success: true });
@@ -3519,9 +3517,9 @@ app.get("/api/admin/pending-users", authenticateAdmin, (req, res) => {
   });
 });
 
-// 🟢 UPDATED: Verify User Route (Fixed Column Names)
+// 🟢 ROBUST VERSION: Handles "verified", "verify", or "approve"
 app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
-  const { userId, action } = req.body; // action: 'verified' or 'rejected'
+  const { userId, action } = req.body;
 
   if (!userId || !action) {
     return res.status(400).json({ success: false, message: "Missing fields" });
@@ -3539,14 +3537,14 @@ app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
       }
 
       const userEmail = results[0].email;
-      const userName = `${results[0].first_name} ${results[0].last_name}`;
+      // 2. Determine Action (Looser check)
+      const isApproving =
+        action === "verified" || action === "verify" || action === "approve";
 
-      // 2. Perform the update
-      // 🟢 FIX: Update 'account_status' instead of 'status'/'is_verified'
       let query = "";
       let newStatus = "";
 
-      if (action === "verified") {
+      if (isApproving) {
         query = "UPDATE users SET account_status = 'verified' WHERE id = ?";
         newStatus = "verified";
       } else {
@@ -3556,30 +3554,26 @@ app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
 
       db.query(query, [userId], (updateErr, updateResult) => {
         if (updateErr) {
-          console.error("❌ Verify User DB Error:", updateErr); // Added log for debugging
-          return res.status(500).json({
-            success: false,
-            message: "Database update failed: " + updateErr.message,
-          });
+          console.error("❌ Verify User DB Error:", updateErr);
+          return res
+            .status(500)
+            .json({ success: false, message: "Database error" });
         }
 
-        // ... inside the DB query callback ...
-
-        // 🟢 TRIGGER EMAIL ONLY IF VERIFIED
-        if (newStatus === "verified") {
+        // 3. Send Email only if approving
+        if (newStatus === "verified" && userEmail) {
           const subject = "🎉 Account Verified - RSU Registrar";
           const html = `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #004d00;">Hello ${userName},</h2>
-            <p>Your account has been <b>ACCEPTED</b>.</p>
-            <p>You may now log in and request services.</p>
-          </div>
-        `;
-          // Use the new function
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #004d00;">Hello ${results[0].first_name},</h2>
+              <p>Your account has been <b>VERIFIED</b>.</p>
+              <p>You may now log in to the Student Dashboard.</p>
+            </div>
+          `;
           sendNotificationEmail(userEmail, subject, html);
         }
 
-        res.json({ success: true, message: `User ${action} successfully.` });
+        res.json({ success: true, message: `User ${newStatus} successfully.` });
       });
     }
   );
