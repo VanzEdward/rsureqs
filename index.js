@@ -24,117 +24,57 @@ if (!SMTP_USER || !SMTP_PASS) {
   );
 }
 
-// // =========================================
-// // EMAIL CONFIGURATION (Nodemailer & Brevo)
-// // =========================================
-// // 🟢 FIX: Updated for Render deployment using Port 587 (TLS)
-// const transporter = nodemailer.createTransport({
-//   host: "smtp-relay.brevo.com", // Use the modern Brevo hostname
-//   port: 587, // Port 587 is usually allowed on Render; 465 is often blocked.
-//   secure: false, // Must be 'false' for port 587 (it uses STARTTLS)
-//   auth: {
-//     user: process.env.SMTP_USER, // Ensure this is set in Render Environment Variables
-//     pass: process.env.SMTP_PASS, // Ensure this is set in Render Environment Variables
-//   },
-//   tls: {
-//     // Helps prevent SSL handshake errors in some cloud environments
-//     rejectUnauthorized: false,
-//   },
-// });
-// // =========================================
-
-// // Helper Function to Send Emails
-// async function sendNotificationEmail(to, subject, htmlContent) {
-//   try {
-//     if (!to) return;
-
-//     const info = await transporter.sendMail({
-//       // 🟢 FIX: Use the variable here too, so it always matches your credentials
-//       from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
-//       to: to,
-//       subject: subject,
-//       html: htmlContent,
-//     });
-
-//     console.log(`📧 Email sent to ${to}: ${info.messageId}`);
-//   } catch (error) {
-//     console.error("❌ Error sending email:", error);
-//   }
-// }
-
-// =========================================
-// 📧 EMAIL CONFIGURATION (ROBUST & DEBUGGED)
-// =========================================
-
 // =========================================
 // 📧 EMAIL CONFIGURATION (High Availability)
 // =========================================
 
-console.log("------------------------------------------------");
-console.log("📧 EMAIL SYSTEM STARTUP CHECK:");
-// Mask the password for security in logs
-console.log(
-  "👉 SMTP_USER:",
-  process.env.SMTP_USER ? "Loaded ✅" : "MISSING ❌"
-);
-console.log(
-  "👉 SMTP_PASS:",
-  process.env.SMTP_PASS ? "Loaded ✅" : "MISSING ❌"
-);
-console.log("------------------------------------------------");
+// ==========================================
+// 📧 EMAIL CONFIGURATION (BREVO API - HTTP)
+// ==========================================
+// 🟢 FIX: Uses standard HTTP (Port 443) to bypass Render firewall blocks.
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false, // Must be false for port 587
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false, // Helps bypass SSL strictness
-    ciphers: "SSLv3", // Force compatibility
-  },
-  // 🟢 CRITICAL: TIMEOUT SETTINGS TO PREVENT HANGING
-  connectionTimeout: 15000, // Wait 15 seconds for connection
-  greetingTimeout: 15000, // Wait 15 seconds for server hello
-  socketTimeout: 15000, // Wait 15 seconds for data
-  debug: true, // Show detailed logs on Render
-  logger: true, // Log directly to console
-});
+// This uses the API Key you saved in Render Environment Variables
+const BREVO_API_KEY = process.env.SMTP_PASS;
 
-// Verify connection immediately
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ CRITICAL SMTP ERROR: Connection failed!", error);
-  } else {
-    console.log("✅ SMTP Server is Ready! Emails can be sent.");
-  }
-});
+// 🟢 YOUR REGISTERED BREVO EMAIL
+// Brevo requires the "sender" to match your verified account.
+const SENDER_EMAIL = "vanzedwardmantes@gmail.com";
+const SENDER_NAME = "RSU Registrar";
 
-// Helper Function to Send Emails
+// Helper Function to Send Emails via Brevo API
 async function sendNotificationEmail(to, subject, htmlContent) {
+  if (!to) {
+    console.warn("⚠️ Email skipped: No recipient provided.");
+    return false;
+  }
+
+  const url = "https://api.brevo.com/v3/smtp/email";
+
+  const data = {
+    sender: { name: SENDER_NAME, email: SENDER_EMAIL },
+    to: [{ email: to }],
+    subject: subject,
+    htmlContent: htmlContent,
+  };
+
   try {
-    if (!to) {
-      console.warn("⚠️ Email skipped: No recipient provided.");
-      return;
-    }
-
-    // Ensure we have a valid sender
-    const sender = process.env.SMTP_USER || "no-reply@rsu.edu.ph";
-
-    const info = await transporter.sendMail({
-      from: `"RSU Registrar" <${sender}>`,
-      to: to,
-      subject: subject,
-      html: htmlContent,
+    const response = await axios.post(url, data, {
+      headers: {
+        "api-key": BREVO_API_KEY,
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
     });
-
-    console.log(
-      `✅ Email sent successfully to ${to}. Message ID: ${info.messageId}`
-    );
+    console.log(`✅ Email sent to ${to}. ID: ${response.data.messageId}`);
+    return true;
   } catch (error) {
-    console.error(`❌ FAILED to send email to ${to}:`, error.message);
+    console.error(`❌ FAILED to send email to ${to}`);
+    if (error.response) {
+      console.error("👉 Brevo Error:", JSON.stringify(error.response.data));
+    } else {
+      console.error("👉 Network Error:", error.message);
+    }
+    return false;
   }
 }
 
@@ -294,20 +234,6 @@ db.getConnection((err, connection) => {
     console.error("❌ AIVEN HARDCODE FAILED:", err.code, err.message);
   } else {
     console.log("✅ CONNECTED TO AIVEN (HARDCODED)!");
-
-    // 🟢 PASTE FIX 1 HERE: Fix 'Reject' Crash
-    connection.query(
-      "ALTER TABLE queue MODIFY COLUMN status VARCHAR(50)",
-      (alterErr) => {
-        if (alterErr)
-          console.log("⚠️ Status column check: " + alterErr.message);
-        else
-          console.log(
-            "✅ FIXED: Status column expanded to support 'declined'."
-          );
-      }
-    );
-
     connection.release();
   }
 });
@@ -2715,20 +2641,21 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
       }
 
       // 4. Send Email
-      if (userEmail) {
-        const noteHtml = finalNote
-          ? `<div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00; margin-top:10px;">
-               <strong>Note from Staff:</strong><br>${finalNote}
-             </div>`
-          : "";
+      // ... inside mark-done ...
 
+      // 🟢 TRIGGER EMAIL IF USER HAS EMAIL
+      if (user.email) {
+        const subject = "📄 Documents Ready for Pickup";
         const html = `
-          <h3>Hello ${userName},</h3>
-          <p>Your request (Queue #: <b>${row.queue_number}</b>) is <b>READY TO CLAIM</b>.</p>
-          ${noteHtml}
-          <br><p>RSU Registrar</p>
+          <h3>Hello ${user.first_name},</h3>
+          <p>Your request (Queue #: <b>${user.queue_number}</b>) is now <b>READY TO CLAIM</b>.</p>
+          <div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00;">
+             <strong>Note:</strong> ${finalNote}
+          </div>
+          <p>Please proceed to the Registrar's Office.</p>
         `;
-        sendNotificationEmail(userEmail, "Documents Ready", html);
+        // Use the new function
+        sendNotificationEmail(user.email, subject, html);
       }
 
       res.json({ success: true });
@@ -2900,40 +2827,33 @@ app.post("/api/forgot-password", (req, res) => {
       expiresIn: "1h",
     });
 
-    // 2. Generate Link (Safe for Render)
-    // 🟢 The "req" variable works here because it is inside 'app.post'
+    // ... inside /api/forgot-password ...
+
+    // 1. Generate Link
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.get("host");
     const siteUrl = process.env.SITE_URL || `${protocol}://${host}`;
     const resetLink = `${siteUrl}/reset-password?token=${resetToken}`;
 
-    // 3. Send Email
-    const mailOptions = {
-      from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
-      to: user.email,
-      subject: "Password Reset Request - RSU REQS",
-      html: `
+    // 2. Prepare HTML
+    const emailHtml = `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h2 style="color: #004d00;">Password Reset</h2>
           <p>Hello ${user.first_name},</p>
-          <p>We received a request to reset your password.</p>
-          <p>Click the button below to proceed. This link expires in 1 hour.</p>
-          <a href="${resetLink}" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">Reset Password</a>
-          <p style="color: #666; font-size: 12px; margin-top: 20px;">If you did not request this, please ignore this email.</p>
+          <p>Click the button below to reset your password.</p>
+          <a href="${resetLink}" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">Reset Password</a>
+          <p style="font-size: 12px; color: #666;">Link expires in 1 hour.</p>
         </div>
-      `,
-    };
+    `;
 
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Forgot Password email sent to ${user.email}`);
-      res.json({ success: true, message: "Reset link sent." });
-    } catch (emailErr) {
-      console.error("❌ Forgot Password Email Error:", emailErr);
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to send email." });
-    }
+    // 3. 🟢 CALL THE NEW API FUNCTION
+    await sendNotificationEmail(
+      user.email,
+      "Password Reset Request",
+      emailHtml
+    );
+
+    res.json({ success: true, message: "If account exists, reset link sent." });
   });
 });
 
@@ -3632,23 +3552,19 @@ app.post("/api/admin/verify-user", authenticateAdmin, (req, res) => {
           });
         }
 
-        // 🟢 3. SEND EMAIL
+        // ... inside the DB query callback ...
+
+        // 🟢 TRIGGER EMAIL ONLY IF VERIFIED
         if (newStatus === "verified") {
           const subject = "🎉 Account Verified - RSU Registrar";
           const html = `
-          <h3>Hello ${userName},</h3>
-          <p>Your account for the <b>Romblon State University Registrar System</b> has been <b>ACCEPTED</b>.</p>
-          <p>You may now log in to request documents.</p>
-          <br>
-          <p>Regards,<br>RSU Registrar</p>
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #004d00;">Hello ${userName},</h2>
+            <p>Your account has been <b>ACCEPTED</b>.</p>
+            <p>You may now log in and request services.</p>
+          </div>
         `;
-          sendNotificationEmail(userEmail, subject, html);
-        } else {
-          const subject = "Account Application Update";
-          const html = `
-          <p>Hello ${userName},</p>
-          <p>We regret to inform you that your account application was declined.</p>
-        `;
+          // Use the new function
           sendNotificationEmail(userEmail, subject, html);
         }
 
