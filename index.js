@@ -3892,6 +3892,48 @@ app.get("/api/public/queue-data", (req, res) => {
     res.json(responseData);
   });
 });
+
+// ==========================================
+// 🟢 FIXED ENDPOINT: User Stats (Counters)
+// ==========================================
+app.get("/api/user/stats", authenticateToken, (req, res) => {
+  const userId = req.user.id; // This comes from your login token
+
+  console.log(`[STATS] Fetching for User ID: ${userId}`);
+
+  const query = `
+    SELECT 
+      COUNT(*) AS total,
+      SUM(CASE WHEN status IN ('waiting', 'priority') THEN 1 ELSE 0 END) AS pending,
+      SUM(CASE WHEN status IN ('processing', 'reviewing') THEN 1 ELSE 0 END) AS processing,
+      SUM(CASE WHEN status IN ('completed', 'claimed') THEN 1 ELSE 0 END) AS completed
+    FROM queue 
+    WHERE user_id = ?
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error("[STATS] DB Error:", err);
+      return res.json({ success: false });
+    }
+
+    // Safety: Ensure we don't crash if results are empty
+    const row = results[0] || {};
+
+    // Debug Log: Check this in Render Logs to see the real numbers!
+    console.log(`[STATS] Result for User ${userId}:`, row);
+
+    res.json({
+      success: true,
+      stats: {
+        total: row.total || 0,
+        pending: row.pending || 0,
+        processing: row.processing || 0,
+        completed: row.completed || 0,
+      },
+    });
+  });
+});
 // --- 🟢 RENDER SERVER START 🟢 ---
 // Use PORT from environment (Render assigns this automatically)
 

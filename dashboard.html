@@ -701,6 +701,69 @@
   text-shadow: 0 0 10px rgba(0,0,0,0.5);
   pointer-events: none; /* Ensures the icon doesn't block the click event listener */
 }
+
+/* Force center alignment for stat cards */
+      .stat-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Centers horizontally */
+        justify-content: center; /* Centers vertically */
+        text-align: center;
+      }
+      
+      .stat-value {
+        font-size: 2.5rem; /* Make the number big */
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      /* 🟢 FORCE HORIZONTAL LAYOUT */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Creates 3 equal columns */
+    gap: 20px; /* Adds space between the cards */
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+/* 🟢 CARD DESIGN (Centered & Shadow) */
+.stat-card {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Soft shadow like image */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centers items horizontally */
+    justify-content: center; /* Centers items vertically */
+    text-align: center;
+    border: 1px solid #f0f0f0; /* Subtle border */
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px); /* Hover effect */
+}
+
+/* 🟢 NUMBER DESIGN (Big & Bold) */
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* 🟢 RESPONSIVE (Stack on Mobile only) */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr; /* Stack vertically on phones */
+    }
+}
     </style>
   </head>
 
@@ -1977,11 +2040,11 @@
               </select>
             </div>
 
-            <!-- Real-time status indicators -->
+            <!-- Real-time status indicators
             <div class="row mb-4">
               <div class="col-md-3">
                 <div class="stat-card text-center">
-                  <div class="stat-number text-primary" id="totalRequests">
+                  <div class="stat-value" id="pendingRequestsCount"">
                     0
                   </div>
                   <div class="stat-label">Total Requests</div>
@@ -1989,7 +2052,7 @@
               </div>
               <div class="col-md-4">
                 <div class="stat-card text-center">
-                  <div class="stat-number text-warning" id="pendingRequests">
+                  <div class="stat-value" id="pendingRequestsCount"">
                     0
                   </div>
                   <div class="stat-label">Pending</div>
@@ -1997,13 +2060,30 @@
               </div>
               <div class="col-md-4">
               <div class="stat-card text-center">
-                <div class="stat-number text-info" id="processingRequests">
+                <div class="stat-number text-info" id="pendingRequestsCount"">
                   0
                 </div>
                 <div class="stat-label">Processing</div>
               </div>
             </div>
+          </div> -->
+
+          <div class="stats-grid">
+          <div class="stat-card text-center">
+            <div class="stat-value text-primary" id="totalRequestsCount">0</div>
+            <div class="stat-label">Total Requests</div>
           </div>
+
+          <div class="stat-card text-center">
+            <div class="stat-value text-warning" id="pendingRequestsCount">0</div>
+            <div class="stat-label">Pending</div>
+          </div>
+
+          <div class="stat-card text-center">
+            <div class="stat-value text-info" id="processingRequestsCount">0</div>
+            <div class="stat-label">Processing</div>
+          </div>
+        </div>
 
           <div id="requestsContainer">
             <!-- Requests will be loaded here -->
@@ -2139,20 +2219,12 @@
                 </div>
               </div>
 
-              <div class="profile-stats mt-5">
-                <div class="stat-item">
-                  <div class="stat-number" id="profileStatTotal">0</div>
-                  <div class="stat-label">Services Requested</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-number" id="profileStatCompleted">0</div>
-                  <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-item">
-                  <div class="stat-number" id="profileStatInProgress">0</div>
-                  <div class="stat-label">In Progress</div>
-                </div>
-              </div>
+              <div class="profile-stats">
+            <div class="stat-item">
+              <div class="stat-value" id="profileCompletedCount">0</div>
+              <div class="stat-label">Completed Requests</div>
+            </div>
+          </div>
 
               <div class="mt-4 text-center text-md-start">
                 <button class="btn btn-primary px-4 py-2" onclick="showProfileUpdateModal()">
@@ -5317,7 +5389,39 @@ async function loadRecentUpdates() {
     }
 }
 
+// 🟢 ROBUST STATS FUNCTION
+      async function loadUserStats() {
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
+        try {
+          // Add timestamp (?t=...) to force a fresh fetch from the server
+          const response = await fetch("/api/user/stats?t=" + Date.now(), {
+            headers: { Authorization: "Bearer " + token },
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            console.log("✅ Stats Received:", data.stats);
+
+            // Helper function to update text safely
+            const setText = (id, value) => {
+              const el = document.getElementById(id);
+              if (el) el.textContent = value;
+            };
+
+            // 1. Update Updates Section (Top Cards)
+            setText("totalRequestsCount", data.stats.total);
+            setText("pendingRequestsCount", data.stats.pending);
+            setText("processingRequestsCount", data.stats.processing);
+
+            // 2. Update Profile Section
+            setText("profileCompletedCount", data.stats.completed);
+          }
+        } catch (error) {
+          console.error("❌ Stats Load Error:", error);
+        }
+      }
 // 🟢 1. DEFINE GLOBAL STATUS (At the very top of your script)
 window.currentUserStatus = "pending"; // We use 'window.' to make it truly global
 
@@ -5463,6 +5567,7 @@ function showLockedModal() {
 
         // Setup navigation
         setupNavigation();
+        loadUserStats();
 
         // Setup sidebar toggle
         const sidebarToggle = document.getElementById("sidebarToggle");
