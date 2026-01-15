@@ -3696,60 +3696,95 @@ app.get("/api/public/window-staff", (req, res) => {
 });
 
 // 🟢 MASTER ROUTE: Handles Accept, Done, Reject, and Picked Up
-// FIXED: Now uses 'queue_id' in the WHERE clause to ensure the row is found.
+// FIXED: Now sends EMAIL when status is 'completed'
 app.post("/api/admin/update-status", authenticateAdmin, (req, res) => {
   const { requestId, status, note } = req.body;
   const adminName = req.admin.full_name || "Staff";
 
-  // LOGGING: Helps you see if it works in the terminal
-  console.log(`⚡ Updating Queue ID #${requestId} to '${status}'`);
+  // Note: In this route, 'requestId' is actually the 'queue_id'
+  console.log(
+    `[MASTER-ROUTE] ⚡ Updating Queue ID #${requestId} to '${status}'`
+  );
 
   let query = "";
   let params = [];
 
-  // 1. ACCEPT -> PROCESSING
+  // 1. DEFINE QUERY BASED ON STATUS
   if (status === "processing") {
-    // 🟢 FIX: Changed 'WHERE request_id' to 'WHERE queue_id'
     query =
       "UPDATE queue SET status = ?, processed_by = ?, started_at = NOW() WHERE queue_id = ?";
     params = ["processing", adminName, requestId];
-  }
-  // 2. DONE -> READY TO CLAIM (completed)
-  else if (status === "completed") {
+  } else if (status === "completed") {
     query =
       "UPDATE queue SET status = ?, admin_note = ?, completed_by = ?, completed_at = NOW() WHERE queue_id = ?";
     params = ["completed", note || "", adminName, requestId];
-  }
-  // 3. PICKED UP -> CLAIMED
-  else if (status === "claimed") {
+  } else if (status === "claimed") {
     query = "UPDATE queue SET status = ? WHERE queue_id = ?";
     params = ["claimed", requestId];
-  }
-  // 4. REJECT -> DECLINED
-  else if (status === "declined") {
+  } else if (status === "declined") {
     query =
       "UPDATE queue SET status = ?, admin_note = ?, processed_by = ? WHERE queue_id = ?";
     params = ["declined", note || "Requirements not met", adminName, requestId];
-  }
-  // Fallback
-  else {
+  } else {
     query = "UPDATE queue SET status = ? WHERE queue_id = ?";
     params = [status, requestId];
   }
 
+  // 2. EXECUTE DATABASE UPDATE
   db.query(query, params, (err, result) => {
     if (err) {
       console.error("❌ DB Error:", err);
       return res.status(500).json({ success: false, message: "DB Error" });
     }
 
-    // 🟢 SAFETY CHECK: Did we actually update anything?
-    if (result.affectedRows === 0) {
-      console.warn(
-        `⚠️ Warning: No row found with queue_id ${requestId}. Check if frontend is sending the correct ID.`
-      );
-    } else {
-      console.log(`✅ Success: Updated Queue ID ${requestId}`);
+    // 3. 🟢 SEND EMAIL NOTIFICATION (Only if status is 'completed')
+    if (status === "completed") {
+      // Fetch user details to send email
+      const getUserQuery = `
+        SELECT q.queue_number, u.email, u.first_name 
+        FROM queue q
+        JOIN users u ON q.user_id = u.id
+        WHERE q.queue_id = ?
+      `;
+
+      db.query(getUserQuery, [requestId], (userErr, userRes) => {
+        if (!userErr && userRes.length > 0) {
+          const user = userRes[0];
+          const userEmail = user.email;
+
+          if (userEmail) {
+            console.log(
+              `[MASTER-ROUTE] 📧 Sending Ready-to-Claim Email to ${userEmail}`
+            );
+
+            const subject = "📄 Documents Ready for Pickup - RSU Registrar";
+            const html = `
+              <div style="font-family: Arial, sans-serif; padding: 20px;">
+                <h3 style="color: #004d00;">Hello ${
+                  user.first_name || "Student"
+                },</h3>
+                <p>Good news! Your request (Queue #: <b>${
+                  user.queue_number
+                }</b>) is now <b>READY TO CLAIM</b>.</p>
+                
+                <div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00; margin: 20px 0;">
+                   <strong>Registrar's Note:</strong><br>
+                   ${note || "Please proceed to the window."}
+                </div>
+                
+                <p>Please proceed to the Registrar's Office to pick up your documents.</p>
+              </div>
+            `;
+
+            // Fire the email function (Using the API method to avoid timeouts)
+            sendNotificationEmail(userEmail, subject, html);
+          } else {
+            console.warn(
+              "[MASTER-ROUTE] ⚠️ User has no email. Skipping notification."
+            );
+          }
+        }
+      });
     }
 
     res.json({ success: true });
