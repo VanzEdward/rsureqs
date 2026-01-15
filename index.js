@@ -2610,21 +2610,22 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
     WHERE q.queue_id = ?
   `;
 
+  // ... inside /api/admin/mark-done ...
+
   db.query(fetchQuery, [targetId], (err, results) => {
     if (err) {
       console.error("DB Error:", err);
       return res.status(500).json({ success: false });
     }
 
+    // If no user found, just success (maybe it was a manual entry)
     if (results.length === 0) return res.json({ success: true });
 
     const row = results[0];
-    const userEmail = row.email;
-    const userName = row.first_name
-      ? `${row.first_name} ${row.last_name}`
-      : "Student";
+    const userEmail = row.email; // 🟢 VARIABLE DEFINED HERE
+    const userFirstName = row.first_name || "Student";
 
-    // 3. Update Database (Ensure 'admin_note' is updated)
+    // 3. Update Database
     const updateQuery = `
       UPDATE queue 
       SET status = 'completed', 
@@ -2641,21 +2642,31 @@ app.post("/api/admin/mark-done", authenticateAdmin, (req, res) => {
       }
 
       // 4. Send Email
-      // ... inside mark-done ...
+      // 🟢 FIX: Use 'userEmail' and 'row' data, NOT 'user.email'
+      if (userEmail) {
+        console.log(`📧 Sending 'Ready to Claim' email to ${userEmail}...`);
 
-      // 🟢 TRIGGER EMAIL IF USER HAS EMAIL
-      if (user.email) {
-        const subject = "📄 Documents Ready for Pickup";
+        const subject = "📄 Documents Ready for Pickup - RSU Registrar";
         const html = `
-          <h3>Hello ${user.first_name},</h3>
-          <p>Your request (Queue #: <b>${user.queue_number}</b>) is now <b>READY TO CLAIM</b>.</p>
-          <div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00;">
-             <strong>Note:</strong> ${finalNote}
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h3>Hello ${userFirstName},</h3>
+            <p>Good news! Your request (Queue #: <b>${
+              row.queue_number
+            }</b>) is now <b>READY TO CLAIM</b>.</p>
+            
+            <div style="background:#f4f4f4; padding:15px; border-left: 4px solid #004d00; margin: 20px 0;">
+               <strong>Registrar's Note:</strong><br>
+               ${finalNote || "Please proceed to the window."}
+            </div>
+            
+            <p>Please proceed to the Registrar's Office to pick up your documents.</p>
           </div>
-          <p>Please proceed to the Registrar's Office.</p>
         `;
-        // Use the new function
-        sendNotificationEmail(user.email, subject, html);
+
+        // Use the API function
+        sendNotificationEmail(userEmail, subject, html);
+      } else {
+        console.warn("⚠️ No email found for this user. Notification skipped.");
       }
 
       res.json({ success: true });
