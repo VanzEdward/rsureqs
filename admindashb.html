@@ -23,6 +23,119 @@
     />
     <link rel="stylesheet" href="assets/css/improved_admindash.css" />
     <!-- MOVED THE OTHER STYLES IN THE IMPROVED_ADMINDASHB.CSS FOR BETTER ORGANIZATION -->
+    <style>
+      /* =========================================
+       DARK MODE OVERRIDES
+       This styles only apply when 'dark-mode' class is on body
+    ========================================= */
+
+      /* --- 1. General Backgrounds & Text --- */
+      body.dark-mode {
+        background-color: #121212 !important; /* Main background */
+        color: #e0e0e0 !important; /* Main Text color */
+      }
+
+      /* Force all standard black/dark text to white/light grey */
+      body.dark-mode .text-dark,
+      body.dark-mode .text-black,
+      body.dark-mode h1,
+      body.dark-mode h2,
+      body.dark-mode h3,
+      body.dark-mode h4,
+      body.dark-mode h5,
+      body.dark-mode h6,
+      body.dark-mode strong,
+      body.dark-mode b {
+        color: #ffffff !important;
+      }
+
+      /* Make muted text readable but still distinct */
+      body.dark-mode .text-muted {
+        color: #adb5bd !important;
+      }
+
+      /* --- 2. CARDS (Fixes My Window, Document Request, Reports cards) --- */
+      /* Target all cards and elements explicitly marked bg-white/bg-light */
+      body.dark-mode .card,
+      body.dark-mode .bg-white,
+      body.dark-mode .bg-light,
+      body.dark-mode .border-light {
+        background-color: #1e1e1e !important; /* Dark grey card background */
+        color: #ffffff !important; /* Ensure text inside is white */
+        border-color: #373737 !important; /* Dark border so they don't disappear */
+      }
+
+      /* Fix list groups inside cards (like in reports) */
+      body.dark-mode .list-group-item {
+        background-color: #1e1e1e !important;
+        border-color: #373737 !important;
+        color: #ffffff !important;
+      }
+
+      /* --- 3. TABLES (Fixes History Student Names blending in) --- */
+      body.dark-mode .table {
+        color: #ffffff !important;
+        border-color: #373737 !important;
+        --bs-table-bg: transparent; /* Removes default white bootstrap background */
+      }
+
+      /* Table headers background */
+      body.dark-mode .table thead th {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border-bottom-color: #444;
+      }
+
+      /* Table hover state in dark mode */
+      body.dark-mode .table-hover tbody tr:hover {
+        background-color: #333333 !important;
+        color: #ffffff !important;
+      }
+
+      /* --- 4. MODALS (Fixes Review Requirements & Complete Request) --- */
+      /* The main modal container */
+      body.dark-mode .modal-content {
+        background-color: #1e1e1e !important;
+        border: 1px solid #444;
+      }
+
+      /* Modal header and footer lines */
+      body.dark-mode .modal-header,
+      body.dark-mode .modal-footer {
+        border-color: #373737 !important;
+      }
+
+      /* Fix the 'X' close button so it's white */
+      body.dark-mode .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+      }
+
+      /* Fix Form Inputs inside Modals (so they aren't bright white) */
+      body.dark-mode .form-control,
+      body.dark-mode .form-select {
+        background-color: #2d2d2d !important;
+        border-color: #444 !important;
+        color: #ffffff !important;
+      }
+      body.dark-mode .form-control::placeholder {
+        color: #bbbbbb;
+      }
+      body.dark-mode .input-group-text {
+        background-color: #333;
+        border-color: #444;
+        color: #fff;
+      }
+
+      /* --- 5. Specific Fix for "progress cards" text --- */
+      /* Ensures text on colored backgrounds (like the green success card) remains readable */
+      body.dark-mode .bg-success-subtle,
+      body.dark-mode .bg-primary-subtle,
+      body.dark-mode .bg-warning-subtle {
+        /* Keep background colors but ensure text is dark enough to read on them, 
+            or invert them if you prefer. Sticking to bootstrap defaults for now 
+            usually works okay even in dark mode for colored alerts. */
+      }
+    </style>
   </head>
 
   <body>

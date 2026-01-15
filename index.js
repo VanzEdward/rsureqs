@@ -24,41 +24,108 @@ if (!SMTP_USER || !SMTP_PASS) {
   );
 }
 
+// // =========================================
+// // EMAIL CONFIGURATION (Nodemailer & Brevo)
+// // =========================================
+// // 🟢 FIX: Updated for Render deployment using Port 587 (TLS)
+// const transporter = nodemailer.createTransport({
+//   host: "smtp-relay.brevo.com", // Use the modern Brevo hostname
+//   port: 587, // Port 587 is usually allowed on Render; 465 is often blocked.
+//   secure: false, // Must be 'false' for port 587 (it uses STARTTLS)
+//   auth: {
+//     user: process.env.SMTP_USER, // Ensure this is set in Render Environment Variables
+//     pass: process.env.SMTP_PASS, // Ensure this is set in Render Environment Variables
+//   },
+//   tls: {
+//     // Helps prevent SSL handshake errors in some cloud environments
+//     rejectUnauthorized: false,
+//   },
+// });
+// // =========================================
+
+// // Helper Function to Send Emails
+// async function sendNotificationEmail(to, subject, htmlContent) {
+//   try {
+//     if (!to) return;
+
+//     const info = await transporter.sendMail({
+//       // 🟢 FIX: Use the variable here too, so it always matches your credentials
+//       from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
+//       to: to,
+//       subject: subject,
+//       html: htmlContent,
+//     });
+
+//     console.log(`📧 Email sent to ${to}: ${info.messageId}`);
+//   } catch (error) {
+//     console.error("❌ Error sending email:", error);
+//   }
+// }
+
 // =========================================
-// EMAIL CONFIGURATION (Nodemailer & Brevo)
+// 📧 EMAIL CONFIGURATION (ROBUST & DEBUGGED)
 // =========================================
-// 🟢 FIX: Updated for Render deployment using Port 587 (TLS)
+
+// 1. Debug: Check if variables are loaded (Prints to Render Logs)
+console.log("------------------------------------------------");
+console.log("📧 EMAIL SYSTEM STARTUP CHECK:");
+console.log(
+  "👉 SMTP_USER:",
+  process.env.SMTP_USER ? "Loaded ✅" : "MISSING ❌"
+);
+console.log(
+  "👉 SMTP_PASS:",
+  process.env.SMTP_PASS ? "Loaded ✅" : "MISSING ❌"
+);
+console.log("------------------------------------------------");
+
+// 2. Configure Transporter (Port 587 for Render)
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com", // Use the modern Brevo hostname
-  port: 587, // Port 587 is usually allowed on Render; 465 is often blocked.
-  secure: false, // Must be 'false' for port 587 (it uses STARTTLS)
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false, // Must be false for 587
   auth: {
-    user: process.env.SMTP_USER, // Ensure this is set in Render Environment Variables
-    pass: process.env.SMTP_PASS, // Ensure this is set in Render Environment Variables
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
   tls: {
-    // Helps prevent SSL handshake errors in some cloud environments
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // Prevents "Self-signed certificate" errors
   },
 });
-// =========================================
+
+// 3. CRITICAL: Verify Connection on Startup
+// This forces Render to test the connection immediately.
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ CRITICAL SMTP ERROR: Connection failed!", error);
+  } else {
+    console.log("✅ SMTP Server is Ready! Emails can be sent.");
+  }
+});
 
 // Helper Function to Send Emails
 async function sendNotificationEmail(to, subject, htmlContent) {
   try {
-    if (!to) return;
+    if (!to) {
+      console.warn("⚠️ Email skipped: No recipient provided.");
+      return;
+    }
+
+    // Ensure we have a valid sender
+    const sender = process.env.SMTP_USER || "no-reply@rsu.edu.ph";
 
     const info = await transporter.sendMail({
-      // 🟢 FIX: Use the variable here too, so it always matches your credentials
-      from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
+      from: `"RSU Registrar" <${sender}>`,
       to: to,
       subject: subject,
       html: htmlContent,
     });
 
-    console.log(`📧 Email sent to ${to}: ${info.messageId}`);
+    console.log(
+      `✅ Email sent successfully to ${to}. Message ID: ${info.messageId}`
+    );
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error(`❌ FAILED to send email to ${to}:`, error.message);
   }
 }
 
@@ -2790,78 +2857,75 @@ app.post("/api/admin/assign-or", authenticateAdmin, (req, res) => {
 //   );
 // });
 
-// === API: FORGOT PASSWORD (SECURE NODEMAILER) ===
+// ============================================
+// 🟢 CORRECTED FORGOT PASSWORD ROUTE
+// ============================================
 app.post("/api/forgot-password", (req, res) => {
   const { email } = req.body;
 
   if (!email) {
-    return res.status(400).json({ success: false, message: "Email required" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Email is required" });
   }
 
-  // 1. Find the user
-  db.query(
-    "SELECT * FROM users WHERE email = ?",
-    [email],
-    async (err, results) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Database error" });
-      }
-
-      if (results.length === 0) {
-        // Security: Don't tell them the email is invalid
-        return res.json({
-          success: true,
-          message: "If an account exists, a reset link has been sent.",
-        });
-      }
-
-      const user = results[0];
-
-      // 2. Generate the Token (Valid for 1 hour)
-      const resetToken = jwt.sign(
-        { userId: user.id, email: user.email },
-        JWT_RESET_SECRET,
-        { expiresIn: "1h" }
-      );
-
-      // 3. Create the Link
-      // If SITE_URL is set in Render, use it. Otherwise, guess based on the request.
-      const siteUrl =
-        process.env.SITE_URL || `${req.protocol}://${req.get("host")}`;
-      const resetLink = `${siteUrl}/reset-password?token=${resetToken}`;
-
-      const mailOptions = {
-        // 🟢 FIX: Use BACKTICKS (`) not single quotes (')
-        from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
-        to: user.email,
-        subject: "Password Reset Request",
-        html: `
-        <h3>Password Reset Request</h3>
-        <p>Hello ${user.first_name},</p>
-        <p>Click the link below to reset your password. This link expires in 1 hour.</p>
-        <a href="${resetLink}" style="background-color:#0d6efd;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">Reset Password</a>
-        <p>If you did not request this, please ignore this email.</p>
-      `,
-      };
-
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log(`✅ Password reset email sent to ${user.email}`);
-        res.json({
-          success: true,
-          message: "If an account exists, a reset link has been sent.",
-        });
-      } catch (emailErr) {
-        console.error("❌ Email sending failed:", emailErr);
-        res
-          .status(500)
-          .json({ success: false, message: "Failed to send email." });
-      }
+  const query = "SELECT * FROM users WHERE email = ?";
+  db.query(query, [email], async (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ success: false, message: "Server error" });
     }
-  );
+
+    if (results.length === 0) {
+      // Security: Don't reveal if user exists or not, just say "sent if exists"
+      return res.json({
+        success: true,
+        message: "If that email exists, a reset link has been sent.",
+      });
+    }
+
+    const user = results[0];
+
+    // 1. Generate Token
+    const resetToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    // 2. Generate Link (Safe for Render)
+    // 🟢 The "req" variable works here because it is inside 'app.post'
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const host = req.get("host");
+    const siteUrl = process.env.SITE_URL || `${protocol}://${host}`;
+    const resetLink = `${siteUrl}/reset-password?token=${resetToken}`;
+
+    // 3. Send Email
+    const mailOptions = {
+      from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
+      to: user.email,
+      subject: "Password Reset Request - RSU REQS",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2 style="color: #004d00;">Password Reset</h2>
+          <p>Hello ${user.first_name},</p>
+          <p>We received a request to reset your password.</p>
+          <p>Click the button below to proceed. This link expires in 1 hour.</p>
+          <a href="${resetLink}" style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">Reset Password</a>
+          <p style="color: #666; font-size: 12px; margin-top: 20px;">If you did not request this, please ignore this email.</p>
+        </div>
+      `,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Forgot Password email sent to ${user.email}`);
+      res.json({ success: true, message: "Reset link sent." });
+    } catch (emailErr) {
+      console.error("❌ Forgot Password Email Error:", emailErr);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to send email." });
+    }
+  });
 });
 
 // // === API: RESET PASSWORD === OLD not working
