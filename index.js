@@ -66,9 +66,13 @@ if (!SMTP_USER || !SMTP_PASS) {
 // 📧 EMAIL CONFIGURATION (ROBUST & DEBUGGED)
 // =========================================
 
-// 1. Debug: Check if variables are loaded (Prints to Render Logs)
+// =========================================
+// 📧 EMAIL CONFIGURATION (High Availability)
+// =========================================
+
 console.log("------------------------------------------------");
 console.log("📧 EMAIL SYSTEM STARTUP CHECK:");
+// Mask the password for security in logs
 console.log(
   "👉 SMTP_USER:",
   process.env.SMTP_USER ? "Loaded ✅" : "MISSING ❌"
@@ -79,22 +83,27 @@ console.log(
 );
 console.log("------------------------------------------------");
 
-// 2. Configure Transporter (Port 587 for Render)
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
-  secure: false, // Must be false for 587
+  secure: false, // Must be false for port 587
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
   tls: {
-    rejectUnauthorized: false, // Prevents "Self-signed certificate" errors
+    rejectUnauthorized: false, // Helps bypass SSL strictness
+    ciphers: "SSLv3", // Force compatibility
   },
+  // 🟢 CRITICAL: TIMEOUT SETTINGS TO PREVENT HANGING
+  connectionTimeout: 15000, // Wait 15 seconds for connection
+  greetingTimeout: 15000, // Wait 15 seconds for server hello
+  socketTimeout: 15000, // Wait 15 seconds for data
+  debug: true, // Show detailed logs on Render
+  logger: true, // Log directly to console
 });
 
-// 3. CRITICAL: Verify Connection on Startup
-// This forces Render to test the connection immediately.
+// Verify connection immediately
 transporter.verify((error, success) => {
   if (error) {
     console.error("❌ CRITICAL SMTP ERROR: Connection failed!", error);
