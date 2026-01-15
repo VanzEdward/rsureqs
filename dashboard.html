@@ -3258,7 +3258,7 @@ async function initiatePayment(requestId, amount, description) {
         "Transcript of Records": {
           category: ["transcript_diploma", "transferee"],
           description: "Official academic record showing all courses and grades.",
-          requirements: [{ name: "Clearance" }], // 🟢 Removed Payment Receipt
+          requirements: [{ name: "Clearance"}, {name: "Payment Receipt"}], // 🟢 Removed Payment Receipt
           price: 40.0,
           time: "7 working days",
         },
@@ -3266,7 +3266,7 @@ async function initiatePayment(requestId, amount, description) {
           category: "transcript_diploma",
           description: "Re-issuance of Diploma.",
           requirements: [
-            { name: "Notarized Affidavit of Loss" } // 🟢 Removed Payment Receipt
+            { name: "Notarized Affidavit of Loss"}, {name: "Payment Receipt"} // 🟢 Removed Payment Receipt
           ],
           price: 100.0,
           time: "1 month",
@@ -3276,21 +3276,21 @@ async function initiatePayment(requestId, amount, description) {
         "Certificate of Honorable Dismissal": {
           category: "transferee",
           description: "Transfer Credentials / Honorable Dismissal for transferring students.",
-          requirements: [{ name: "Clearance" }], // 🟢 Removed Payment Receipt
+          requirements: [{ name: "Clearance"}, {name: "Payment Receipt"}], // 🟢 Removed Payment Receipt
           price: 25.0,
           time: "On Process",
         },
         "Certificate of Grades": {
           category: "transferee",
           description: "Official certification of grades for specific semesters.",
-          requirements: [], // 🟢 No requirements left (Payment is handled by button)
+          requirements: [{name: "Payment Recept"}, {name: "Payment Receipt"}], // 🟢 No requirements left (Payment is handled by button)
           price: 25.0,
           time: "7 working days",
         },
         "Course Description": {
           category: "transferee",
           description: "Detailed description of courses taken (often for crediting).",
-          requirements: [{ name: "Request Form" }], // 🟢 Removed Payment Receipt
+          requirements: [{ name: "Request Form"}, {name: "Payment Receipt"}], // 🟢 Removed Payment Receipt
           price: 25.0,
           time: "7 working days",
         },
@@ -3300,7 +3300,7 @@ async function initiatePayment(requestId, amount, description) {
           category: "certification_cav",
           description: "Certification, Authentication and Verification.",
           requirements: [
-            { name: "Diploma & TOR Photocopies" } // 🟢 Removed Payment Receipt
+            { name: "Diploma & TOR Photocopies"}, {name: "Payment Receipt"} // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "5 working days",
@@ -3308,7 +3308,7 @@ async function initiatePayment(requestId, amount, description) {
         "Certificate of Graduation": {
           category: "certification_cav",
           description: "Proof of graduation from the institution.",
-          requirements: [{ name: "Clearance" }], // 🟢 Removed Payment Receipt
+          requirements: [{ name: "Clearance"}, {name: "Payment Receipt"}], // 🟢 Removed Payment Receipt
           price: 25.0,
           time: "5 working days",
         },
@@ -3316,7 +3316,7 @@ async function initiatePayment(requestId, amount, description) {
           category: "certification_cav",
           description: "Proof that the student is currently enrolled.",
           requirements: [
-            { name: "Study Load" } // 🟢 Removed Payment Receipt
+            { name: "Study Load"}, {name: "Payment Receipt"} // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "5 working days",
@@ -3325,7 +3325,7 @@ async function initiatePayment(requestId, amount, description) {
           category: "certification_cav",
           description: "Certification for Dean's Listers or Latin Honors.",
           requirements: [
-            { name: "Copy of Grades" } // 🟢 Removed Payment Receipt
+            { name: "Copy of Grades"}, {name: "Payment Receipt"} // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "5 working days",
@@ -3334,7 +3334,7 @@ async function initiatePayment(requestId, amount, description) {
           category: "certification_cav",
           description: "Certification of class ranking (Upper 25%).",
           requirements: [
-            { name: "Request Letter" } // 🟢 Removed Payment Receipt
+            { name: "Request Letter"}, {name: "Payment Receipt"} // 🟢 Removed Payment Receipt
           ],
           price: 25.0,
           time: "14 working days",
@@ -3342,14 +3342,14 @@ async function initiatePayment(requestId, amount, description) {
         "Certificate of Units Earned": {
           category: "certification_cav",
           description: "Certification of total units earned in the program.",
-          requirements: [], // 🟢 No requirements left
+          requirements: [{name: "Payment Recept"}], // 🟢 No requirements left
           price: 25.0,
           time: "5 working days",
         },
         "Certificate of English as Medium": {
           category: "certification_cav",
           description: "Certifies that English is the medium of instruction.",
-          requirements: [], // 🟢 No requirements left
+          requirements: [{name: "Payment Recept"}], // 🟢 No requirements left
           price: 25.0,
           time: "5 working days",
         },

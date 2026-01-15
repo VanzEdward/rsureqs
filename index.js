@@ -24,15 +24,24 @@ if (!SMTP_USER || !SMTP_PASS) {
   );
 }
 
+// =========================================
+// EMAIL CONFIGURATION (Nodemailer & Brevo)
+// =========================================
+// 🟢 FIX: Updated for Render deployment using Port 587 (TLS)
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com", // Change to "smtp.gmail.com" if using Gmail
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  host: "smtp-relay.brevo.com", // Use the modern Brevo hostname
+  port: 587, // Port 587 is usually allowed on Render; 465 is often blocked.
+  secure: false, // Must be 'false' for port 587 (it uses STARTTLS)
   auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
+    user: process.env.SMTP_USER, // Ensure this is set in Render Environment Variables
+    pass: process.env.SMTP_PASS, // Ensure this is set in Render Environment Variables
+  },
+  tls: {
+    // Helps prevent SSL handshake errors in some cloud environments
+    rejectUnauthorized: false,
   },
 });
+// =========================================
 
 // Helper Function to Send Emails
 async function sendNotificationEmail(to, subject, htmlContent) {
@@ -40,7 +49,8 @@ async function sendNotificationEmail(to, subject, htmlContent) {
     if (!to) return;
 
     const info = await transporter.sendMail({
-      from: '"RSU Registrar" <t90517452@gmail.com>', // Sender Name
+      // 🟢 FIX: Use the variable here too, so it always matches your credentials
+      from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
       to: to,
       subject: subject,
       html: htmlContent,
@@ -2823,9 +2833,9 @@ app.post("/api/forgot-password", (req, res) => {
         process.env.SITE_URL || `${req.protocol}://${req.get("host")}`;
       const resetLink = `${siteUrl}/reset-password?token=${resetToken}`;
 
-      // 4. Send Email via Brevo Transporter
       const mailOptions = {
-        from: '"RSU Registrar" <rsureqsnodeemailer@gmail.com>', // ⚠️ CHANGE THIS TO YOUR REAL GMAIL
+        // 🟢 FIX: Use BACKTICKS (`) not single quotes (')
+        from: `"RSU Registrar" <${process.env.SMTP_USER}>`,
         to: user.email,
         subject: "Password Reset Request",
         html: `

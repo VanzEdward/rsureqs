@@ -4237,31 +4237,6 @@
               let paymentBadge = "";
               let orButton = "";
 
-              if (paymentStatus === "paid") {
-                if (orNumber) {
-                  // Case A: Paid AND has OR -> Show Badge with Number
-                  paymentBadge = `<span class="badge bg-success border border-success text-white ms-1" style="font-size: 0.7rem;">
-                                              <i class="bi bi-cash-coin"></i> PAID (OR# ${this.escapeHtml(
-                                                orNumber
-                                              )})
-                                            </span>`;
-                } else {
-                  // Case B: Paid but NO OR -> Show Badge + "Add OR" Button
-                  paymentBadge = `<span class="badge bg-success border border-success text-white ms-1" style="font-size: 0.7rem;">
-                                              <i class="bi bi-cash-coin"></i> PAID
-                                            </span>`;
-                  // The button calls assignOR with the request ID
-                  orButton = `<button class="btn btn-sm btn-outline-dark ms-1 py-0 px-2 shadow-sm" style="font-size: 0.7rem; border-radius: 10px;"
-                                          onclick="event.stopPropagation(); queueManager.assignOR('${request.request_id}')" title="Enter Official Receipt Number">
-                                          <i class="bi bi-pencil-square"></i> OR#
-                                        </button>`;
-                }
-              } else {
-                // Case C: Unpaid
-                paymentBadge =
-                  '<span class="badge bg-light text-muted border ms-1" style="font-size: 0.7rem;">UNPAID</span>';
-              }
-
               return `
           <div id="req-${request.queue_id}" class="request-card ${
                 isPriority ? "priority-card" : ""
