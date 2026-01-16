@@ -2426,6 +2426,7 @@ app.get("/api/queue/data", (req, res) => {
         window2: { processing: [], completed: [], staffName: null },
         window3: { processing: [], completed: [], staffName: null },
         window4: { processing: [], completed: [], staffName: null },
+        window5: { processing: [], completed: [], staffName: null },
       };
 
       // A. Map Staff Names to Windows
@@ -2511,6 +2512,7 @@ app.get("/api/queue/status", (req, res) => {
       window2: { processing: [], completed: [] },
       window3: { processing: [], completed: [] },
       window4: { processing: [], completed: [] },
+      window5: { processing: [], completed: [] },
       comingUp: [],
     };
 
@@ -3814,25 +3816,23 @@ app.get("/api/admin/complaints", authenticateAdmin, (req, res) => {
   });
 });
 
-// 🟢 FINAL COMPLETE FIX: TV QUEUE DATA
-// 1. Excludes 'claimed' (Picked Up items vanish).
-// 2. Hides processing items if progress < 100%.
-// 3. Shows 'Now Serving' only when 100% Ready.
+// 🟢 FINAL FIX: TV DATA (Supports 5 Windows)
 app.get("/api/public/queue-data", (req, res) => {
-  // 1. FETCH DATA
-  // 🟢 SAFETY FIX: Changed the WHERE clause.
-  // We now select ANY 'processing' item (even if submitted yesterday but processed today).
-  // We only select 'completed' items from TODAY (to keep the list fresh).
-  const query = `
+  // 1. QUERY STAFF
+  const staffQuery = `
+    SELECT assigned_window, full_name 
+    FROM admin_staff 
+    WHERE show_name = 1 AND assigned_window IS NOT NULL
+  `;
+
+  // 2. QUERY QUEUE
+  const queueQuery = `
       SELECT 
         q.queue_number, 
         q.window_number, 
         q.status, 
-        q.progress_data, 
-        q.processed_by,
-        s.show_name as staff_visible
+        q.progress_data
       FROM queue q
-      LEFT JOIN admin_staff s ON q.processed_by_id = s.id 
       WHERE 
         (q.status = 'processing') 
         OR 
@@ -3840,81 +3840,82 @@ app.get("/api/public/queue-data", (req, res) => {
       ORDER BY q.updated_at ASC
   `;
 
-  db.query(query, (err, results) => {
+  db.query(staffQuery, (err, staffResults) => {
     if (err) {
-      console.error("❌ DB Error:", err);
+      console.error("❌ DB Error (Staff):", err);
       return res.status(500).json(null);
     }
 
+    // 🟢 UPDATE 1: Add window5 here
     const responseData = {
       window1: { processing: [], completed: [], staffName: "" },
       window2: { processing: [], completed: [], staffName: "" },
       window3: { processing: [], completed: [], staffName: "" },
       window4: { processing: [], completed: [], staffName: "" },
+      window5: { processing: [], completed: [], staffName: "" }, // Added
     };
 
-    results.forEach((row) => {
-      // --- A. CALCULATE PERCENTAGE ---
-      let percent = 0;
+    if (staffResults) {
+      staffResults.forEach((staff) => {
+        let winNum = 0;
+        if (staff.assigned_window) {
+          const nums = staff.assigned_window.toString().replace(/\D/g, "");
+          if (nums.length > 0) winNum = parseInt(nums);
+        }
+        const winKey = `window${winNum}`;
+        if (responseData[winKey]) {
+          responseData[winKey].staffName = staff.full_name;
+        }
+      });
+    }
 
-      if (row.status === "completed") {
-        percent = 100; // Completed is always 100%
-      } else if (row.progress_data) {
-        try {
-          const p =
-            typeof row.progress_data === "string"
-              ? JSON.parse(row.progress_data)
-              : row.progress_data;
+    db.query(queueQuery, (qErr, qResults) => {
+      if (qErr) {
+        console.error("❌ DB Error (Queue):", qErr);
+        return res.status(500).json(null);
+      }
 
-          // Avoid division by zero
-          if (p && p.total > 0) {
-            percent = (p.current / p.total) * 100;
+      qResults.forEach((row) => {
+        let percent = 0;
+        if (row.status === "completed") {
+          percent = 100;
+        } else if (row.progress_data) {
+          try {
+            const p =
+              typeof row.progress_data === "string"
+                ? JSON.parse(row.progress_data)
+                : row.progress_data;
+            if (p && p.total > 0) percent = (p.current / p.total) * 100;
+          } catch (e) {
+            percent = 0;
           }
-        } catch (e) {
-          percent = 0;
-        }
-      }
-
-      // 🟢 RULE 1: If it is Processing but NOT 100%, HIDE IT.
-      // This ensures "Now Serving" only shows when the bar hits 100%.
-      if (row.status === "processing" && percent < 100) {
-        return; // Skip this item (Hidden from TV)
-      }
-
-      // --- B. DETERMINE WINDOW ---
-      let winNum = 1;
-      if (row.window_number) {
-        // Extract number from string (e.g. "Window 1" -> 1)
-        const nums = row.window_number.toString().replace(/\D/g, "");
-        if (nums.length > 0) winNum = parseInt(nums);
-      }
-      // Safety: Ensure window is 1-4
-      if (winNum < 1 || winNum > 4) winNum = 1;
-
-      const winKey = `window${winNum}`;
-
-      if (responseData[winKey]) {
-        const status = (row.status || "").toLowerCase();
-
-        // 🟢 STAFF NAME LOGIC:
-        if (row.staff_visible === 1 && row.processed_by) {
-          responseData[winKey].staffName = row.processed_by;
         }
 
-        // 🟢 SORTING LOGIC:
-        // 1. Processing (100%) -> Goes to NOW SERVING (Big Box)
-        if (status.includes("process")) {
-          responseData[winKey].processing.push(row);
+        if (row.status === "processing" && percent < 100) return;
+
+        let winNum = 1;
+        if (row.window_number) {
+          const nums = row.window_number.toString().replace(/\D/g, "");
+          if (nums.length > 0) winNum = parseInt(nums);
         }
-        // 2. Completed -> Goes to READY TO CLAIM (Footer List)
-        else if (status.includes("complete")) {
-          responseData[winKey].completed.push(row);
+
+        // 🟢 UPDATE 2: Change validation from >4 to >5
+        if (winNum < 1 || winNum > 5) winNum = 1;
+
+        const winKey = `window${winNum}`;
+
+        if (responseData[winKey]) {
+          const status = (row.status || "").toLowerCase();
+          if (status.includes("process")) {
+            responseData[winKey].processing.push(row);
+          } else if (status.includes("complete")) {
+            responseData[winKey].completed.push(row);
+          }
         }
-        // 3. Claimed -> Excluded by SQL Query (Hidden)
-      }
+      });
+
+      res.json(responseData);
     });
-
-    res.json(responseData);
   });
 });
 

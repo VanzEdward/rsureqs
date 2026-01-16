@@ -353,6 +353,64 @@
           padding: 10px 15px;
         }
       }
+      /* 🟢 LAYOUT FIX: 3 Top, 2 Bottom (Horizontal Cards) */
+
+      /* 1. Container: Creates the 3-2 Grid */
+      .window-grid {
+        display: flex !important;
+        flex-wrap: wrap !important; /* Allow wrapping */
+        justify-content: center !important; /* Center the bottom 2 cards */
+        gap: 15px !important; /* Smaller gap to save space */
+        padding: 20px;
+        width: 100%;
+      }
+
+      /* 2. Card: Horizontal Shape & Smaller Size */
+      .window-card {
+        /* WIDTH: 30% fits 3 cards on top (30+30+30=90%) */
+        flex: 0 0 30% !important;
+        width: 30% !important;
+        min-width: 300px !important;
+
+        /* HEIGHT: Reduced to 280px to keep it HORIZONTAL (Landscape) */
+        height: 280px !important;
+        min-height: 280px !important;
+
+        /* Design */
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      /* 3. Adjust Content to fit the smaller horizontal card */
+      .win-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 5px 0; /* Less padding */
+      }
+
+      .current-ticket {
+        font-size: 3.5rem !important; /* Smaller text to fit the smaller card */
+        font-weight: 800;
+        margin: 0;
+        line-height: 1;
+      }
+
+      /* 📱 Mobile: Stack 1 per row */
+      @media (max-width: 768px) {
+        .window-card {
+          flex: 0 0 100% !important;
+          width: 100% !important;
+          height: auto !important; /* Let height adjust on phone */
+        }
+      }
     </style>
   </head>
 
@@ -456,6 +514,26 @@
             <div class="ready-list-container" id="w4-ready-container"></div>
           </div>
         </div>
+
+        <div class="window-card card-yellow">
+          <div class="win-header">
+            <div class="win-title-text">Window 5</div>
+            <div class="staff-name-display" id="w5-staff">Staff: Name</div>
+          </div>
+          <div class="win-body">
+            <div class="serving-label">Now Serving</div>
+            <div class="current-ticket" id="w5-serving">---</div>
+          </div>
+          <div class="win-footer">
+            <div class="ready-header-row">
+              <span class="ready-label"
+                ><i class="bi bi-check-circle-fill"></i> Ready to Claim</span
+              >
+              <span class="batch-indicator" id="w5-batch"></span>
+            </div>
+            <div class="ready-list-container" id="w5-ready-container"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -483,6 +561,7 @@
         window2: { processing: [], completed: [], staffName: "" },
         window3: { processing: [], completed: [], staffName: "" },
         window4: { processing: [], completed: [], staffName: "" },
+        window5: { processing: [], completed: [], staffName: "" },
       };
 
       let displayState = {
@@ -490,6 +569,7 @@
         2: { procIndex: 0, compPage: 0 },
         3: { procIndex: 0, compPage: 0 },
         4: { procIndex: 0, compPage: 0 },
+        5: { procIndex: 0, compPage: 0 },
       };
 
       // 3. FETCH
@@ -500,7 +580,7 @@
           const data = await response.json();
           if (data) {
             queueData = data;
-            [1, 2, 3, 4].forEach((num) => renderWindow(num));
+            [1, 2, 3, 4, 5].forEach((num) => renderWindow(num));
           }
         } catch (error) {
           console.error(error);
@@ -578,7 +658,7 @@
 
       // 5. LOOPS
       setInterval(() => {
-        [1, 2, 3, 4].forEach((win) => {
+        [1, 2, 3, 4, 5].forEach((win) => {
           const list = queueData[`window${win}`]?.completed || [];
           if (list.length > 4) {
             displayState[win].compPage++;

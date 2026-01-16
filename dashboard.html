@@ -3355,7 +3355,7 @@ async function initiatePayment(requestId, amount, description) {
         "Certificate of Grades": {
           category: "transferee",
           description: "Official certification of grades for specific semesters.",
-          requirements: [{name: "Payment Recept"}, {name: "Payment Receipt"}], // 🟢 No requirements left (Payment is handled by button)
+          requirements: [{name: "Payment Recept"}], // 🟢 No requirements left (Payment is handled by button)
           price: 25.0,
           time: "7 working days",
         },
@@ -4317,7 +4317,7 @@ async function loadUserRequests() {
                 mainContent = `
                     <div class="alert alert-primary mt-3 border-0">
                         <h6 class="fw-bold mb-1">Being Processed by ${staff}</h6>
-                        <p class="mb-0 small">Please wait near <strong>${windowNum}</strong>.</p>
+                        <p class="mb-0 small">Please wait  <strong>${windowNum}</strong>.</p>
                         
                         <div class="d-flex justify-content-between small mt-2 mb-1">
                             <span>Status</span>

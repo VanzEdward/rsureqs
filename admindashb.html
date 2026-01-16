@@ -214,8 +214,8 @@
 
     <div class="main-content">
       <div id="queue-page" class="page active">
-        <div class="row mb-4">
-          <div class="col-md-3">
+        <div class="row mb-4 g-2">
+          <div class="col-md">
             <div class="card h-100">
               <div
                 class="card-body text-center d-flex flex-column justify-content-center"
@@ -225,7 +225,8 @@
               </div>
             </div>
           </div>
-          <div class="col-md-3">
+
+          <div class="col-md">
             <div class="card h-100">
               <div
                 class="card-body text-center d-flex flex-column justify-content-center"
@@ -235,7 +236,8 @@
               </div>
             </div>
           </div>
-          <div class="col-md-3">
+
+          <div class="col-md">
             <div class="card h-100">
               <div
                 class="card-body text-center d-flex flex-column justify-content-center"
@@ -245,13 +247,25 @@
               </div>
             </div>
           </div>
-          <div class="col-md-3">
+
+          <div class="col-md">
             <div class="card h-100">
               <div
                 class="card-body text-center d-flex flex-column justify-content-center"
               >
                 <h2 id="win4-count" class="text-danger fw-bold mb-0">0</h2>
                 <p class="text-muted small mb-0">Window 4</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md">
+            <div class="card h-100">
+              <div
+                class="card-body text-center d-flex flex-column justify-content-center"
+              >
+                <h2 id="win5-count" class="text-danger fw-bold mb-0">0</h2>
+                <p class="text-muted small mb-0">Window 5</p>
               </div>
             </div>
           </div>
@@ -1106,6 +1120,13 @@
                 onclick="selectWindow('Window 4', event)"
               >
                 <i class="bi bi-display me-3 fs-5"></i> Window 4
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-primary p-3 text-start fw-semibold position-relative"
+                onclick="selectWindow('Window 5', event)"
+              >
+                <i class="bi bi-display me-3 fs-5"></i> Window 5
               </button>
             </div>
           </div>
@@ -4587,6 +4608,7 @@
             window2: false,
             window3: false,
             window4: false,
+            window5: false,
           };
 
           const cleanString = (str) =>
@@ -4626,6 +4648,12 @@
               id: "win4-count",
               colorClass: "text-danger",
               name: "Window 4",
+            },
+            {
+              key: "window5",
+              id: "win5-count",
+              colorClass: "text-danger",
+              name: "Window 5",
             },
           ];
 
@@ -6373,7 +6401,13 @@
       }
 
       function renderWindowButtons(modalElement) {
-        const windows = ["Window 1", "Window 2", "Window 3", "Window 4"];
+        const windows = [
+          "Window 1",
+          "Window 2",
+          "Window 3",
+          "Window 4",
+          "Window 5",
+        ];
         const modalBody = modalElement.querySelector(".modal-body .d-grid");
 
         if (!modalBody) return;
@@ -6466,7 +6500,13 @@
       // are still required and remain unchanged from the previous steps.
 
       function renderWindowButtons(modalElement) {
-        const windows = ["Window 1", "Window 2", "Window 3", "Window 4"];
+        const windows = [
+          "Window 1",
+          "Window 2",
+          "Window 3",
+          "Window 4",
+          "Window 5",
+        ];
         const modalBody = modalElement.querySelector(".modal-body .d-grid");
 
         if (!modalBody) return;
@@ -6498,61 +6538,6 @@
         });
       }
 
-      // window.selectWindow = async function (windowName, event) {
-      //   // 1. Stop the default immediate form refresh (we need to save data first!)
-      //   if (event) {
-      //     event.preventDefault();
-      //     event.stopPropagation();
-      //   }
-
-      //   try {
-      //     // 2. Lock the window on the server
-      //     const response = await makeAuthenticatedRequest(
-      //       "/api/admin/assign-window",
-      //       {
-      //         method: "POST",
-      //         body: JSON.stringify({ windowNumber: windowName }),
-      //       }
-      //     );
-      //     const data = await response.json();
-
-      //     if (!data.success) {
-      //       alert(`Assignment failed: ${data.message}. Refreshing list.`);
-      //       checkWindowAssignment();
-      //       return;
-      //     }
-
-      //     // 3. Save state to Local Storage
-      //     localStorage.setItem("assignedWindow", windowName);
-      //     currentWindow = windowName;
-
-      //     // 4. 🟢 SHOW LOADING SCREEN IN MODAL 🟢
-      //     const modalBody = document.querySelector(
-      //       "#windowSelectionModal .modal-body"
-      //     );
-      //     if (modalBody) {
-      //       modalBody.innerHTML = `
-      //                       <div class="text-center py-5">
-      //                           <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
-      //                               <span class="visually-hidden">Loading...</span>
-      //                           </div>
-      //                           <h4 class="fw-bold text-dark">Setting up ${windowName}...</h4>
-      //                           <p class="text-muted">The page will reload to apply settings.</p>
-      //                       </div>
-      //                     `;
-      //     }
-
-      //     // 5. 🟢 FORCE RELOAD AFTER 1 SECOND 🟢
-      //     // This guarantees the dashboard loads fresh with the buttons visible.
-      //     setTimeout(() => {
-      //       window.location.reload();
-      //     }, 1000);
-      //   } catch (error) {
-      //     console.error("Error assigning window:", error);
-      //     alert("Network error. Please try again.");
-      //   }
-      // };
-
       function updateUIWithWindow(windowName) {
         const currentWindowDisplay = document.getElementById(
           "currentWindowDisplay"
@@ -6565,37 +6550,6 @@
           sidebarTitle.innerHTML = `Registrar Staff <br><small style="font-size: 12px; color: #aab0bc;">${windowName}</small>`;
         }
       }
-
-      // // Hook into existing initialization
-      // document.addEventListener("DOMContentLoaded", function () {
-      //   // checkWindowAssignment();
-      // });
-
-      // Correct Logout Function
-      // window.handleLogout = function () {
-      //   if (confirm("Are you sure you want to log out?")) {
-      //     showNotification("Logging out...");
-
-      //     // 1. Ensure we have the window value to send to server
-      //     if (!currentWindow) {
-      //       currentWindow = localStorage.getItem("assignedWindow");
-      //     }
-
-      //     // 2. Call server to UNLOCK the window in the database
-      //     unassignWindowOnServer()
-      //       .then(() => {
-      //         // 3. Clear local storage and redirect
-      //         localStorage.removeItem("assignedWindow");
-      //         adminLogout();
-      //       })
-      //       .catch((err) => {
-      //         // Even if server fails, log out anyway
-      //         console.error("Unassign failed", err);
-      //         localStorage.removeItem("assignedWindow");
-      //         adminLogout();
-      //       });
-      //   }
-      // };
 
       // Function to toggle password visibility
       function toggleRegPassword(inputId, iconSpan) {
@@ -6701,69 +6655,6 @@
           });
         }
       });
-      // 🟢 ADD THIS SCRIPT BLOCK inside your main script
-
-      // // 1. Check User Role & Initialize Toggle
-      // const userRole = localStorage.getItem("userRole"); // Assuming you save role here
-      // const showNameContainer = document.getElementById(
-      //   "nameVisibilityContainer"
-      // );
-      // const nameToggle = document.getElementById("showNameToggle");
-
-      // // Only show toggle for Staff/Admin (NOT Super Admin)
-      // if (userRole && userRole !== "super_admin") {
-      //   showNameContainer.style.display = "block";
-
-      //   // Fetch current setting from DB (We assume you have the user details from login)
-      //   // If you don't have a specific "get settings" API, we can rely on local state or fetch it.
-      //   // For now, let's just listen for changes to keep it simple.
-
-      //   // OPTIONAL: Fetch initial state if you want it to persist across reloads
-      //   // You might need to add a small endpoint for "GET /api/admin/me" to get this true/false
-      // }
-
-      // 2. Listen for changes (Toggle ON/OFF)
-      // (Make sure this code is NOT commented out!)
-      // if (nameToggle) {
-      //   nameToggle.addEventListener("change", function () {
-      //     const isChecked = this.checked;
-
-      //     // Get the token safely
-      //     const token =
-      //       localStorage.getItem("adminToken") || localStorage.getItem("token");
-
-      //     console.log("Switch toggled. Sending request...", isChecked); // Debug log
-
-      //     fetch("/api/admin/toggle-name", {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //         Authorization: "Bearer " + token,
-      //       },
-      //       body: JSON.stringify({ show: isChecked }),
-      //     })
-      //       .then((res) => res.json())
-      //       .then((data) => {
-      //         if (data.success) {
-      //           showNotification("Display setting updated", "success");
-      //         } else {
-      //           // Revert if failed
-      //           this.checked = !isChecked;
-      //           showNotification(
-      //             "Failed to update setting: " +
-      //               (data.message || "Unknown error"),
-      //             "error"
-      //           );
-      //         }
-      //       })
-      //       .catch((err) => {
-      //         console.error("Settings update error:", err);
-      //         this.checked = !isChecked;
-      //         showNotification("Connection error", "error");
-      //       });
-      //   });
-      // }
-
       function toggleNameVisibility(checkbox) {
         const isChecked = checkbox.checked;
         const token =
