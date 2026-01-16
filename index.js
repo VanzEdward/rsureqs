@@ -2907,7 +2907,7 @@ app.post("/api/forgot-password", (req, res) => {
 //   }
 // });
 
-// === API: RESET PASSWORD (VERIFY TOKEN) === NEW SECURE VERSION
+// 🟢 FIXED: RESET PASSWORD ROUTE (Matches the Forgot Password Token)
 app.post("/api/reset-password", async (req, res) => {
   const { token, password } = req.body;
 
@@ -2918,20 +2918,29 @@ app.post("/api/reset-password", async (req, res) => {
   }
 
   try {
-    // 1. Verify the Token
-    const decoded = jwt.verify(token, JWT_RESET_SECRET);
-    const userId = decoded.userId;
+    // 1. Verify the Token using the SAME secret used to sign it
+    // We use process.env.JWT_SECRET because that's what /api/forgot-password used.
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 2. Hash new password
+    // 2. Extract the ID correctly (It was stored as 'id', not 'userId')
+    const userId = decoded.id;
+
+    if (!userId) {
+      throw new Error("Invalid token payload");
+    }
+
+    // 3. Hash new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Update DB
+    // 4. Update Database
     db.query(
       "UPDATE users SET password = ? WHERE id = ?",
       [hashedPassword, userId],
       (err) => {
-        if (err)
+        if (err) {
+          console.error("Reset Password DB Error:", err);
           return res.status(500).json({ success: false, message: "DB Error" });
+        }
 
         res.json({
           success: true,
@@ -2940,6 +2949,7 @@ app.post("/api/reset-password", async (req, res) => {
       }
     );
   } catch (error) {
+    console.error("Reset Token Verification Failed:", error.message);
     return res
       .status(400)
       .json({ success: false, message: "Invalid or expired link." });
